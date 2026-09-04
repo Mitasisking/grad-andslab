@@ -13,37 +13,61 @@ export default function Navbar() {
 
   useEffect(() => {
     const checkUser = async () => {
-      const { data: { session } } = await supabase.auth.getSession()
-      setUser(session?.user || null)
+      try {
+        const { data: { session } } = await supabase.auth.getSession()
+        setUser(session?.user || null)
 
-      if (session?.user) {
-        // Check if the logged-in user is an admin
-        const { data } = await supabase
-          .from('profiles')
-          .select('is_admin')
-          .eq('id', session.user.id)
-          .single()
-        
-        setIsAdmin(!!data?.is_admin)
+        if (session?.user?.id) {
+          // Use maybeSingle() instead of single() to prevent 406/400 errors if profile row is missing
+          const { data, error } = await supabase
+            .from('profiles')
+            .select('is_admin')
+            .eq('id', session.user.id)
+            .maybeSingle()
+          
+          if (!error && data) {
+            setIsAdmin(!!data.is_admin)
+          } else {
+            setIsAdmin(false)
+          }
+        } else {
+          setIsAdmin(false)
+        }
+      } catch (err) {
+        console.error('Error checking user session:', err)
+        setIsAdmin(false)
       }
     }
     
     checkUser()
 
     // Listen for logins and logouts in real-time
-    const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
+    const { data: { subscription: authListener } } = supabase.auth.onAuthStateChange(async (event, session) => {
       setUser(session?.user || null)
-      if (session?.user) {
-        supabase.from('profiles').select('is_admin').eq('id', session.user.id).single().then(({ data }) => {
-          setIsAdmin(!!data?.is_admin)
-        })
+      
+      if (session?.user?.id) {
+        try {
+          const { data, error } = await supabase
+            .from('profiles')
+            .select('is_admin')
+            .eq('id', session.user.id)
+            .maybeSingle()
+            
+          if (!error && data) {
+            setIsAdmin(!!data.is_admin)
+          } else {
+            setIsAdmin(false)
+          }
+        } catch (err) {
+          setIsAdmin(false)
+        }
       } else {
         setIsAdmin(false)
       }
     })
 
     return () => {
-      authListener.subscription.unsubscribe()
+      authListener?.unsubscribe()
     }
   }, [])
 

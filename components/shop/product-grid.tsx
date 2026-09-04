@@ -12,6 +12,16 @@ interface Product {
   images: string[]
 }
 
+// Prices are stored in USD (products.price) and displayed in Rand via a
+// static multiplier, per explicit instruction — not a live exchange rate,
+// so this will drift from the real rate over time and needs updating by
+// hand. USD->ZAR, matching the rate the legacy shop page used to hardcode.
+const USD_TO_ZAR_RATE = 18.5
+
+function formatZAR(usdPrice: number): string {
+  return new Intl.NumberFormat('en-ZA', { style: 'currency', currency: 'ZAR' }).format(usdPrice * USD_TO_ZAR_RATE)
+}
+
 /** Quick add-to-cart, no navigation required — per app/auctions/README.md's Phase 4 file map. */
 export function ProductGrid({ products }: { products: Product[] }) {
   const { addItem } = useCart()
@@ -34,10 +44,10 @@ export function ProductGrid({ products }: { products: Product[] }) {
             className="border rounded-[3px] overflow-hidden flex flex-col"
             style={{ borderColor: 'var(--line)' }}
           >
-            <div className="aspect-square" style={{ background: 'var(--paper-raised)' }}>
+            <div className="aspect-square flex items-center justify-center" style={{ background: 'var(--paper-raised)' }}>
               {product.images[0] && (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={product.images[0]} alt={product.title} className="w-full h-full object-cover" />
+                <img src={product.images[0]} alt={product.title} className="w-full h-full object-contain p-4" />
               )}
             </div>
             <div className="p-4 flex flex-col flex-1">
@@ -51,7 +61,7 @@ export function ProductGrid({ products }: { products: Product[] }) {
               )}
               <div className="flex items-center justify-between mt-auto pt-4">
                 <span className="text-[15px]" style={{ fontVariantNumeric: 'tabular-nums', color: 'var(--ink)' }}>
-                  ${product.price.toFixed(2)}
+                  {formatZAR(product.price)}
                 </span>
                 <button
                   type="button"
