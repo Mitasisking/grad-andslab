@@ -3,6 +3,46 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+
+  /* ----------------------------------------------------------------------
+   * Ledger/manifest palette — the design language used by the Phase 2-4
+   * surfaces (submit, auctions, admin, dashboard, shop): wizard.tsx,
+   * step-*.tsx, auction-detail.tsx, grading/intake portals, and the rest
+   * all already reference these exact custom-property names via inline
+   * `style={{ color: 'var(--ink)' }}` etc. — this is the first place
+   * they're actually defined.
+   *
+   * --ink/--seal/--paper below are not invented: they match
+   * components/submit/stripe-payment-form.tsx's existing Stripe Elements
+   * theme (colorText/colorPrimary/colorBackground) verbatim, since that's
+   * the one place in the delivered code a real color decision had already
+   * been made. Everything else is built to sit consistently alongside it.
+   *
+   * Deliberately global (:root), not split into the three separate files
+   * the phase READMEs describe (app/submit/submit-tokens.css,
+   * styles/ledger-tokens.css, a distinct app/auctions/layout.tsx palette):
+   * every one of these surfaces cross-links to the others (dashboard ->
+   * /auctions/new, /auctions/[id] -> dashboard, etc.), so one consistent
+   * palette avoids the page changing look mid-navigation. Applied per-route
+   * via each area's own layout.tsx (app/submit/layout.tsx,
+   * app/auctions/[id]/layout.tsx, app/auctions/new/layout.tsx,
+   * app/admin/grading/layout.tsx, app/admin/intake/layout.tsx,
+   * app/dashboard/submissions/layout.tsx, app/shop/layout.tsx) — not here
+   * on body — specifically so it never touches the legacy
+   * dashboard/shop/auctions/admin/login/signup pages, none of which
+   * reference these variable names at all.
+   */
+  --paper: #f5f2ea;
+  --paper-raised: #ede7d8;
+  --ink: #1c1b18;
+  --ink-muted: #6b6558;
+  --line: #ddd6c7;
+  --seal: #b8862f;
+  --seal-ink: #241d0d;
+  --vault: #1f3d2e;
+  --vault-ink: #f5f2ea;
+  --danger: #a23b2e;
+  --font-display: Georgia, 'Iowan Old Style', 'Palatino Linotype', 'Book Antiqua', serif;
 }
 
 @theme inline {
@@ -16,6 +56,17 @@
   :root {
     --background: #0a0a0a;
     --foreground: #ededed;
+
+    --paper: #1a1814;
+    --paper-raised: #242019;
+    --ink: #ede7d8;
+    --ink-muted: #9b9382;
+    --line: #3a352a;
+    --seal: #d4a24c;
+    --seal-ink: #241d0d;
+    --vault: #2e5941;
+    --vault-ink: #f5f2ea;
+    --danger: #c4574a;
   }
 }
 
