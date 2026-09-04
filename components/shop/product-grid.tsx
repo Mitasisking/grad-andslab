@@ -10,6 +10,7 @@ interface Product {
   price: number
   stock: number
   images: string[]
+  set_name: string | null
 }
 
 // Prices are stored in USD (products.price) and displayed in Rand via a
@@ -54,6 +55,11 @@ export function ProductGrid({ products }: { products: Product[] }) {
               <p className="text-[14.5px]" style={{ color: 'var(--ink)' }}>
                 {product.title}
               </p>
+              {product.set_name && (
+                <p className="text-[12.5px] mt-0.5" style={{ color: 'var(--ink-muted)' }}>
+                  {product.set_name}
+                </p>
+              )}
               {product.description && (
                 <p className="text-[12.5px] mt-1 line-clamp-2" style={{ color: 'var(--ink-muted)' }}>
                   {product.description}

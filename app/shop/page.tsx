@@ -15,7 +15,7 @@ export default async function ShopPage({
   // duplicated as a client-side filter.
   let query = supabase
     .from('products')
-    .select('id, title, description, category, price, stock, images')
+    .select('id, title, description, category, price, stock, images, set_name')
     .order('created_at', { ascending: false })
 
   if (category) {
