@@ -55,10 +55,15 @@ import { getSupabaseServerClient } from '@/lib/supabase-server'
  *     ids are Meowscarada ex / Skeledirge ex / Quaquaval ex -- the three
  *     starter-final-evolution ex cards the set is named for.
  *
- * Still-unresolved, not guessed at:
- *   - "Nihil Zero": no confident match found in the Japanese sets list at
- *     all -- still reports "no TCGdex set matched" until someone identifies
- *     the right id.
+ * "Nihil Zero" -> M3 (Japanese name "ムニキスゼロ", which doesn't obviously
+ * romanize to "Nihil Zero" at all -- found instead by searching individual
+ * card names from the ten products stuck on this set_name, e.g. "Mega
+ * Clefable ex", which turned up in M3's Japanese card list. Confirmed, not
+ * guessed: all ten of those products' card_number values (091/080, 093/080,
+ * ...) exist as exact local ids in M3, and M3's own official card count is
+ * 80 -- matching the "/080" denominator on every one of them.
+ *
+ * Still-unresolved:
  *   - "The Pokedex": confirmed with the business this isn't a real,
  *     purchasable TCG set at all (a custom Collectr checklist, not a
  *     product) -- deliberately left out of this table; it's expected to
@@ -95,6 +100,7 @@ const SET_NAME_OVERRIDES: Record<string, { setId: string; lang: 'en' | 'ja' }> =
   'Raging Surf': { setId: 'SV3a', lang: 'ja' },
   'Shiny Treasure ex': { setId: 'SV4a', lang: 'ja' },
   'Triplet Beat': { setId: 'SV1a', lang: 'ja' },
+  'Nihil Zero': { setId: 'M3', lang: 'ja' },
 }
 
 const FLUFF_WORDS = ['booster box', 'booster bundle', 'booster pack', 'elite trainer box', 'bundle', 'box', 'pack']
