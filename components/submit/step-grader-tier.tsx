@@ -1,9 +1,7 @@
 'use client'
 
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { fetchMarketValue } from '@/lib/pricing-client'
+import { CardShipmentRow } from '@/components/submit/card-shipment-row'
 import { formatZAR } from '@/lib/currency'
 import { TIER_OPTIONS } from '@/lib/submission-types'
 import type { CardEntry, SubmissionTier } from '@/lib/submission-types'
@@ -29,18 +27,6 @@ export function StepGraderTier({
   onNext,
   canAdvance,
 }: Props) {
-  async function lookupValue(card: CardEntry) {
-    if (!card.cardName.trim() || !card.setName.trim()) return
-    onUpdateCard(card.id, { isFetchingValue: true })
-    const result = await fetchMarketValue(card.cardName, card.setName)
-    onUpdateCard(card.id, {
-      isFetchingValue: false,
-      marketValueEstimate: result?.estimate ?? null,
-      marketValueSource: result?.source ?? null,
-      declaredValue: card.declaredValue || result?.estimate || 0,
-    })
-  }
-
   return (
     <section className="space-y-10">
       <div>
@@ -120,83 +106,14 @@ export function StepGraderTier({
 
         <div className="mt-4 space-y-4">
           {cards.map((card, i) => (
-            <div key={card.id} className="border rounded-[3px] p-4" style={{ borderColor: 'var(--line)' }}>
-              <div className="flex items-center justify-between mb-3">
-                <span className="text-[12px]" style={{ fontVariantNumeric: 'tabular-nums', color: 'var(--ink-muted)' }}>
-                  {String(i + 1).padStart(2, '0')}
-                </span>
-                {cards.length > 1 && (
-                  <button
-                    type="button"
-                    onClick={() => onRemoveCard(card.id)}
-                    className="text-[12px] underline underline-offset-2"
-                    style={{ color: 'var(--ink-muted)' }}
-                  >
-                    Remove
-                  </button>
-                )}
-              </div>
-
-              <div className="grid sm:grid-cols-2 gap-3">
-                <div>
-                  <Label className="text-[12.5px]" style={{ color: 'var(--ink-muted)' }}>
-                    Card name
-                  </Label>
-                  <Input
-                    value={card.cardName}
-                    onChange={(e) => onUpdateCard(card.id, { cardName: e.target.value })}
-                    onBlur={() => lookupValue(card)}
-                    placeholder="Charizard"
-                  />
-                </div>
-                <div>
-                  <Label className="text-[12.5px]" style={{ color: 'var(--ink-muted)' }}>
-                    Set
-                  </Label>
-                  <Input
-                    value={card.setName}
-                    onChange={(e) => onUpdateCard(card.id, { setName: e.target.value })}
-                    onBlur={() => lookupValue(card)}
-                    placeholder="Base Set Unlimited"
-                  />
-                </div>
-                <div>
-                  <Label className="text-[12.5px]" style={{ color: 'var(--ink-muted)' }}>
-                    Card number
-                  </Label>
-                  <Input
-                    value={card.cardNumber}
-                    onChange={(e) => onUpdateCard(card.id, { cardNumber: e.target.value })}
-                    placeholder="4/102"
-                  />
-                </div>
-                <div>
-                  <Label className="text-[12.5px]" style={{ color: 'var(--ink-muted)' }}>
-                    Declared value (Rands)
-                  </Label>
-                  <Input
-                    type="number"
-                    min={0}
-                    step="0.01"
-                    value={card.declaredValue}
-                    onChange={(e) => onUpdateCard(card.id, { declaredValue: Number(e.target.value) })}
-                  />
-                </div>
-              </div>
-
-              <p className="text-[12.5px] mt-3 min-h-[1.2em]" style={{ color: 'var(--ink-muted)' }}>
-                {card.isFetchingValue && 'Checking market value…'}
-                {!card.isFetchingValue && card.marketValueEstimate !== null && (
-                  <>
-                    Market estimate:{' '}
-                    <span style={{ fontVariantNumeric: 'tabular-nums' }}>
-                      ${card.marketValueEstimate.toFixed(2)}
-                    </span>{' '}
-                    ({card.marketValueSource})
-                  </>
-                )}
-              </p>
-            </div>
+            <CardShipmentRow
+              key={card.id}
+              card={card}
+              index={i}
+              canRemove={cards.length > 1}
+              onUpdateCard={onUpdateCard}
+              onRemoveCard={onRemoveCard}
+            />
           ))}
         </div>
 
