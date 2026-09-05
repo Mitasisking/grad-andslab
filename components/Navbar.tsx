@@ -21,12 +21,12 @@ export default function Navbar() {
           // Use maybeSingle() instead of single() to prevent 406/400 errors if profile row is missing
           const { data, error } = await supabase
             .from('profiles')
-            .select('is_admin')
+            .select('role')
             .eq('id', session.user.id)
             .maybeSingle()
-          
+
           if (!error && data) {
-            setIsAdmin(!!data.is_admin)
+            setIsAdmin(data.role === 'admin')
           } else {
             setIsAdmin(false)
           }
@@ -38,23 +38,23 @@ export default function Navbar() {
         setIsAdmin(false)
       }
     }
-    
+
     checkUser()
 
     // Listen for logins and logouts in real-time
     const { data: { subscription: authListener } } = supabase.auth.onAuthStateChange(async (event, session) => {
       setUser(session?.user || null)
-      
+
       if (session?.user?.id) {
         try {
           const { data, error } = await supabase
             .from('profiles')
-            .select('is_admin')
+            .select('role')
             .eq('id', session.user.id)
             .maybeSingle()
-            
+
           if (!error && data) {
-            setIsAdmin(!!data.is_admin)
+            setIsAdmin(data.role === 'admin')
           } else {
             setIsAdmin(false)
           }
