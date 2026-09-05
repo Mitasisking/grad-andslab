@@ -1,6 +1,6 @@
 /** We exclusively grade through Premier Card Grading (PCG) -- see supabase/migrations/0016 and 0017. */
 export type GradingCompany = 'PCG'
-export type SubmissionTier = 'economy' | 'regular' | 'express' | 'super_express' | 'walk_through'
+export type SubmissionTier = 'authentication' | 'bulk' | 'standard' | 'express'
 export type PrecheckAction = 'proceed_regardless' | 'return_if_under_target'
 
 export interface CardEntry {
@@ -29,22 +29,31 @@ export interface ShippingAddress {
   country: string
 }
 
-/** Base per-card grading fee in USD before the tier multiplier is applied. */
-export const BASE_FEE_USD = 18
-
 export const GRADING_COMPANY: GradingCompany = 'PCG'
 
+/**
+ * PCG's four real service tiers (replacing the old economy/regular/express/
+ * super_express/walk_through placeholders). basePriceZAR is the per-card fee
+ * charged to the customer -- these are the only numbers that need to change
+ * to adjust your margin, so edit them directly here.
+ */
 export const TIER_OPTIONS: {
   value: SubmissionTier
   label: string
   turnaround: string
-  feeMultiplier: number
+  note?: string
+  basePriceZAR: number
 }[] = [
-  { value: 'economy', label: 'Economy', turnaround: '45–65 business days', feeMultiplier: 1 },
-  { value: 'regular', label: 'Regular', turnaround: '20–30 business days', feeMultiplier: 1.6 },
-  { value: 'express', label: 'Express', turnaround: '10–15 business days', feeMultiplier: 2.4 },
-  { value: 'super_express', label: 'Super express', turnaround: '3–5 business days', feeMultiplier: 4 },
-  { value: 'walk_through', label: 'Walk-through', turnaround: '24–48 hours', feeMultiplier: 8 },
+  { value: 'authentication', label: 'Authentication', turnaround: '2–4 weeks', basePriceZAR: 250 },
+  { value: 'bulk', label: 'Bulk', turnaround: '8–10 weeks', note: 'Minimum 50+ cards', basePriceZAR: 180 },
+  {
+    value: 'standard',
+    label: 'Standard',
+    turnaround: '4–6 weeks',
+    note: 'Includes sub-grades & metal labels',
+    basePriceZAR: 320,
+  },
+  { value: 'express', label: 'Express', turnaround: '5–7 days', basePriceZAR: 650 },
 ]
 
 // ----------------------------------------------------------------------------

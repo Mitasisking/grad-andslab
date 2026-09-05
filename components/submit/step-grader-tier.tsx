@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { fetchMarketValue } from '@/lib/pricing-client'
+import { formatZAR } from '@/lib/currency'
 import { TIER_OPTIONS } from '@/lib/submission-types'
 import type { CardEntry, SubmissionTier } from '@/lib/submission-types'
 
@@ -84,15 +85,22 @@ export function StepGraderTier({
                       background: selected ? 'var(--seal)' : 'transparent',
                     }}
                   />
-                  <span className="text-[15px]" style={{ color: 'var(--ink)' }}>
-                    {t.label}
+                  <span>
+                    <span className="text-[15px] block" style={{ color: 'var(--ink)' }}>
+                      {t.label}
+                    </span>
+                    {t.note && (
+                      <span className="text-[12px] block mt-0.5" style={{ color: 'var(--ink-muted)' }}>
+                        {t.note}
+                      </span>
+                    )}
                   </span>
                 </span>
                 <span
-                  className="text-[13px] shrink-0"
+                  className="text-[13px] shrink-0 text-right"
                   style={{ fontVariantNumeric: 'tabular-nums', color: 'var(--ink-muted)' }}
                 >
-                  {t.turnaround} · {t.feeMultiplier}× base fee
+                  {t.turnaround} · {formatZAR(t.basePriceZAR)}/card
                 </span>
               </button>
             )
@@ -164,7 +172,7 @@ export function StepGraderTier({
                 </div>
                 <div>
                   <Label className="text-[12.5px]" style={{ color: 'var(--ink-muted)' }}>
-                    Declared value (USD)
+                    Declared value (Rands)
                   </Label>
                   <Input
                     type="number"

@@ -5,7 +5,8 @@ import { Button } from '@/components/ui/button'
 import { AddAddressForm } from '@/components/submit/add-address-form'
 import { StripePaymentForm } from '@/components/submit/stripe-payment-form'
 import { PackingSlip } from '@/components/submit/packing-slip'
-import { BASE_FEE_USD, TIER_OPTIONS } from '@/lib/submission-types'
+import { formatZAR } from '@/lib/currency'
+import { TIER_OPTIONS } from '@/lib/submission-types'
 import type { CardEntry, GradingCompany, ShippingAddress, SubmissionTier } from '@/lib/submission-types'
 
 const COURIERS = [
@@ -52,7 +53,14 @@ export function StepReviewPay({
   const courierMeta = COURIERS.find((c) => c.value === courier)
   const selectedAddress = addresses.find((a) => a.id === addressId) ?? null
 
-  const perCardFee = BASE_FEE_USD * tierMeta.feeMultiplier
+  // tierMeta.basePriceZAR is Rand; courier cost and the inspection fee below
+  // are still USD, and api/submissions/checkout hardcodes the Stripe charge
+  // to currency: 'usd' -- so `total` currently sums mismatched currencies
+  // and the resulting Stripe charge will be in USD cents of that blended
+  // number, not real Rand. Deliberate for now (tier pricing was asked for on
+  // its own); don't take real payments through this form until the rest of
+  // checkout is converted too.
+  const perCardFee = tierMeta.basePriceZAR
   const gradingSubtotal = perCardFee * cards.length
   const inspectionSubtotal = cards.filter((c) => c.preCheckOptIn).length * 5
   const shippingCost = courierMeta?.cost ?? 0
@@ -225,7 +233,7 @@ export function StepReviewPay({
             <span>
               {gradingCompany} grading × {cards.length} ({tierMeta.label})
             </span>
-            <span style={{ fontVariantNumeric: 'tabular-nums' }}>${gradingSubtotal.toFixed(2)}</span>
+            <span style={{ fontVariantNumeric: 'tabular-nums' }}>{formatZAR(gradingSubtotal)}</span>
           </div>
           {inspectionSubtotal > 0 && (
             <div className="flex justify-between gap-4">
