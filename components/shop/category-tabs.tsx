@@ -5,6 +5,7 @@ const CATEGORIES: { value: string | null; label: string }[] = [
   { value: 'sealed', label: 'Sealed' },
   { value: 'accessories', label: 'Accessories' },
   { value: 'graded', label: 'Graded' },
+  { value: 'cards', label: 'Raw Cards' },
 ]
 
 /** URL-driven filter (?category=), not client state — matches how app/shop/page.tsx fetches server-side. */
