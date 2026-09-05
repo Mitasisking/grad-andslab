@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import type { SupabaseClient } from '@supabase/supabase-js'
 import { requireAdmin } from '@/lib/require-admin'
 import { getSupabaseServerClient } from '@/lib/supabase-server'
 
@@ -97,7 +98,26 @@ interface TcgdexSetDetail {
 }
 
 interface TcgdexCardDetail {
+  name?: string
   image?: string
+}
+
+/**
+ * TCGdex has no documented timeout of its own, and a hung connection would
+ * otherwise stall an entire concurrency batch indefinitely -- so every
+ * request here gets a hard client-side cutoff instead of relying on
+ * whatever Node's default (if any) happens to be.
+ */
+const TCGDEX_TIMEOUT_MS = 10_000
+
+async function fetchWithTimeout(url: string): Promise<Response> {
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), TCGDEX_TIMEOUT_MS)
+  try {
+    return await fetch(url, { signal: controller.signal })
+  } finally {
+    clearTimeout(timer)
+  }
 }
 
 /**
@@ -106,12 +126,55 @@ interface TcgdexCardDetail {
  * card, in any set. The actual image lives on the individual card record,
  * which needs its own fetch. Matches the two-step pattern the legacy
  * dashboard's card search already used for exactly this reason.
+ *
+ * Network failures and timeouts are caught and logged here rather than
+ * left to bubble up -- TCGdex being briefly down or slow for one card
+ * should degrade to "no image for this product yet", not take out the
+ * whole batch it's part of.
  */
-async function fetchCardImage(cardId: string, lang: 'en' | 'ja'): Promise<string | null> {
-  const res = await fetch(`https://api.tcgdex.net/v2/${lang}/cards/${cardId}`)
-  if (!res.ok) return null
-  const detail = (await res.json()) as TcgdexCardDetail
-  return detail.image ?? null
+async function fetchCardDetail(cardId: string, lang: 'en' | 'ja'): Promise<TcgdexCardDetail | null> {
+  try {
+    const res = await fetchWithTimeout(`https://api.tcgdex.net/v2/${lang}/cards/${cardId}`)
+    if (!res.ok) return null
+    return (await res.json()) as TcgdexCardDetail
+  } catch (err) {
+    console.error(`[fetch-images] card detail request failed for ${lang}/${cardId}:`, err instanceof Error ? err.message : err)
+    return null
+  }
+}
+
+/**
+ * A wrong card_number in the source data (Collectr, in practice -- not
+ * something this route or the importer introduces) still resolves to a
+ * *real* card by number, just the wrong one -- e.g. Collectr's own export
+ * pairs "Zorua" with card 058/086 in White Flare, and TCGdex confirms card
+ * 058 there is actually Scrafty. Matching by number alone can't catch
+ * that; this compares the matched card's actual name against the product
+ * title so a wrong number gets flagged instead of silently saving whatever
+ * image that number happens to point to.
+ *
+ * English-only: TCGdex's Japanese card names are native script
+ * (e.g. "アセロラのいたずら"), so comparing them against a Latin-script
+ * product title can't produce a real answer -- it would either match
+ * nothing ever (all false positives) or need a translation step, which
+ * has the same unreliability problem already ruled out for set names.
+ * Japanese-resolved matches are saved but explicitly labeled unverified
+ * rather than silently treated as checked.
+ */
+function normalizeCardName(name: string): string {
+  return name
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '') // strip accents (e.g. "é" -> "e") so "Poké Pad" matches "Poke Pad"
+    .toLowerCase()
+    .replace(/\(.*?\)/g, '')
+    .replace(/[^a-z0-9]/g, '')
+}
+
+function namesLikelyMatch(productTitle: string, tcgdexName: string): boolean {
+  const a = normalizeCardName(productTitle)
+  const b = normalizeCardName(tcgdexName)
+  if (!a || !b) return true
+  return a.includes(b) || b.includes(a)
 }
 
 /**
@@ -129,15 +192,23 @@ function candidateLocalIds(cardNumber: string): string[] {
 }
 
 async function fetchSetsList(lang: 'en' | 'ja'): Promise<TcgdexSetSummary[]> {
-  const res = await fetch(`https://api.tcgdex.net/v2/${lang}/sets`)
+  const res = await fetchWithTimeout(`https://api.tcgdex.net/v2/${lang}/sets`)
   if (!res.ok) throw new Error(`TCGdex sets list request failed (${res.status})`)
   return (await res.json()) as TcgdexSetSummary[]
 }
 
+// Same "log and degrade, don't throw" treatment as fetchCardDetail above --
+// a set TCGdex can't currently answer for just reports as unresolved for
+// every product in it, instead of failing the whole run.
 async function fetchSetDetail(setId: string, lang: 'en' | 'ja'): Promise<TcgdexSetDetail | null> {
-  const res = await fetch(`https://api.tcgdex.net/v2/${lang}/sets/${setId}`)
-  if (!res.ok) return null
-  return (await res.json()) as TcgdexSetDetail
+  try {
+    const res = await fetchWithTimeout(`https://api.tcgdex.net/v2/${lang}/sets/${setId}`)
+    if (!res.ok) return null
+    return (await res.json()) as TcgdexSetDetail
+  } catch (err) {
+    console.error(`[fetch-images] set detail request failed for ${lang}/${setId}:`, err instanceof Error ? err.message : err)
+    return null
+  }
 }
 
 interface ProductRow {
@@ -161,7 +232,7 @@ export async function GET() {
   // dance so this can be triggered by just visiting the URL while
   // iterating. Cannot activate on Vercel regardless of what ships in the
   // bundle — NODE_ENV is 'production' there, production and preview alike.
-  let supabase
+  let supabase: SupabaseClient
   if (process.env.NODE_ENV !== 'production') {
     supabase = getSupabaseServerClient()
   } else {
@@ -171,14 +242,17 @@ export async function GET() {
   }
 
   // Fetched once and reused for every product, rather than once per row.
-  let englishSets: TcgdexSetSummary[]
+  // If TCGdex is down or times out for this one call, that shouldn't take
+  // out the whole run -- it just means non-override set names can't be
+  // resolved for this pass, which is reported back per-product below
+  // rather than as a single all-or-nothing failure.
+  let englishSets: TcgdexSetSummary[] = []
+  let setsListWarning: string | null = null
   try {
     englishSets = await fetchSetsList('en')
   } catch (err) {
-    return NextResponse.json(
-      { error: err instanceof Error ? err.message : 'Could not reach TCGdex' },
-      { status: 502 },
-    )
+    setsListWarning = `Could not load TCGdex's English sets list: ${err instanceof Error ? err.message : 'unknown error'}. Only SET_NAME_OVERRIDES entries could be resolved this run -- retry once TCGdex is reachable again.`
+    console.error('[fetch-images]', setsListWarning)
   }
   const englishSetsByName = new Map(englishSets.map((s) => [normalizeSetName(s.name), s]))
 
@@ -212,97 +286,136 @@ export async function GET() {
     return { id: matched.id, lang: 'en', logo: matched.logo }
   }
 
-  const results: { id: string; title: string; status: string }[] = []
+  type Result = { id: string; title: string; status: string }
 
-  for (const product of (products ?? []) as ProductRow[]) {
-    if (product.images?.length) {
-      results.push({ id: product.id, title: product.title, status: 'skipped — already has images' })
-      continue
-    }
+  async function processProduct(product: ProductRow): Promise<Result> {
     if (!product.set_name) {
-      results.push({ id: product.id, title: product.title, status: 'skipped — no set_name on record' })
-      continue
+      return { id: product.id, title: product.title, status: 'skipped — no set_name on record' }
     }
 
     try {
       const resolved = resolveSet(product.set_name)
       if (!resolved) {
-        results.push({ id: product.id, title: product.title, status: `no TCGdex set matched "${product.set_name}"` })
-        continue
+        return { id: product.id, title: product.title, status: `no TCGdex set matched "${product.set_name}"` }
       }
 
       if (product.category === 'sealed') {
+        // Sealed products are just a set-logo lookup with no per-card name
+        // to compare against — nothing analogous to the cards' mismatch
+        // check below applies, so skipping when already saved is safe here.
+        if (product.images?.length) {
+          return { id: product.id, title: product.title, status: 'skipped — already has images' }
+        }
         let logo = resolved.logo
         if (!logo) {
           const detail = await getSetDetail(resolved.id, resolved.lang)
           logo = detail?.logo
         }
         if (!logo) {
-          results.push({
+          return {
             id: product.id,
             title: product.title,
             status: `set matched (${resolved.id}) but TCGdex has no logo for it`,
-          })
-          continue
+          }
         }
         const logoUrl = `${logo}.png`
         await supabase.from('products').update({ images: [logoUrl] }).eq('id', product.id)
-        results.push({ id: product.id, title: product.title, status: `set logo saved (${resolved.id})` })
-        continue
+        return { id: product.id, title: product.title, status: `set logo saved (${resolved.id})` }
       }
 
       // category === 'cards'
       if (!product.card_number) {
-        results.push({ id: product.id, title: product.title, status: 'skipped — no card_number on record' })
-        continue
+        return { id: product.id, title: product.title, status: 'skipped — no card_number on record' }
       }
 
       const setDetail = await getSetDetail(resolved.id, resolved.lang)
       if (!setDetail?.cards) {
-        results.push({
+        return {
           id: product.id,
           title: product.title,
           status: `no ${resolved.lang} card list for set ${resolved.id}`,
-        })
-        continue
+        }
       }
 
       const candidates = candidateLocalIds(product.card_number)
       const card = setDetail.cards.find((c) => candidates.includes(c.localId))
       if (!card) {
-        results.push({
+        return {
           id: product.id,
           title: product.title,
           status: `no matching card for #${product.card_number} in ${resolved.id} (${resolved.lang})`,
-        })
-        continue
+        }
       }
 
-      const image = await fetchCardImage(card.id, resolved.lang)
-      if (!image) {
-        results.push({
+      const cardDetail = await fetchCardDetail(card.id, resolved.lang)
+      if (!cardDetail?.image) {
+        return {
           id: product.id,
           title: product.title,
           status: `card matched (${card.id}) but TCGdex has no image for it yet`,
-        })
-        continue
+        }
       }
 
-      const imageUrl = `${image}/high.png`
+      if (resolved.lang === 'en' && cardDetail.name && !namesLikelyMatch(product.title, cardDetail.name)) {
+        return {
+          id: product.id,
+          title: product.title,
+          status: `NAME MISMATCH — card_number ${product.card_number} in ${resolved.id} is TCGdex's "${cardDetail.name}", not "${product.title}" — check the card number, image not saved`,
+        }
+      }
+
+      // Validated above (name check passed, or it's a Japanese match that
+      // can't be checked) before this ever looks at whether an image was
+      // already saved — so a product that already has one still gets
+      // reported on, it just isn't overwritten.
+      if (product.images?.length) {
+        return {
+          id: product.id,
+          title: product.title,
+          status:
+            resolved.lang === 'ja'
+              ? 'already has images (Japanese card, name not verified)'
+              : 'already has images (name verified OK)',
+        }
+      }
+
+      const imageUrl = `${cardDetail.image}/high.png`
       await supabase.from('products').update({ images: [imageUrl] }).eq('id', product.id)
-      results.push({
+      return {
         id: product.id,
         title: product.title,
-        status: `${resolved.lang === 'ja' ? 'JP' : 'EN'} card image saved`,
-      })
+        status:
+          resolved.lang === 'ja'
+            ? 'JP card image saved — name not verified (Japanese script, no automated comparison)'
+            : 'EN card image saved',
+      }
     } catch (err) {
-      results.push({
+      return {
         id: product.id,
         title: product.title,
         status: `error: ${err instanceof Error ? err.message : 'unknown'}`,
-      })
+      }
     }
   }
 
-  return NextResponse.json({ processed: results.length, results })
+  // Processed with limited concurrency, not one at a time: the name
+  // validation means every `cards` product now needs its own live TCGdex
+  // fetch (previously most were skipped instantly), and a fully sequential
+  // pass over hundreds of products risks running long enough to hit
+  // Vercel's serverless function execution time limit once this is
+  // deployed, not just being slow to test locally.
+  const CONCURRENCY = 8
+  const productList = (products ?? []) as ProductRow[]
+  const results: Result[] = []
+  for (let i = 0; i < productList.length; i += CONCURRENCY) {
+    const batch = productList.slice(i, i + CONCURRENCY)
+    const batchResults = await Promise.all(batch.map(processProduct))
+    results.push(...batchResults)
+  }
+
+  return NextResponse.json({
+    processed: results.length,
+    ...(setsListWarning ? { warning: setsListWarning } : {}),
+    results,
+  })
 }

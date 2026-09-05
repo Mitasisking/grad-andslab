@@ -13,14 +13,10 @@ interface Product {
   set_name: string | null
 }
 
-// Prices are stored in USD (products.price) and displayed in Rand via a
-// static multiplier, per explicit instruction — not a live exchange rate,
-// so this will drift from the real rate over time and needs updating by
-// hand. USD->ZAR, matching the rate the legacy shop page used to hardcode.
-const USD_TO_ZAR_RATE = 18.5
-
-function formatZAR(usdPrice: number): string {
-  return new Intl.NumberFormat('en-ZA', { style: 'currency', currency: 'ZAR' }).format(usdPrice * USD_TO_ZAR_RATE)
+// Prices are stored in USD (products.price) and displayed as-is, per
+// explicit instruction to switch off the earlier ZAR conversion.
+function formatUSD(usdPrice: number): string {
+  return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(usdPrice)
 }
 
 /** Quick add-to-cart, no navigation required — per app/auctions/README.md's Phase 4 file map. */
@@ -67,7 +63,7 @@ export function ProductGrid({ products }: { products: Product[] }) {
               )}
               <div className="flex items-center justify-between mt-auto pt-4">
                 <span className="text-[15px]" style={{ fontVariantNumeric: 'tabular-nums', color: 'var(--ink)' }}>
-                  {formatZAR(product.price)}
+                  {formatUSD(product.price)}
                 </span>
                 <button
                   type="button"
