@@ -12,6 +12,7 @@ export interface Product {
   stock: number
   images: string[]
   set_name: string | null
+  release_date: string | null
 }
 
 // Low-value singles (commons pulled straight from Collectr's per-card

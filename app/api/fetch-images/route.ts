@@ -176,6 +176,7 @@ interface TcgdexCardSummary {
 
 interface TcgdexSetDetail {
   logo?: string
+  releaseDate?: string
   cards?: TcgdexCardSummary[]
 }
 
@@ -358,6 +359,7 @@ interface ProductRow {
   set_name: string | null
   card_number: string | null
   images: string[]
+  release_date: string | null
 }
 
 interface ResolvedSet {
@@ -398,7 +400,7 @@ export async function GET() {
 
   const { data: products, error } = await supabase
     .from('products')
-    .select('id, title, category, set_name, card_number, images')
+    .select('id, title, category, set_name, card_number, images, release_date')
     .in('category', ['sealed', 'cards'])
 
   if (error) {
@@ -572,24 +574,51 @@ export async function GET() {
         // to compare against, and no card-search safety net applies to a
         // whole box rather than a single card — nothing analogous to the
         // cards' fallbacks below.
-        if (product.images?.length) {
-          return { id: product.id, title: product.title, status: 'skipped — already has images' }
-        }
-        let logo = resolved.logo
-        if (!logo) {
-          const detail = await getSetDetail(resolved.id, resolved.lang)
-          logo = detail?.logo
-        }
-        if (!logo) {
-          return {
-            id: product.id,
-            title: product.title,
-            status: `set matched (${resolved.id}) but TCGdex has no logo for it`,
+        //
+        // Image and release_date are backfilled independently of each
+        // other -- a product that already has its logo saved should still
+        // pick up release_date the first time this runs after
+        // 0020_add_product_release_date.sql, and vice versa, rather than
+        // the image-present check skipping the whole product.
+        const needsImage = !product.images?.length
+        const needsReleaseDate = !product.release_date
+        const notes: string[] = []
+        const updates: { images?: string[]; release_date?: string } = {}
+
+        if (!needsImage) {
+          notes.push('already has images')
+        } else {
+          let logo = resolved.logo
+          if (!logo) {
+            const detail = await getSetDetail(resolved.id, resolved.lang)
+            logo = detail?.logo
+          }
+          if (logo) {
+            updates.images = [`${logo}.png`]
+            notes.push('set logo saved')
+          } else {
+            notes.push('no TCGdex logo available')
           }
         }
-        const logoUrl = `${logo}.png`
-        await supabase.from('products').update({ images: [logoUrl] }).eq('id', product.id)
-        return { id: product.id, title: product.title, status: `set logo saved (${resolved.id})` }
+
+        if (needsReleaseDate) {
+          // getSetDetail is cached per set (see setDetailCache above), so
+          // this is a free cache hit whenever the image branch above
+          // already fetched the same set's detail this run.
+          const detail = await getSetDetail(resolved.id, resolved.lang)
+          if (detail?.releaseDate) {
+            updates.release_date = detail.releaseDate
+            notes.push('release date saved')
+          } else {
+            notes.push('no TCGdex release date available')
+          }
+        }
+
+        if (Object.keys(updates).length > 0) {
+          await supabase.from('products').update(updates).eq('id', product.id)
+        }
+
+        return { id: product.id, title: product.title, status: `set matched (${resolved.id}) — ${notes.join(', ')}` }
       }
 
       // category === 'cards'
