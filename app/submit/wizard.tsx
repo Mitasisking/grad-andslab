@@ -7,7 +7,8 @@ import { StepGraderTier } from '@/components/submit/step-grader-tier'
 import { StepAddOns } from '@/components/submit/step-addons'
 import { StepReviewPay } from '@/components/submit/step-review-pay'
 import { fetchAddresses } from '@/lib/addresses-client'
-import type { CardEntry, GradingCompany, ShippingAddress, SubmissionTier } from '@/lib/submission-types'
+import { GRADING_COMPANY } from '@/lib/submission-types'
+import type { CardEntry, ShippingAddress, SubmissionTier } from '@/lib/submission-types'
 
 const STEP_COUNT = 3
 
@@ -29,7 +30,6 @@ function createEmptyCard(): CardEntry {
 
 export function SubmissionWizard() {
   const [step, setStep] = useState(0)
-  const [gradingCompany, setGradingCompany] = useState<GradingCompany | null>(null)
   const [tier, setTier] = useState<SubmissionTier | null>(null)
   const [cards, setCards] = useState<CardEntry[]>([createEmptyCard()])
   const [addresses, setAddresses] = useState<ShippingAddress[]>([])
@@ -66,7 +66,6 @@ export function SubmissionWizard() {
   }, [])
 
   const canAdvanceFromStep1 =
-    gradingCompany !== null &&
     tier !== null &&
     cards.length > 0 &&
     cards.every((c) => c.cardName.trim() && c.setName.trim() && c.declaredValue >= 0)
@@ -93,10 +92,8 @@ export function SubmissionWizard() {
           >
             {step === 0 && (
               <StepGraderTier
-                gradingCompany={gradingCompany}
                 tier={tier}
                 cards={cards}
-                onSelectCompany={setGradingCompany}
                 onSelectTier={setTier}
                 onUpdateCard={updateCard}
                 onAddCard={addCard}
@@ -116,9 +113,9 @@ export function SubmissionWizard() {
               />
             )}
 
-            {step === 2 && gradingCompany && tier && (
+            {step === 2 && tier && (
               <StepReviewPay
-                gradingCompany={gradingCompany}
+                gradingCompany={GRADING_COMPANY}
                 tier={tier}
                 cards={cards}
                 addresses={addresses}

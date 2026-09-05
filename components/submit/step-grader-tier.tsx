@@ -4,14 +4,12 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { fetchMarketValue } from '@/lib/pricing-client'
-import { GRADER_OPTIONS, TIER_OPTIONS } from '@/lib/submission-types'
-import type { CardEntry, GradingCompany, SubmissionTier } from '@/lib/submission-types'
+import { TIER_OPTIONS } from '@/lib/submission-types'
+import type { CardEntry, SubmissionTier } from '@/lib/submission-types'
 
 interface Props {
-  gradingCompany: GradingCompany | null
   tier: SubmissionTier | null
   cards: CardEntry[]
-  onSelectCompany: (company: GradingCompany) => void
   onSelectTier: (tier: SubmissionTier) => void
   onUpdateCard: (id: string, patch: Partial<CardEntry>) => void
   onAddCard: () => void
@@ -21,10 +19,8 @@ interface Props {
 }
 
 export function StepGraderTier({
-  gradingCompany,
   tier,
   cards,
-  onSelectCompany,
   onSelectTier,
   onUpdateCard,
   onAddCard,
@@ -50,30 +46,19 @@ export function StepGraderTier({
         <h2 className="text-[22px]" style={{ fontFamily: 'var(--font-display)', color: 'var(--ink)' }}>
           Grading company
         </h2>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-4">
-          {GRADER_OPTIONS.map((g) => {
-            const selected = gradingCompany === g.value
-            return (
-              <button
-                key={g.value}
-                type="button"
-                onClick={() => onSelectCompany(g.value)}
-                className="text-left rounded-[3px] border px-4 py-4 transition-colors"
-                style={{
-                  borderColor: selected ? 'var(--seal)' : 'var(--line)',
-                  background: selected ? 'var(--paper-raised)' : 'transparent',
-                }}
-              >
-                <p className="text-[17px]" style={{ fontFamily: 'var(--font-display)', color: 'var(--ink)' }}>
-                  {g.value}
-                </p>
-                <p className="text-[12.5px] mt-1 leading-snug" style={{ color: 'var(--ink-muted)' }}>
-                  {g.description}
-                </p>
-              </button>
-            )
-          })}
-        </div>
+        <p className="text-[13.5px] mt-2" style={{ color: 'var(--ink-muted)' }}>
+          All submissions are graded exclusively by{' '}
+          <a
+            href="https://premiercardgrading.co.uk/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="underline underline-offset-2"
+            style={{ color: 'var(--ink)' }}
+          >
+            Premier Card Grading (PCG)
+          </a>
+          .
+        </p>
       </div>
 
       <div>

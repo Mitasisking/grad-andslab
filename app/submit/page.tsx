@@ -3,7 +3,7 @@ import { SubmissionWizard } from './wizard'
 
 export const metadata: Metadata = {
   title: 'Submit for grading',
-  description: 'Send cards to PSA, CGC, or BGS through our grading pipeline.',
+  description: 'Send cards to Premier Card Grading (PCG) through our grading pipeline.',
 }
 
 export default function SubmitPage() {

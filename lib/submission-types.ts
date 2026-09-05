@@ -1,4 +1,5 @@
-export type GradingCompany = 'PSA' | 'CGC' | 'BGS'
+/** We exclusively grade through Premier Card Grading (PCG) -- see supabase/migrations/0016 and 0017. */
+export type GradingCompany = 'PCG'
 export type SubmissionTier = 'economy' | 'regular' | 'express' | 'super_express' | 'walk_through'
 export type PrecheckAction = 'proceed_regardless' | 'return_if_under_target'
 
@@ -31,11 +32,7 @@ export interface ShippingAddress {
 /** Base per-card grading fee in USD before the tier multiplier is applied. */
 export const BASE_FEE_USD = 18
 
-export const GRADER_OPTIONS: { value: GradingCompany; description: string }[] = [
-  { value: 'PSA', description: 'Widest market recognition, longest queue' },
-  { value: 'CGC', description: 'Fast turnaround, strong for modern sealed' },
-  { value: 'BGS', description: 'Subgrades on every card, black label at 10' },
-]
+export const GRADING_COMPANY: GradingCompany = 'PCG'
 
 export const TIER_OPTIONS: {
   value: SubmissionTier
