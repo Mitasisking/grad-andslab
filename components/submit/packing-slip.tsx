@@ -2,6 +2,7 @@
 
 import { QRCodeSVG } from 'qrcode.react'
 import { Button } from '@/components/ui/button'
+import { formatZAR } from '@/lib/currency'
 import type { CardEntry, GradingCompany, ShippingAddress } from '@/lib/submission-types'
 
 interface Props {
@@ -91,7 +92,7 @@ export function PackingSlip({ qrToken, gradingCompany, tier, cards, address, cou
                     className="py-1.5 text-right"
                     style={{ fontVariantNumeric: 'tabular-nums', color: 'var(--ink)' }}
                   >
-                    ${card.declaredValue.toFixed(2)}
+                    {formatZAR(card.declaredValue)}
                   </td>
                 </tr>
               ))}
@@ -104,7 +105,7 @@ export function PackingSlip({ qrToken, gradingCompany, tier, cards, address, cou
           style={{ borderColor: 'var(--line)' }}
         >
           <span style={{ color: 'var(--ink)' }}>Total paid</span>
-          <span style={{ fontVariantNumeric: 'tabular-nums', color: 'var(--ink)' }}>${total.toFixed(2)}</span>
+          <span style={{ fontVariantNumeric: 'tabular-nums', color: 'var(--ink)' }}>{formatZAR(total)}</span>
         </div>
       </div>
 

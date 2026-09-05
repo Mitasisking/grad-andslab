@@ -9,11 +9,17 @@ import { formatZAR } from '@/lib/currency'
 import { TIER_OPTIONS } from '@/lib/submission-types'
 import type { CardEntry, GradingCompany, ShippingAddress, SubmissionTier } from '@/lib/submission-types'
 
+// Rand figures -- edit directly to adjust real shipping cost/margin, same
+// as TIER_OPTIONS.basePriceZAR in lib/submission-types.ts.
 const COURIERS = [
-  { value: 'ups_ground', label: 'UPS Ground, insured', cost: 12 },
-  { value: 'ups_2day', label: 'UPS 2nd Day Air, insured', cost: 28 },
-  { value: 'fedex_overnight', label: 'FedEx Priority Overnight', cost: 46 },
+  { value: 'ups_ground', label: 'UPS Ground, insured', costZAR: 220 },
+  { value: 'ups_2day', label: 'UPS 2nd Day Air, insured', costZAR: 520 },
+  { value: 'fedex_overnight', label: 'FedEx Priority Overnight', costZAR: 850 },
 ]
+
+// Flat per-card fee for the optional pre-grading inspection add-on (see
+// components/submit/step-addons.tsx). Edit directly to adjust.
+const INSPECTION_FEE_ZAR = 90
 
 interface Props {
   gradingCompany: GradingCompany
@@ -53,17 +59,13 @@ export function StepReviewPay({
   const courierMeta = COURIERS.find((c) => c.value === courier)
   const selectedAddress = addresses.find((a) => a.id === addressId) ?? null
 
-  // tierMeta.basePriceZAR is Rand; courier cost and the inspection fee below
-  // are still USD, and api/submissions/checkout hardcodes the Stripe charge
-  // to currency: 'usd' -- so `total` currently sums mismatched currencies
-  // and the resulting Stripe charge will be in USD cents of that blended
-  // number, not real Rand. Deliberate for now (tier pricing was asked for on
-  // its own); don't take real payments through this form until the rest of
-  // checkout is converted too.
+  // Everything here is Rand now, and api/submissions/checkout charges the
+  // Stripe PaymentIntent in currency: 'zar' to match -- see that route for
+  // the ZAR-specific minimum-amount note.
   const perCardFee = tierMeta.basePriceZAR
   const gradingSubtotal = perCardFee * cards.length
-  const inspectionSubtotal = cards.filter((c) => c.preCheckOptIn).length * 5
-  const shippingCost = courierMeta?.cost ?? 0
+  const inspectionSubtotal = cards.filter((c) => c.preCheckOptIn).length * INSPECTION_FEE_ZAR
+  const shippingCost = courierMeta?.costZAR ?? 0
   const serviceFee = gradingSubtotal + inspectionSubtotal
   const total = serviceFee + shippingCost
 
@@ -217,7 +219,7 @@ export function StepReviewPay({
                 {c.label}
               </span>
               <span className="text-[13px]" style={{ fontVariantNumeric: 'tabular-nums', color: 'var(--ink-muted)' }}>
-                ${c.cost.toFixed(2)}
+                {formatZAR(c.costZAR)}
               </span>
             </button>
           ))}
@@ -238,19 +240,19 @@ export function StepReviewPay({
           {inspectionSubtotal > 0 && (
             <div className="flex justify-between gap-4">
               <span>Pre-grading inspection</span>
-              <span style={{ fontVariantNumeric: 'tabular-nums' }}>${inspectionSubtotal.toFixed(2)}</span>
+              <span style={{ fontVariantNumeric: 'tabular-nums' }}>{formatZAR(inspectionSubtotal)}</span>
             </div>
           )}
           <div className="flex justify-between gap-4">
             <span>Shipping{courierMeta ? ` (${courierMeta.label})` : ''}</span>
-            <span style={{ fontVariantNumeric: 'tabular-nums' }}>${shippingCost.toFixed(2)}</span>
+            <span style={{ fontVariantNumeric: 'tabular-nums' }}>{formatZAR(shippingCost)}</span>
           </div>
           <div
             className="flex justify-between gap-4 pt-2 mt-2 border-t text-[15px]"
             style={{ borderColor: 'var(--line)' }}
           >
             <span>Total due today</span>
-            <span style={{ fontVariantNumeric: 'tabular-nums' }}>${total.toFixed(2)}</span>
+            <span style={{ fontVariantNumeric: 'tabular-nums' }}>{formatZAR(total)}</span>
           </div>
         </div>
       </div>
@@ -272,7 +274,7 @@ export function StepReviewPay({
             className="rounded-[3px]"
             style={{ background: 'var(--vault)', color: 'var(--vault-ink)' }}
           >
-            {creatingOrder ? 'Preparing order…' : `Pay $${total.toFixed(2)}`}
+            {creatingOrder ? 'Preparing order…' : `Pay ${formatZAR(total)}`}
           </Button>
         </div>
       )}
