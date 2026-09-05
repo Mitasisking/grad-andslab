@@ -127,6 +127,7 @@ interface TcgdexSetSummary {
 interface TcgdexCardSummary {
   id: string
   localId: string
+  name?: string
 }
 
 interface TcgdexSetDetail {
@@ -398,7 +399,12 @@ export async function GET() {
     return { kind: 'match', match: found.find((f) => f.id === uniqueIds[0])! }
   }
 
-  async function finalizeCardMatch(product: ProductRow, match: CardMatch, matchedVia: string): Promise<Result> {
+  async function finalizeCardMatch(
+    product: ProductRow,
+    match: CardMatch,
+    matchedVia: string,
+    setContext: { id: string; lang: 'en' | 'ja' } | null,
+  ): Promise<Result> {
     const cardDetail = await fetchCardDetail(match.id, match.lang)
     if (!cardDetail?.image) {
       return {
@@ -409,6 +415,41 @@ export async function GET() {
     }
 
     if (match.lang === 'en' && cardDetail.name && !namesLikelyMatch(product.title, cardDetail.name)) {
+      // Collectr's card_number can be wrong even when the set is right --
+      // e.g. Collectr lists "Patrat" as #151 in White Flare, but TCGdex has
+      // #151 as something else and the real Patrat at #152. Before giving
+      // up, search the same resolved set by name instead of number: if
+      // exactly one other card in it actually has this product's name, use
+      // that card's image instead of trusting Collectr's number. Only
+      // possible when this match came from a specific set (not the global
+      // safety net, which has no "same set" to search within) and only
+      // trusted when the name search is itself unambiguous -- multiple
+      // same-named cards in one set (promos, alt arts) means guessing again,
+      // so that still falls through to NAME MISMATCH below.
+      if (setContext) {
+        const setDetail = await getSetDetail(setContext.id, setContext.lang)
+        const nameMatches = (setDetail?.cards ?? []).filter(
+          (c) => c.id !== match.id && c.name && namesLikelyMatch(product.title, c.name),
+        )
+        if (nameMatches.length === 1) {
+          const corrected = nameMatches[0]
+          const correctedDetail = await fetchCardDetail(corrected.id, setContext.lang)
+          if (correctedDetail?.image) {
+            const correctionNote = `card_number ${product.card_number} was wrong (TCGdex has that number as "${cardDetail.name}") — corrected via name match to ${corrected.id} within ${setContext.id}`
+            if (product.images?.length) {
+              return {
+                id: product.id,
+                title: product.title,
+                status: `already has images (${correctionNote}, image not overwritten)`,
+              }
+            }
+            const correctedUrl = `${correctedDetail.image}/high.png`
+            await supabase.from('products').update({ images: [correctedUrl] }).eq('id', product.id)
+            return { id: product.id, title: product.title, status: `EN card image saved — ${correctionNote}` }
+          }
+        }
+      }
+
       return {
         id: product.id,
         title: product.title,
@@ -497,15 +538,22 @@ export async function GET() {
       //    but genuinely doesn't have this local id under either language.
       let match: CardMatch | null = null
       let matchedVia = ''
+      let setContext: { id: string; lang: 'en' | 'ja' } | null = null
 
       if (resolved) {
         match = await findCardInSet(resolved.id, resolved.lang, candidates)
-        if (match) matchedVia = `set ${resolved.id} (${resolved.lang})`
+        if (match) {
+          matchedVia = `set ${resolved.id} (${resolved.lang})`
+          setContext = { id: resolved.id, lang: match.lang }
+        }
 
         if (!match) {
           const otherLang = resolved.lang === 'en' ? 'ja' : 'en'
           match = await findCardInSet(resolved.id, otherLang, candidates)
-          if (match) matchedVia = `set ${resolved.id} (${otherLang}, cross-language fallback)`
+          if (match) {
+            matchedVia = `set ${resolved.id} (${otherLang}, cross-language fallback)`
+            setContext = { id: resolved.id, lang: match.lang }
+          }
         }
       }
 
@@ -521,6 +569,8 @@ export async function GET() {
         if (safetyNet.kind === 'match') {
           match = safetyNet.match
           matchedVia = `name search (${match.lang}, no set match)`
+          // No setContext -- the safety net found this card with no set
+          // scoping at all, so there's no "same set" to search by name in.
         }
       }
 
@@ -534,7 +584,7 @@ export async function GET() {
         }
       }
 
-      return await finalizeCardMatch(product, match, matchedVia)
+      return await finalizeCardMatch(product, match, matchedVia, setContext)
     } catch (err) {
       return {
         id: product.id,
