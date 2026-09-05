@@ -126,11 +126,21 @@ const SET_NAME_OVERRIDES: Record<string, { setId: string; lang: 'en' | 'ja' }> =
  *   - Lampent: filed under Black Bolt in Collectr, but doesn't appear in
  *     that set on TCGdex at all -- the real print is in White Flare
  *     (Black Bolt's sibling set), also as the Illustration Rare.
+ *   - Sigilyph and Patrat: same pattern as Beartic/Haxorus, but in White
+ *     Flare -- Collectr's numbers point at unrelated cards (Stunfisk /
+ *     Druddigon) and both names have two same-named prints in White
+ *     Flare. Confirmed correct print in both cases: the Illustration Rare.
+ *   - Klang: the mirror of Lampent -- filed under White Flare in
+ *     Collectr, but its real print is in Black Bolt, also as the
+ *     Illustration Rare.
  */
 const CARD_OVERRIDES: Record<string, { setId: string; lang: 'en' | 'ja'; localId: string }> = {
   'Black Bolt#114/086': { setId: 'sv10.5b', lang: 'en', localId: '110' }, // Beartic -> Illustration Rare
   'Black Bolt#152/086': { setId: 'sv10.5b', lang: 'en', localId: '147' }, // Haxorus -> Illustration Rare
   'Black Bolt#101/086': { setId: 'sv10.5w', lang: 'en', localId: '102' }, // Lampent -> White Flare, Illustration Rare
+  'White Flare#118/086': { setId: 'sv10.5w', lang: 'en', localId: '121' }, // Sigilyph -> Illustration Rare
+  'White Flare#151/086': { setId: 'sv10.5w', lang: 'en', localId: '152' }, // Patrat -> Illustration Rare
+  'White Flare#147/086': { setId: 'sv10.5b', lang: 'en', localId: '140' }, // Klang -> Black Bolt, Illustration Rare
 }
 
 function cardOverrideKey(setName: string, cardNumber: string): string {
