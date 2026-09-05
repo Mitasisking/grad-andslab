@@ -38,25 +38,31 @@ import { getSupabaseServerClient } from '@/lib/supabase-server'
  * fetched from anywhere authoritative, so verify them if a wrong image
  * shows up.
  *
- * "Raging Surf" and "Shiny Treasure ex" both used to be unresolved: TCGdex's
- * own `name` field mislabels SV4a with the same Japanese name as SV3a
- * ("レイジングサーフ" for both), which is why they looked like one name
- * shared by two ids. Resolved by checking card contents instead of the set
- * name: SV3a is the real Raging Surf (92 cards, no secret-rare tail); SV4a's
- * highest local ids are Koraidon ex / Miraidon ex / the Treasures of Ruin ex
- * cards as secret rares -- the signature chase cards of Shiny Treasure ex,
- * whose 320-card total (190 official + a ~130-card shiny-vault tail) is
- * unlike anything else in this generation.
+ * "Raging Surf", "Shiny Treasure ex", and "Triplet Beat" all used to be
+ * unresolved because TCGdex's own `name` field mislabels several unrelated
+ * ids with the same Japanese name:
+ *   - SV3a/SV4a both show as "レイジングサーフ". SV3a is the real Raging
+ *     Surf (92 cards, no secret-rare tail); SV4a's highest local ids are
+ *     Koraidon ex / Miraidon ex / the Treasures of Ruin ex cards as secret
+ *     rares -- the signature chase cards of Shiny Treasure ex, whose
+ *     320-card total (190 official + a ~130-card shiny-vault tail) is
+ *     unlike anything else in this generation.
+ *   - Sixteen ids show as "トリプレットビート", fifteen of which are
+ *     identical to each other (same 2024-04-26 release date, same 101-card
+ *     total) -- clearly a batch mislabeling of some unrelated "Trainer's
+ *     Deck"-style product, not sixteen real Triplet Beat variants. SV1a is
+ *     the one outlier (2023-03-10, 73 official cards) and its highest local
+ *     ids are Meowscarada ex / Skeledirge ex / Quaquaval ex -- the three
+ *     starter-final-evolution ex cards the set is named for.
  *
- * Still-unresolved gaps, not guessed at:
- *   - "Triplet Beat": SIXTEEN different ids share this name
- *     (トリプレットビート) -- almost certainly different box/deck
- *     variants under one set name, and unlike Raging Surf/Shiny Treasure ex
- *     there's no card-content signal yet to tell them apart.
- *   - "Nihil Zero", "The Pokedex": no confident match found in the Japanese
- *     sets list at all.
- * None of these three are in this table -- they'll still report
- * "no TCGdex set matched" until someone identifies the right id.
+ * Still-unresolved, not guessed at:
+ *   - "Nihil Zero": no confident match found in the Japanese sets list at
+ *     all -- still reports "no TCGdex set matched" until someone identifies
+ *     the right id.
+ *   - "The Pokedex": confirmed with the business this isn't a real,
+ *     purchasable TCG set at all (a custom Collectr checklist, not a
+ *     product) -- deliberately left out of this table; it's expected to
+ *     always report unresolved.
  *
  * Also worth knowing going in: of TCGdex's 184 Japanese sets, zero have a
  * `logo` field populated. A correct id in this table still won't get a
@@ -88,6 +94,7 @@ const SET_NAME_OVERRIDES: Record<string, { setId: string; lang: 'en' | 'ja' }> =
   'Inferno X': { setId: 'M2', lang: 'ja' },
   'Raging Surf': { setId: 'SV3a', lang: 'ja' },
   'Shiny Treasure ex': { setId: 'SV4a', lang: 'ja' },
+  'Triplet Beat': { setId: 'SV1a', lang: 'ja' },
 }
 
 const FLUFF_WORDS = ['booster box', 'booster bundle', 'booster pack', 'elite trainer box', 'bundle', 'box', 'pack']
