@@ -26,20 +26,30 @@ import { getSupabaseServerClient } from '@/lib/supabase-server'
  * not contain Japan-exclusive sets, and TCGdex's Japanese sets list has
  * them only under native-script names ("拡張パック", not "MEGA Dream ex")
  * -- there is no romanized field anywhere in that API to match Collectr's
- * set_name against automatically. These ~20 entries were matched by hand
+ * set_name against automatically. These entries were matched by hand
  * (phonetic transliteration, e.g. メガドリームex -> "MEGA Dream ex"), not
  * fetched from anywhere authoritative, so verify them if a wrong image
- * shows up. Known gaps, not guessed at:
- *   - "Raging Surf": two different TCGdex ids (SV4a, SV3a) share this
- *     exact Japanese name (レイジングサーフ) -- which one is actually
- *     yours needs a human decision, not a coin flip.
+ * shows up.
+ *
+ * "Raging Surf" and "Shiny Treasure ex" both used to be unresolved: TCGdex's
+ * own `name` field mislabels SV4a with the same Japanese name as SV3a
+ * ("レイジングサーフ" for both), which is why they looked like one name
+ * shared by two ids. Resolved by checking card contents instead of the set
+ * name: SV3a is the real Raging Surf (92 cards, no secret-rare tail); SV4a's
+ * highest local ids are Koraidon ex / Miraidon ex / the Treasures of Ruin ex
+ * cards as secret rares -- the signature chase cards of Shiny Treasure ex,
+ * whose 320-card total (190 official + a ~130-card shiny-vault tail) is
+ * unlike anything else in this generation.
+ *
+ * Still-unresolved gaps, not guessed at:
  *   - "Triplet Beat": SIXTEEN different ids share this name
  *     (トリプレットビート) -- almost certainly different box/deck
- *     variants under one set name. Same issue, worse.
- *   - "Nihil Zero", "The Pokedex", "Shiny Treasure ex": no confident match
- *     found in the Japanese sets list at all.
- * None of the four above are in this table -- they'll still report
- * "no TCGdex set matched" until you add them once you know the right id.
+ *     variants under one set name, and unlike Raging Surf/Shiny Treasure ex
+ *     there's no card-content signal yet to tell them apart.
+ *   - "Nihil Zero", "The Pokedex": no confident match found in the Japanese
+ *     sets list at all.
+ * None of these three are in this table -- they'll still report
+ * "no TCGdex set matched" until someone identifies the right id.
  *
  * Also worth knowing going in: of TCGdex's 184 Japanese sets, zero have a
  * `logo` field populated. A correct id in this table still won't get a
@@ -69,6 +79,8 @@ const SET_NAME_OVERRIDES: Record<string, { setId: string; lang: 'en' | 'ja' }> =
   'Start Deck 100 Battle Collection': { setId: 'MC', lang: 'ja' },
   'Time Gazer': { setId: 'S10D', lang: 'ja' },
   'Inferno X': { setId: 'M2', lang: 'ja' },
+  'Raging Surf': { setId: 'SV3a', lang: 'ja' },
+  'Shiny Treasure ex': { setId: 'SV4a', lang: 'ja' },
 }
 
 const FLUFF_WORDS = ['booster box', 'booster bundle', 'booster pack', 'elite trainer box', 'bundle', 'box', 'pack']

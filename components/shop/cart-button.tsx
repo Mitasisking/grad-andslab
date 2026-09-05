@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { useCart } from '@/lib/cart/cart-context'
+import { formatZAR } from '@/lib/currency'
 
 /** Slide-over drawer with quantity controls, per app/auctions/README.md's Phase 4 file map. */
 export function CartButton() {
@@ -91,7 +92,7 @@ export function CartButton() {
                       className="text-[13.5px] shrink-0"
                       style={{ fontVariantNumeric: 'tabular-nums', color: 'var(--ink)' }}
                     >
-                      ${(item.price * item.quantity).toFixed(2)}
+                      {formatZAR(item.price * item.quantity)}
                     </span>
                   </div>
                 ))
@@ -102,7 +103,7 @@ export function CartButton() {
               <div className="pt-4 border-t" style={{ borderColor: 'var(--line)' }}>
                 <div className="flex justify-between text-[14.5px]" style={{ color: 'var(--ink)' }}>
                   <span>Subtotal</span>
-                  <span style={{ fontVariantNumeric: 'tabular-nums' }}>${subtotal.toFixed(2)}</span>
+                  <span style={{ fontVariantNumeric: 'tabular-nums' }}>{formatZAR(subtotal)}</span>
                 </div>
                 <Link
                   href="/shop/checkout"

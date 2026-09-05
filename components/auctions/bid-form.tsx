@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { StripePaymentForm } from '@/components/submit/stripe-payment-form'
 import type { AuctionRow } from '@/lib/auction-types'
+import { formatZAR } from '@/lib/currency'
 
 interface Props {
   auction: AuctionRow
@@ -74,7 +75,7 @@ export function BidForm({ auction, onPlaced }: Props) {
     <div>
       <div className="flex items-center gap-2">
         <span className="text-[15px]" style={{ color: 'var(--ink)' }}>
-          $
+          R
         </span>
         <input
           type="number"
@@ -96,7 +97,7 @@ export function BidForm({ auction, onPlaced }: Props) {
         </button>
       </div>
       <p className="text-[12.5px] mt-2" style={{ color: 'var(--ink-muted)' }}>
-        Minimum bid: ${floor.toFixed(2)}. Your card is only charged if you win — this places a hold.
+        Minimum bid: {formatZAR(floor)}. Your card is only charged if you win — this places a hold.
       </p>
       {error && (
         <p className="text-[13px] mt-2" style={{ color: 'var(--danger)' }}>

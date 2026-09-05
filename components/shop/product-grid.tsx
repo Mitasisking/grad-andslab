@@ -1,6 +1,7 @@
 'use client'
 
 import { useCart } from '@/lib/cart/cart-context'
+import { formatZAR } from '@/lib/currency'
 
 interface Product {
   id: string
@@ -11,12 +12,6 @@ interface Product {
   stock: number
   images: string[]
   set_name: string | null
-}
-
-// Prices are stored in USD (products.price) and displayed as-is, per
-// explicit instruction to switch off the earlier ZAR conversion.
-function formatUSD(usdPrice: number): string {
-  return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(usdPrice)
 }
 
 /** Quick add-to-cart, no navigation required — per app/auctions/README.md's Phase 4 file map. */
@@ -63,7 +58,7 @@ export function ProductGrid({ products }: { products: Product[] }) {
               )}
               <div className="flex items-center justify-between mt-auto pt-4">
                 <span className="text-[15px]" style={{ fontVariantNumeric: 'tabular-nums', color: 'var(--ink)' }}>
-                  {formatUSD(product.price)}
+                  {formatZAR(product.price)}
                 </span>
                 <button
                   type="button"

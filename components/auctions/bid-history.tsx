@@ -1,4 +1,5 @@
 import type { BidRow } from '@/lib/auction-types'
+import { formatZAR } from '@/lib/currency'
 
 interface Props {
   bids: BidRow[]
@@ -35,7 +36,7 @@ export function BidHistory({ bids }: Props) {
               </span>
               <div className="text-right">
                 <span className="text-[14px]" style={{ fontVariantNumeric: 'tabular-nums', color: 'var(--ink)' }}>
-                  ${bid.amount.toFixed(2)}
+                  {formatZAR(bid.amount)}
                 </span>
                 <span className="text-[12px] block mt-0.5" style={{ color: 'var(--ink-muted)' }}>
                   {new Date(bid.created_at).toLocaleString()}

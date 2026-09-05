@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useRouter } from 'next/navigation'
+import { formatZAR } from '@/lib/currency'
 
 interface AuctionItem {
   id: string
@@ -55,7 +56,7 @@ export default function AuctionsPage() {
     const numericBid = parseFloat(rawBid)
 
     if (!numericBid || numericBid <= auction.current_bid) {
-      setMessage({ id: auction.id, text: `Bid must be higher than the current bid of $${auction.current_bid.toFixed(2)}`, type: 'error' })
+      setMessage({ id: auction.id, text: `Bid must be higher than the current bid of ${formatZAR(auction.current_bid)}`, type: 'error' })
       return
     }
 
@@ -146,7 +147,7 @@ export default function AuctionsPage() {
                       <div className="bg-slate-900/80 border border-slate-700/60 p-4 rounded-xl mb-6 grid grid-cols-2 gap-4">
                         <div>
                           <span className="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Current Bid</span>
-                          <span className="text-2xl font-black text-amber-400">${auction.current_bid.toFixed(2)}</span>
+                          <span className="text-2xl font-black text-amber-400">{formatZAR(auction.current_bid)}</span>
                         </div>
                         <div>
                           <span className="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Highest Bidder</span>

@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useCart } from '@/lib/cart/cart-context'
+import { formatZAR } from '@/lib/currency'
 import { fetchAddresses } from '@/lib/addresses-client'
 import { AddAddressForm } from '@/components/submit/add-address-form'
 import { StripePaymentForm } from '@/components/submit/stripe-payment-form'
@@ -122,19 +123,19 @@ export default function ShopCheckoutPage() {
                 {item.title} × {item.quantity}
               </span>
               <span style={{ fontVariantNumeric: 'tabular-nums', color: 'var(--ink)' }}>
-                ${(item.price * item.quantity).toFixed(2)}
+                {formatZAR(item.price * item.quantity)}
               </span>
             </div>
           ))}
           <div className="flex justify-between py-2.5 text-[14px]">
             <span style={{ color: 'var(--ink-muted)' }}>Shipping</span>
             <span style={{ fontVariantNumeric: 'tabular-nums', color: 'var(--ink-muted)' }}>
-              ${SHIPPING_FLAT_RATE.toFixed(2)}
+              {formatZAR(SHIPPING_FLAT_RATE)}
             </span>
           </div>
           <div className="flex justify-between py-2.5 border-t text-[15px]" style={{ borderColor: 'var(--line)' }}>
             <span style={{ color: 'var(--ink)' }}>Total</span>
-            <span style={{ fontVariantNumeric: 'tabular-nums', color: 'var(--ink)' }}>${total.toFixed(2)}</span>
+            <span style={{ fontVariantNumeric: 'tabular-nums', color: 'var(--ink)' }}>{formatZAR(total)}</span>
           </div>
         </div>
       </div>
@@ -202,7 +203,7 @@ export default function ShopCheckoutPage() {
           className="mt-8 w-full px-4 py-3 text-[14px] rounded-[3px]"
           style={{ background: 'var(--vault)', color: 'var(--vault-ink)' }}
         >
-          {creatingOrder ? 'Preparing order…' : `Pay $${total.toFixed(2)}`}
+          {creatingOrder ? 'Preparing order…' : `Pay ${formatZAR(total)}`}
         </button>
       ) : (
         <div className="mt-8">

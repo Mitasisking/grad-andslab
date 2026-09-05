@@ -5,6 +5,7 @@ import { CountdownTimer } from '@/components/auctions/countdown-timer'
 import { BidForm } from '@/components/auctions/bid-form'
 import { BidHistory } from '@/components/auctions/bid-history'
 import type { AuctionRow, BidRow } from '@/lib/auction-types'
+import { formatZAR } from '@/lib/currency'
 
 interface Props {
   initialAuction: AuctionRow
@@ -45,7 +46,7 @@ export function AuctionDetail({ initialAuction, initialBids }: Props) {
                 Current bid
               </p>
               <p className="text-[26px] mt-0.5" style={{ fontVariantNumeric: 'tabular-nums', color: 'var(--ink)' }}>
-                ${(auction.current_high_bid ?? auction.starting_price).toFixed(2)}
+                {formatZAR(auction.current_high_bid ?? auction.starting_price)}
               </p>
             </div>
             <div className="text-right">
