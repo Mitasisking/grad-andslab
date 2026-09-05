@@ -14,11 +14,18 @@ interface Product {
   set_name: string | null
 }
 
+// Low-value singles (commons pulled straight from Collectr's per-card
+// pricing) clutter the grid without being worth listing individually —
+// hidden below this threshold rather than queried out, so the same
+// products list still works for stock/checkout elsewhere.
+const MIN_CARD_PRICE = 19.99
+
 /** Quick add-to-cart, no navigation required — per app/auctions/README.md's Phase 4 file map. */
 export function ProductGrid({ products }: { products: Product[] }) {
   const { addItem } = useCart()
+  const visibleProducts = products.filter((p) => p.category !== 'cards' || p.price >= MIN_CARD_PRICE)
 
-  if (products.length === 0) {
+  if (visibleProducts.length === 0) {
     return (
       <p className="text-[14px] py-16 text-center" style={{ color: 'var(--ink-muted)' }}>
         Nothing here right now.
@@ -28,7 +35,7 @@ export function ProductGrid({ products }: { products: Product[] }) {
 
   return (
     <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 mt-6">
-      {products.map((product) => {
+      {visibleProducts.map((product) => {
         const outOfStock = product.stock <= 0
         return (
           <div
