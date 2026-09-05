@@ -23,7 +23,9 @@ const MIN_CARD_PRICE = 19.99
 /** Quick add-to-cart, no navigation required — per app/auctions/README.md's Phase 4 file map. */
 export function ProductGrid({ products }: { products: Product[] }) {
   const { addItem } = useCart()
-  const visibleProducts = products.filter((p) => p.category !== 'cards' || p.price >= MIN_CARD_PRICE)
+  const visibleProducts = products.filter(
+    (p) => (p.category !== 'cards' || p.price >= MIN_CARD_PRICE) && p.images.length > 0,
+  )
 
   if (visibleProducts.length === 0) {
     return (
