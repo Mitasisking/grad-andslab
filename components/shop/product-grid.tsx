@@ -3,7 +3,7 @@
 import { useCart } from '@/lib/cart/cart-context'
 import { formatZAR } from '@/lib/currency'
 
-interface Product {
+export interface Product {
   id: string
   title: string
   description: string | null
@@ -34,7 +34,7 @@ export function ProductGrid({ products }: { products: Product[] }) {
   }
 
   return (
-    <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 mt-6">
+    <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
       {visibleProducts.map((product) => {
         const outOfStock = product.stock <= 0
         return (

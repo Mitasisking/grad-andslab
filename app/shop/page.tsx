@@ -1,6 +1,6 @@
 import { getSupabaseRouteClient } from '@/lib/supabase-route-client'
 import { CategoryTabs } from '@/components/shop/category-tabs'
-import { ProductGrid } from '@/components/shop/product-grid'
+import { ShopBrowser } from '@/components/shop/shop-browser'
 
 export default async function ShopPage({
   searchParams,
@@ -27,7 +27,7 @@ export default async function ShopPage({
   return (
     <div>
       <CategoryTabs active={category ?? null} />
-      <ProductGrid products={products ?? []} />
+      <ShopBrowser products={products ?? []} />
     </div>
   )
 }
