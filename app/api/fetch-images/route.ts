@@ -158,6 +158,20 @@ async function fetchWithTimeout(url: string): Promise<Response> {
   }
 }
 
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
+/**
+ * Observed directly against the live API: TCGdex flaps between a 200 and a
+ * 503/504 within the same few seconds -- not a sustained outage -- so a
+ * single failed attempt isn't reliable evidence a card has no image, just
+ * that this one request landed on a bad moment. Two retries with backoff
+ * (attempts at 0ms, 500ms, 1500ms) before giving up for good.
+ */
+const CARD_DETAIL_MAX_ATTEMPTS = 3
+const CARD_DETAIL_RETRY_BASE_MS = 500
+
 /**
  * The set-detail endpoint's embedded `cards` array is a lightweight
  * summary (id/localId/name only) -- it never carries `image`, for any
@@ -165,20 +179,34 @@ async function fetchWithTimeout(url: string): Promise<Response> {
  * which needs its own fetch. Matches the two-step pattern the legacy
  * dashboard's card search already used for exactly this reason.
  *
- * Network failures and timeouts are caught and logged here rather than
- * left to bubble up -- TCGdex being briefly down or slow for one card
- * should degrade to "no image for this product yet", not take out the
- * whole batch it's part of.
+ * Network failures and timeouts are retried (see CARD_DETAIL_MAX_ATTEMPTS)
+ * rather than immediately treated as "no image" -- but a non-5xx status
+ * (404, most likely) is a real answer, not a transient failure, so that
+ * returns null right away instead of burning retries on it. Only a
+ * failure that persists across every attempt is caught and logged here
+ * rather than left to bubble up -- TCGdex being down for one card
+ * shouldn't take out the whole batch it's part of.
  */
 async function fetchCardDetail(cardId: string, lang: 'en' | 'ja'): Promise<TcgdexCardDetail | null> {
-  try {
-    const res = await fetchWithTimeout(`https://api.tcgdex.net/v2/${lang}/cards/${cardId}`)
-    if (!res.ok) return null
-    return (await res.json()) as TcgdexCardDetail
-  } catch (err) {
-    console.error(`[fetch-images] card detail request failed for ${lang}/${cardId}:`, err instanceof Error ? err.message : err)
-    return null
+  let lastError: unknown
+  for (let attempt = 1; attempt <= CARD_DETAIL_MAX_ATTEMPTS; attempt++) {
+    try {
+      const res = await fetchWithTimeout(`https://api.tcgdex.net/v2/${lang}/cards/${cardId}`)
+      if (res.ok) return (await res.json()) as TcgdexCardDetail
+      if (res.status < 500) return null
+      lastError = new Error(`HTTP ${res.status}`)
+    } catch (err) {
+      lastError = err
+    }
+    if (attempt < CARD_DETAIL_MAX_ATTEMPTS) {
+      await sleep(CARD_DETAIL_RETRY_BASE_MS * 2 ** (attempt - 1))
+    }
   }
+  console.error(
+    `[fetch-images] card detail request failed for ${lang}/${cardId} after ${CARD_DETAIL_MAX_ATTEMPTS} attempts:`,
+    lastError instanceof Error ? lastError.message : lastError,
+  )
+  return null
 }
 
 interface TcgdexCardSearchResult {
