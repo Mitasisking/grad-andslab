@@ -11,9 +11,16 @@ import { getSupabaseServerClient } from '@/lib/supabase-server'
  *
  * - category = 'sealed': matches products.set_name against TCGdex's set
  *   list and saves the official set logo.
- * - category = 'cards': matches products.set_name the same way, then
- *   looks up the specific card by local number within that set — in
- *   Japanese if the title is tagged "(JP)", English otherwise.
+ * - category = 'cards': matches products.set_name the same way, then looks
+ *   up the specific card by local number within that set. If the set
+ *   resolved but doesn't have that number in its resolved language, the
+ *   same set id is retried in the other language before giving up on it.
+ *   If no set matched at all, or neither language of the resolved set had
+ *   that number, a last-resort safety net searches TCGdex's whole card
+ *   index by name (see findCardBySafetyNet) and filters to the matching
+ *   local id — this is what actually recovers a card whose set_name never
+ *   resolves to anything (wrong/unknown/Collectr-only set name), as long
+ *   as the card itself exists somewhere in TCGdex's catalog.
  *
  * Gated by requireAdmin() in production — this writes to every product
  * row, and the app is live there, so "just visit the URL" can't mean
@@ -160,6 +167,36 @@ async function fetchCardDetail(cardId: string, lang: 'en' | 'ja'): Promise<Tcgde
   }
 }
 
+interface TcgdexCardSearchResult {
+  id: string
+  localId: string
+}
+
+/**
+ * Last-resort lookup, tried only once both the resolved set (and its
+ * cross-language counterpart) have failed to produce a match: search
+ * TCGdex's global card index by name instead of going through a specific
+ * set at all. Catches cards whose set_name never resolved to any TCGdex
+ * set (wrong/unknown set name, or a set TCGdex genuinely doesn't have),
+ * as long as the card itself exists somewhere in TCGdex's catalog.
+ */
+async function searchCardsByName(name: string, lang: 'en' | 'ja'): Promise<TcgdexCardSearchResult[]> {
+  try {
+    const res = await fetchWithTimeout(`https://api.tcgdex.net/v2/${lang}/cards?name=${encodeURIComponent(name)}`)
+    if (!res.ok) return []
+    const data = await res.json()
+    return Array.isArray(data) ? (data as TcgdexCardSearchResult[]) : []
+  } catch (err) {
+    console.error(`[fetch-images] card name search failed for ${lang}/"${name}":`, err instanceof Error ? err.message : err)
+    return []
+  }
+}
+
+/** Strips "(JP)", "(Poke Ball Pattern)", etc. before using a title as a search query. */
+function stripVariantTag(title: string): string {
+  return title.replace(/\(.*?\)/g, '').trim()
+}
+
 /**
  * A wrong card_number in the source data (Collectr, in practice -- not
  * something this route or the importer introduces) still resolves to a
@@ -304,6 +341,94 @@ export async function GET() {
   }
 
   type Result = { id: string; title: string; status: string }
+  type CardMatch = { id: string; lang: 'en' | 'ja' }
+
+  async function findCardInSet(setId: string, lang: 'en' | 'ja', candidates: string[]): Promise<CardMatch | null> {
+    const setDetail = await getSetDetail(setId, lang)
+    const card = setDetail?.cards?.find((c) => candidates.includes(c.localId))
+    return card ? { id: card.id, lang } : null
+  }
+
+  type SafetyNetResult =
+    | { kind: 'match'; match: CardMatch }
+    | { kind: 'ambiguous'; count: number }
+    | { kind: 'none' }
+
+  /**
+   * A common name (Charizard, Bulbasaur, ...) has been reprinted across
+   * dozens of sets, and a local id is only unique *within* a set -- e.g.
+   * "Charizard" local id 4 alone matches four completely unrelated prints
+   * (ex14-4, base1-4, base5-4, base4-4). Without a resolved set_name to
+   * narrow the search, picking whichever result happens to come back first
+   * would silently save the wrong print just as easily as it saves the
+   * right one -- exactly the failure mode the name-mismatch check above
+   * exists to catch. So this only ever returns a match when name+local-id
+   * narrows the whole search (both languages combined) down to one single
+   * card id; anything else comes back 'ambiguous' and is reported for a
+   * human to resolve rather than guessed at.
+   */
+  async function findCardBySafetyNet(product: ProductRow, candidates: string[]): Promise<SafetyNetResult> {
+    const searchName = stripVariantTag(product.title)
+    if (!searchName) return { kind: 'none' }
+
+    const found: CardMatch[] = []
+    for (const lang of ['en', 'ja'] as const) {
+      const results = await searchCardsByName(searchName, lang)
+      for (const r of results) {
+        if (candidates.includes(r.localId)) found.push({ id: r.id, lang })
+      }
+    }
+
+    const uniqueIds = Array.from(new Set(found.map((f) => f.id)))
+    if (uniqueIds.length === 0) return { kind: 'none' }
+    if (uniqueIds.length > 1) return { kind: 'ambiguous', count: uniqueIds.length }
+    return { kind: 'match', match: found.find((f) => f.id === uniqueIds[0])! }
+  }
+
+  async function finalizeCardMatch(product: ProductRow, match: CardMatch, matchedVia: string): Promise<Result> {
+    const cardDetail = await fetchCardDetail(match.id, match.lang)
+    if (!cardDetail?.image) {
+      return {
+        id: product.id,
+        title: product.title,
+        status: `card matched (${match.id} via ${matchedVia}) but TCGdex has no image for it yet`,
+      }
+    }
+
+    if (match.lang === 'en' && cardDetail.name && !namesLikelyMatch(product.title, cardDetail.name)) {
+      return {
+        id: product.id,
+        title: product.title,
+        status: `NAME MISMATCH — card_number ${product.card_number} matched via ${matchedVia} is TCGdex's "${cardDetail.name}", not "${product.title}" — check the card number, image not saved`,
+      }
+    }
+
+    // Validated above (name check passed, or it's a Japanese match that
+    // can't be checked) before this ever looks at whether an image was
+    // already saved — so a product that already has one still gets
+    // reported on, it just isn't overwritten.
+    if (product.images?.length) {
+      return {
+        id: product.id,
+        title: product.title,
+        status:
+          match.lang === 'ja'
+            ? 'already has images (Japanese card, name not verified)'
+            : 'already has images (name verified OK)',
+      }
+    }
+
+    const imageUrl = `${cardDetail.image}/high.png`
+    await supabase.from('products').update({ images: [imageUrl] }).eq('id', product.id)
+    return {
+      id: product.id,
+      title: product.title,
+      status:
+        match.lang === 'ja'
+          ? `JP card image saved via ${matchedVia} — name not verified (Japanese script, no automated comparison)`
+          : `EN card image saved via ${matchedVia}`,
+    }
+  }
 
   async function processProduct(product: ProductRow): Promise<Result> {
     if (!product.set_name) {
@@ -312,14 +437,15 @@ export async function GET() {
 
     try {
       const resolved = resolveSet(product.set_name)
-      if (!resolved) {
-        return { id: product.id, title: product.title, status: `no TCGdex set matched "${product.set_name}"` }
-      }
 
       if (product.category === 'sealed') {
+        if (!resolved) {
+          return { id: product.id, title: product.title, status: `no TCGdex set matched "${product.set_name}"` }
+        }
         // Sealed products are just a set-logo lookup with no per-card name
-        // to compare against — nothing analogous to the cards' mismatch
-        // check below applies, so skipping when already saved is safe here.
+        // to compare against, and no card-search safety net applies to a
+        // whole box rather than a single card — nothing analogous to the
+        // cards' fallbacks below.
         if (product.images?.length) {
           return { id: product.id, title: product.title, status: 'skipped — already has images' }
         }
@@ -345,67 +471,57 @@ export async function GET() {
         return { id: product.id, title: product.title, status: 'skipped — no card_number on record' }
       }
 
-      const setDetail = await getSetDetail(resolved.id, resolved.lang)
-      if (!setDetail?.cards) {
-        return {
-          id: product.id,
-          title: product.title,
-          status: `no ${resolved.lang} card list for set ${resolved.id}`,
-        }
-      }
-
       const candidates = candidateLocalIds(product.card_number)
-      const card = setDetail.cards.find((c) => candidates.includes(c.localId))
-      if (!card) {
-        return {
-          id: product.id,
-          title: product.title,
-          status: `no matching card for #${product.card_number} in ${resolved.id} (${resolved.lang})`,
+
+      // 1) The resolved set, in whichever language it resolved to.
+      // 2) The same set id, in the *other* language — TCGdex sometimes
+      //    carries the same set under both without SET_NAME_OVERRIDES
+      //    knowing it, or a set-detail request can transiently fail in one
+      //    language and succeed in the other.
+      // 3) A global name search across TCGdex's whole card index, filtered
+      //    to the matching local id — the safety net for a set_name that
+      //    never resolved to any TCGdex set at all, or a set that resolved
+      //    but genuinely doesn't have this local id under either language.
+      let match: CardMatch | null = null
+      let matchedVia = ''
+
+      if (resolved) {
+        match = await findCardInSet(resolved.id, resolved.lang, candidates)
+        if (match) matchedVia = `set ${resolved.id} (${resolved.lang})`
+
+        if (!match) {
+          const otherLang = resolved.lang === 'en' ? 'ja' : 'en'
+          match = await findCardInSet(resolved.id, otherLang, candidates)
+          if (match) matchedVia = `set ${resolved.id} (${otherLang}, cross-language fallback)`
         }
       }
 
-      const cardDetail = await fetchCardDetail(card.id, resolved.lang)
-      if (!cardDetail?.image) {
-        return {
-          id: product.id,
-          title: product.title,
-          status: `card matched (${card.id}) but TCGdex has no image for it yet`,
+      if (!match) {
+        const safetyNet = await findCardBySafetyNet(product, candidates)
+        if (safetyNet.kind === 'ambiguous') {
+          return {
+            id: product.id,
+            title: product.title,
+            status: `AMBIGUOUS — name-search safety net found ${safetyNet.count} different cards named "${product.title}" with local id matching #${product.card_number}, and no set_name to tell them apart — image not saved, needs manual review`,
+          }
+        }
+        if (safetyNet.kind === 'match') {
+          match = safetyNet.match
+          matchedVia = `name search (${match.lang}, no set match)`
         }
       }
 
-      if (resolved.lang === 'en' && cardDetail.name && !namesLikelyMatch(product.title, cardDetail.name)) {
+      if (!match) {
         return {
           id: product.id,
           title: product.title,
-          status: `NAME MISMATCH — card_number ${product.card_number} in ${resolved.id} is TCGdex's "${cardDetail.name}", not "${product.title}" — check the card number, image not saved`,
+          status: resolved
+            ? `no matching card for #${product.card_number} in ${resolved.id} (tried en+ja, and a name-search safety net)`
+            : `no TCGdex set matched "${product.set_name}", and the name-search safety net found nothing for #${product.card_number}`,
         }
       }
 
-      // Validated above (name check passed, or it's a Japanese match that
-      // can't be checked) before this ever looks at whether an image was
-      // already saved — so a product that already has one still gets
-      // reported on, it just isn't overwritten.
-      if (product.images?.length) {
-        return {
-          id: product.id,
-          title: product.title,
-          status:
-            resolved.lang === 'ja'
-              ? 'already has images (Japanese card, name not verified)'
-              : 'already has images (name verified OK)',
-        }
-      }
-
-      const imageUrl = `${cardDetail.image}/high.png`
-      await supabase.from('products').update({ images: [imageUrl] }).eq('id', product.id)
-      return {
-        id: product.id,
-        title: product.title,
-        status:
-          resolved.lang === 'ja'
-            ? 'JP card image saved — name not verified (Japanese script, no automated comparison)'
-            : 'EN card image saved',
-      }
+      return await finalizeCardMatch(product, match, matchedVia)
     } catch (err) {
       return {
         id: product.id,
