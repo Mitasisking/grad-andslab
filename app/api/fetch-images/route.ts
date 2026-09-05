@@ -86,7 +86,12 @@ const SET_NAME_OVERRIDES: Record<string, { setId: string; lang: 'en' | 'ja' }> =
 const FLUFF_WORDS = ['booster box', 'booster bundle', 'booster pack', 'elite trainer box', 'bundle', 'box', 'pack']
 
 function normalizeSetName(name: string): string {
-  let normalized = name.toLowerCase()
+  let normalized = name
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '') // strip accents (e.g. "é" -> "e") so Collectr's spelling matches TCGdex's
+    .toLowerCase()
+    .replace(/\s+/g, ' ') // collapse doubled/irregular whitespace before fluff-word matching below
+    .trim()
   for (const fluff of FLUFF_WORDS) {
     normalized = normalized.replaceAll(fluff, '')
   }
