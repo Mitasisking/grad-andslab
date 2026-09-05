@@ -21,6 +21,11 @@ import { getSupabaseServerClient } from '@/lib/supabase-server'
  *   local id — this is what actually recovers a card whose set_name never
  *   resolves to anything (wrong/unknown/Collectr-only set name), as long
  *   as the card itself exists somewhere in TCGdex's catalog.
+ *   Before any of that, CARD_OVERRIDES is checked for the exact
+ *   set_name + card_number Collectr recorded — a manual escape hatch for
+ *   rows none of the automatic matching can safely resolve on its own,
+ *   e.g. two same-named prints in one set (see the ambiguity guard in
+ *   finalizeCardMatch) or a card filed under the wrong set entirely.
  *
  * Gated by requireAdmin() in production — this writes to every product
  * row, and the app is live there, so "just visit the URL" can't mean
@@ -101,6 +106,35 @@ const SET_NAME_OVERRIDES: Record<string, { setId: string; lang: 'en' | 'ja' }> =
   'Shiny Treasure ex': { setId: 'SV4a', lang: 'ja' },
   'Triplet Beat': { setId: 'SV1a', lang: 'ja' },
   'Nihil Zero': { setId: 'M3', lang: 'ja' },
+}
+
+/**
+ * Per-product corrections for rows where Collectr's card_number (or even
+ * set_name) points at the wrong physical card, and neither the same-set
+ * nor cross-set automatic matching in processProduct/finalizeCardMatch can
+ * safely resolve it on their own. Unlike SET_NAME_OVERRIDES (which retargets
+ * an entire set_name), this retargets one exact set_name + card_number pair
+ * -- other products under the same set_name are unaffected.
+ *
+ * Confirmed by visually comparing both candidate prints against the
+ * physical/Collectr card (Black Bolt / White Flare review, 2026-09-05):
+ *   - Beartic and Haxorus: Black Bolt has two same-named prints of each,
+ *     so finalizeCardMatch's ambiguity guard correctly refused to pick
+ *     one automatically even after Collectr's card_number was found to
+ *     point at an unrelated card (Eelektrik / Minccino respectively).
+ *     Confirmed correct print in both cases: the Illustration Rare.
+ *   - Lampent: filed under Black Bolt in Collectr, but doesn't appear in
+ *     that set on TCGdex at all -- the real print is in White Flare
+ *     (Black Bolt's sibling set), also as the Illustration Rare.
+ */
+const CARD_OVERRIDES: Record<string, { setId: string; lang: 'en' | 'ja'; localId: string }> = {
+  'Black Bolt#114/086': { setId: 'sv10.5b', lang: 'en', localId: '110' }, // Beartic -> Illustration Rare
+  'Black Bolt#152/086': { setId: 'sv10.5b', lang: 'en', localId: '147' }, // Haxorus -> Illustration Rare
+  'Black Bolt#101/086': { setId: 'sv10.5w', lang: 'en', localId: '102' }, // Lampent -> White Flare, Illustration Rare
+}
+
+function cardOverrideKey(setName: string, cardNumber: string): string {
+  return `${setName}#${cardNumber}`
 }
 
 const FLUFF_WORDS = ['booster box', 'booster bundle', 'booster pack', 'elite trainer box', 'bundle', 'box', 'pack']
@@ -551,6 +585,12 @@ export async function GET() {
       // category === 'cards'
       if (!product.card_number) {
         return { id: product.id, title: product.title, status: 'skipped — no card_number on record' }
+      }
+
+      const override = CARD_OVERRIDES[cardOverrideKey(product.set_name, product.card_number)]
+      if (override) {
+        const match: CardMatch = { id: `${override.setId}-${override.localId}`, lang: override.lang }
+        return await finalizeCardMatch(product, match, 'manual card override', { id: override.setId, lang: override.lang })
       }
 
       const candidates = candidateLocalIds(product.card_number)
