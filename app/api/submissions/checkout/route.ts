@@ -10,12 +10,12 @@ interface CheckoutBody {
 export async function POST(request: NextRequest) {
   const body = (await request.json()) as CheckoutBody
 
-  // Stripe's minimum charge is currency-specific; ZAR's is roughly R7 (700
-  // minor units), well above USD's ~50. Rounded up generously here since
-  // this is a rough safety net, not sourced from Stripe's own published
-  // minimums for this account -- verify against the Stripe dashboard if a
-  // legitimately small submission ever gets rejected at this check.
-  if (!Number.isFinite(body.amountCents) || body.amountCents < 1000) {
+  // Stripe's minimum charge is currency-specific; USD's is roughly $0.50 (50
+  // minor units). Rounded up generously here since this is a rough safety
+  // net, not sourced from Stripe's own published minimums for this account
+  // -- verify against the Stripe dashboard if a legitimately small
+  // submission ever gets rejected at this check.
+  if (!Number.isFinite(body.amountCents) || body.amountCents < 100) {
     return NextResponse.json({ error: 'Invalid amount' }, { status: 400 })
   }
   if (!body.submissionId) {
@@ -24,7 +24,7 @@ export async function POST(request: NextRequest) {
 
   const intent = await getStripeClient().paymentIntents.create({
     amount: Math.round(body.amountCents),
-    currency: 'zar',
+    currency: 'usd',
     customer: body.customerId,
     // Submission fees are captured immediately on payment. This differs from
     // auction bid pre-authorization (Phase 4), which uses capture_method: 'manual'.

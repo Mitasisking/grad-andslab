@@ -7,8 +7,7 @@ import { StepGraderTier } from '@/components/submit/step-grader-tier'
 import { StepAddOns } from '@/components/submit/step-addons'
 import { StepReviewPay } from '@/components/submit/step-review-pay'
 import { fetchAddresses } from '@/lib/addresses-client'
-import { GRADING_COMPANY } from '@/lib/submission-types'
-import type { CardEntry, ShippingAddress, SubmissionTier } from '@/lib/submission-types'
+import type { CardEntry, GradingCompany, ShippingAddress, SubmissionTier } from '@/lib/submission-types'
 
 const STEP_COUNT = 3
 
@@ -30,6 +29,7 @@ function createEmptyCard(): CardEntry {
 
 export function SubmissionWizard() {
   const [step, setStep] = useState(0)
+  const [company, setCompany] = useState<GradingCompany>('PCG')
   const [tier, setTier] = useState<SubmissionTier | null>(null)
   const [cards, setCards] = useState<CardEntry[]>([createEmptyCard()])
   const [addresses, setAddresses] = useState<ShippingAddress[]>([])
@@ -53,6 +53,13 @@ export function SubmissionWizard() {
   const handleAddressCreated = useCallback((address: ShippingAddress) => {
     setAddresses((prev) => [...prev, address])
     setAddressId(address.id)
+  }, [])
+
+  const selectCompany = useCallback((next: GradingCompany) => {
+    setCompany(next)
+    // Tiers are company-specific (lib/submission-types.ts TIER_OPTIONS_BY_COMPANY),
+    // so a tier chosen under one company is never valid under another.
+    setTier(null)
   }, [])
 
   const updateCard = useCallback((id: string, patch: Partial<CardEntry>) => {
@@ -92,8 +99,10 @@ export function SubmissionWizard() {
           >
             {step === 0 && (
               <StepGraderTier
+                company={company}
                 tier={tier}
                 cards={cards}
+                onSelectCompany={selectCompany}
                 onSelectTier={setTier}
                 onUpdateCard={updateCard}
                 onAddCard={addCard}
@@ -115,7 +124,7 @@ export function SubmissionWizard() {
 
             {step === 2 && tier && (
               <StepReviewPay
-                gradingCompany={GRADING_COMPANY}
+                gradingCompany={company}
                 tier={tier}
                 cards={cards}
                 addresses={addresses}

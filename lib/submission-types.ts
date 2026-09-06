@@ -1,6 +1,22 @@
-/** We exclusively grade through Premier Card Grading (PCG) -- see supabase/migrations/0016 and 0017. */
-export type GradingCompany = 'PCG'
-export type SubmissionTier = 'authentication' | 'bulk' | 'standard' | 'express'
+/**
+ * We grade through three partners -- see supabase/migrations/0016-0017 (PCG)
+ * and 0021-0023 (PSA, ACE). Each company's tiers are their own real service
+ * names/prices, so SubmissionTier below is a union of all three, prefixed by
+ * company except for PCG's (added first, before there was anything to
+ * disambiguate from).
+ */
+export type GradingCompany = 'PCG' | 'PSA' | 'ACE'
+export type SubmissionTier =
+  | 'authentication'
+  | 'bulk'
+  | 'standard'
+  | 'express'
+  | 'psa_value_bulk'
+  | 'psa_regular'
+  | 'psa_express'
+  | 'ace_value'
+  | 'ace_basic'
+  | 'ace_standard'
 export type PrecheckAction = 'proceed_regardless' | 'return_if_under_target'
 
 export interface CardEntry {
@@ -29,32 +45,57 @@ export interface ShippingAddress {
   country: string
 }
 
-export const GRADING_COMPANY: GradingCompany = 'PCG'
+/** Shown in the grading-company picker (components/submit/step-grader-tier.tsx). */
+export const GRADING_COMPANY_OPTIONS: { value: GradingCompany; label: string; url?: string }[] = [
+  { value: 'PCG', label: 'Premier Card Grading (PCG)', url: 'https://premiercardgrading.co.uk/' },
+  { value: 'PSA', label: 'PSA' },
+  { value: 'ACE', label: 'ACE Grading' },
+]
 
-/**
- * PCG's four real service tiers (replacing the old economy/regular/express/
- * super_express/walk_through placeholders). basePriceZAR is the per-card fee
- * charged to the customer -- these are the only numbers that need to change
- * to adjust your margin, so edit them directly here.
- */
-export const TIER_OPTIONS: {
+export interface TierOption {
   value: SubmissionTier
   label: string
-  turnaround: string
+  turnaround?: string
   note?: string
-  basePriceZAR: number
-}[] = [
-  { value: 'authentication', label: 'Authentication', turnaround: '2–4 weeks', basePriceZAR: 250 },
-  { value: 'bulk', label: 'Bulk', turnaround: '8–10 weeks', note: 'Minimum 50+ cards', basePriceZAR: 180 },
-  {
-    value: 'standard',
-    label: 'Standard',
-    turnaround: '4–6 weeks',
-    note: 'Includes sub-grades & metal labels',
-    basePriceZAR: 320,
-  },
-  { value: 'express', label: 'Express', turnaround: '5–7 days', basePriceZAR: 650 },
-]
+  basePriceUSD: number
+}
+
+/**
+ * Per-card grading fee by company and tier, all in USD -- the grading
+ * submission flow charges and displays exclusively in dollars (see
+ * lib/currency.ts's formatUSD and app/api/submissions/checkout/route.ts),
+ * independent of the ZAR the rest of the marketplace uses.
+ *
+ * PCG's four tiers were originally configured in ZAR (R250/R180/R320/R650);
+ * the basePriceUSD values below are those converted at ~18.5 ZAR/USD and
+ * rounded to a clean price point, not the raw digits relabeled -- re-derive
+ * them from that rate (or your own real invoiced cost) if it drifts.
+ * PSA and ACE are flat USD tiers as given by the business, no conversion.
+ */
+export const TIER_OPTIONS_BY_COMPANY: Record<GradingCompany, TierOption[]> = {
+  PCG: [
+    { value: 'authentication', label: 'Authentication', turnaround: '2–4 weeks', basePriceUSD: 14 },
+    { value: 'bulk', label: 'Bulk', turnaround: '8–10 weeks', note: 'Minimum 50+ cards', basePriceUSD: 10 },
+    {
+      value: 'standard',
+      label: 'Standard',
+      turnaround: '4–6 weeks',
+      note: 'Includes sub-grades & metal labels',
+      basePriceUSD: 17,
+    },
+    { value: 'express', label: 'Express', turnaround: '5–7 days', basePriceUSD: 35 },
+  ],
+  PSA: [
+    { value: 'psa_value_bulk', label: 'Value Bulk', note: 'Minimum 50+ cards', basePriceUSD: 25 },
+    { value: 'psa_regular', label: 'Regular', basePriceUSD: 80 },
+    { value: 'psa_express', label: 'Express', basePriceUSD: 149 },
+  ],
+  ACE: [
+    { value: 'ace_value', label: 'Value', basePriceUSD: 20 },
+    { value: 'ace_basic', label: 'Basic', basePriceUSD: 24 },
+    { value: 'ace_standard', label: 'Standard', basePriceUSD: 34 },
+  ],
+}
 
 // ----------------------------------------------------------------------------
 // Phase 3 — tracking dashboard & admin intake/grading

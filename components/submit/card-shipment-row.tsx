@@ -267,7 +267,7 @@ export function CardShipmentRow({ card, index, canRemove, onUpdateCard, onRemove
         </div>
         <div>
           <Label className="text-[12.5px]" style={{ color: 'var(--ink-muted)' }}>
-            Declared value (Rands)
+            Declared value (USD)
           </Label>
           <Input
             type="number"

@@ -2,13 +2,15 @@
 
 import { Button } from '@/components/ui/button'
 import { CardShipmentRow } from '@/components/submit/card-shipment-row'
-import { formatZAR } from '@/lib/currency'
-import { TIER_OPTIONS } from '@/lib/submission-types'
-import type { CardEntry, SubmissionTier } from '@/lib/submission-types'
+import { formatUSD } from '@/lib/currency'
+import { GRADING_COMPANY_OPTIONS, TIER_OPTIONS_BY_COMPANY } from '@/lib/submission-types'
+import type { CardEntry, GradingCompany, SubmissionTier } from '@/lib/submission-types'
 
 interface Props {
+  company: GradingCompany
   tier: SubmissionTier | null
   cards: CardEntry[]
+  onSelectCompany: (company: GradingCompany) => void
   onSelectTier: (tier: SubmissionTier) => void
   onUpdateCard: (id: string, patch: Partial<CardEntry>) => void
   onAddCard: () => void
@@ -18,8 +20,10 @@ interface Props {
 }
 
 export function StepGraderTier({
+  company,
   tier,
   cards,
+  onSelectCompany,
   onSelectTier,
   onUpdateCard,
   onAddCard,
@@ -27,25 +31,55 @@ export function StepGraderTier({
   onNext,
   canAdvance,
 }: Props) {
+  const selectedCompanyMeta = GRADING_COMPANY_OPTIONS.find((c) => c.value === company)!
+  const tierOptions = TIER_OPTIONS_BY_COMPANY[company]
+
   return (
     <section className="space-y-10">
       <div>
         <h2 className="text-[22px]" style={{ fontFamily: 'var(--font-display)', color: 'var(--ink)' }}>
           Grading company
         </h2>
-        <p className="text-[13.5px] mt-2" style={{ color: 'var(--ink-muted)' }}>
-          All submissions are graded exclusively by{' '}
-          <a
-            href="https://premiercardgrading.co.uk/"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="underline underline-offset-2"
-            style={{ color: 'var(--ink)' }}
-          >
-            Premier Card Grading (PCG)
-          </a>
-          .
-        </p>
+        <div className="flex flex-col mt-4 border-t" style={{ borderColor: 'var(--line)' }}>
+          {GRADING_COMPANY_OPTIONS.map((c) => {
+            const selected = company === c.value
+            return (
+              <button
+                key={c.value}
+                type="button"
+                onClick={() => onSelectCompany(c.value)}
+                className="flex items-center gap-3 py-3.5 border-b text-left"
+                style={{ borderColor: 'var(--line)' }}
+              >
+                <span
+                  className="w-3.5 h-3.5 rounded-full border shrink-0"
+                  style={{
+                    borderColor: selected ? 'var(--seal)' : 'var(--line)',
+                    background: selected ? 'var(--seal)' : 'transparent',
+                  }}
+                />
+                <span className="text-[15px]" style={{ color: 'var(--ink)' }}>
+                  {c.label}
+                </span>
+              </button>
+            )
+          })}
+        </div>
+        {selectedCompanyMeta.url && (
+          <p className="text-[13.5px] mt-2" style={{ color: 'var(--ink-muted)' }}>
+            Learn more about{' '}
+            <a
+              href={selectedCompanyMeta.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline underline-offset-2"
+              style={{ color: 'var(--ink)' }}
+            >
+              {selectedCompanyMeta.label}
+            </a>
+            .
+          </p>
+        )}
       </div>
 
       <div>
@@ -53,7 +87,7 @@ export function StepGraderTier({
           Turnaround
         </h2>
         <div className="flex flex-col mt-4 border-t" style={{ borderColor: 'var(--line)' }}>
-          {TIER_OPTIONS.map((t) => {
+          {tierOptions.map((t) => {
             const selected = tier === t.value
             return (
               <button
@@ -86,7 +120,8 @@ export function StepGraderTier({
                   className="text-[13px] shrink-0 text-right"
                   style={{ fontVariantNumeric: 'tabular-nums', color: 'var(--ink-muted)' }}
                 >
-                  {t.turnaround} · {formatZAR(t.basePriceZAR)}/card
+                  {t.turnaround ? `${t.turnaround} · ` : ''}
+                  {formatUSD(t.basePriceUSD)}/card
                 </span>
               </button>
             )

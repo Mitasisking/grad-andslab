@@ -5,21 +5,22 @@ import { Button } from '@/components/ui/button'
 import { AddAddressForm } from '@/components/submit/add-address-form'
 import { StripePaymentForm } from '@/components/submit/stripe-payment-form'
 import { PackingSlip } from '@/components/submit/packing-slip'
-import { formatZAR } from '@/lib/currency'
-import { TIER_OPTIONS } from '@/lib/submission-types'
+import { formatUSD } from '@/lib/currency'
+import { TIER_OPTIONS_BY_COMPANY } from '@/lib/submission-types'
 import type { CardEntry, GradingCompany, ShippingAddress, SubmissionTier } from '@/lib/submission-types'
 
-// Rand figures -- edit directly to adjust real shipping cost/margin, same
-// as TIER_OPTIONS.basePriceZAR in lib/submission-types.ts.
+// USD figures, converted from the original ZAR costs at ~18.5 ZAR/USD (same
+// rate used for TIER_OPTIONS_BY_COMPANY.PCG in lib/submission-types.ts) and
+// rounded to a clean price point -- edit directly to adjust real cost/margin.
 const COURIERS = [
-  { value: 'ups_ground', label: 'UPS Ground, insured', costZAR: 220 },
-  { value: 'ups_2day', label: 'UPS 2nd Day Air, insured', costZAR: 520 },
-  { value: 'fedex_overnight', label: 'FedEx Priority Overnight', costZAR: 850 },
+  { value: 'ups_ground', label: 'UPS Ground, insured', costUSD: 12 },
+  { value: 'ups_2day', label: 'UPS 2nd Day Air, insured', costUSD: 28 },
+  { value: 'fedex_overnight', label: 'FedEx Priority Overnight', costUSD: 46 },
 ]
 
 // Flat per-card fee for the optional pre-grading inspection add-on (see
 // components/submit/step-addons.tsx). Edit directly to adjust.
-const INSPECTION_FEE_ZAR = 90
+const INSPECTION_FEE_USD = 5
 
 interface Props {
   gradingCompany: GradingCompany
@@ -55,17 +56,16 @@ export function StepReviewPay({
   const [creatingOrder, setCreatingOrder] = useState(false)
   const [checkoutError, setCheckoutError] = useState<string | null>(null)
 
-  const tierMeta = TIER_OPTIONS.find((t) => t.value === tier)!
+  const tierMeta = TIER_OPTIONS_BY_COMPANY[gradingCompany].find((t) => t.value === tier)!
   const courierMeta = COURIERS.find((c) => c.value === courier)
   const selectedAddress = addresses.find((a) => a.id === addressId) ?? null
 
-  // Everything here is Rand now, and api/submissions/checkout charges the
-  // Stripe PaymentIntent in currency: 'zar' to match -- see that route for
-  // the ZAR-specific minimum-amount note.
-  const perCardFee = tierMeta.basePriceZAR
+  // Everything here is USD, and api/submissions/checkout charges the Stripe
+  // PaymentIntent in currency: 'usd' to match.
+  const perCardFee = tierMeta.basePriceUSD
   const gradingSubtotal = perCardFee * cards.length
-  const inspectionSubtotal = cards.filter((c) => c.preCheckOptIn).length * INSPECTION_FEE_ZAR
-  const shippingCost = courierMeta?.costZAR ?? 0
+  const inspectionSubtotal = cards.filter((c) => c.preCheckOptIn).length * INSPECTION_FEE_USD
+  const shippingCost = courierMeta?.costUSD ?? 0
   const serviceFee = gradingSubtotal + inspectionSubtotal
   const total = serviceFee + shippingCost
 
@@ -219,7 +219,7 @@ export function StepReviewPay({
                 {c.label}
               </span>
               <span className="text-[13px]" style={{ fontVariantNumeric: 'tabular-nums', color: 'var(--ink-muted)' }}>
-                {formatZAR(c.costZAR)}
+                {formatUSD(c.costUSD)}
               </span>
             </button>
           ))}
@@ -235,24 +235,24 @@ export function StepReviewPay({
             <span>
               {gradingCompany} grading × {cards.length} ({tierMeta.label})
             </span>
-            <span style={{ fontVariantNumeric: 'tabular-nums' }}>{formatZAR(gradingSubtotal)}</span>
+            <span style={{ fontVariantNumeric: 'tabular-nums' }}>{formatUSD(gradingSubtotal)}</span>
           </div>
           {inspectionSubtotal > 0 && (
             <div className="flex justify-between gap-4">
               <span>Pre-grading inspection</span>
-              <span style={{ fontVariantNumeric: 'tabular-nums' }}>{formatZAR(inspectionSubtotal)}</span>
+              <span style={{ fontVariantNumeric: 'tabular-nums' }}>{formatUSD(inspectionSubtotal)}</span>
             </div>
           )}
           <div className="flex justify-between gap-4">
             <span>Shipping{courierMeta ? ` (${courierMeta.label})` : ''}</span>
-            <span style={{ fontVariantNumeric: 'tabular-nums' }}>{formatZAR(shippingCost)}</span>
+            <span style={{ fontVariantNumeric: 'tabular-nums' }}>{formatUSD(shippingCost)}</span>
           </div>
           <div
             className="flex justify-between gap-4 pt-2 mt-2 border-t text-[15px]"
             style={{ borderColor: 'var(--line)' }}
           >
             <span>Total due today</span>
-            <span style={{ fontVariantNumeric: 'tabular-nums' }}>{formatZAR(total)}</span>
+            <span style={{ fontVariantNumeric: 'tabular-nums' }}>{formatUSD(total)}</span>
           </div>
         </div>
       </div>
@@ -274,7 +274,7 @@ export function StepReviewPay({
             className="rounded-[3px]"
             style={{ background: 'var(--vault)', color: 'var(--vault-ink)' }}
           >
-            {creatingOrder ? 'Preparing order…' : `Pay ${formatZAR(total)}`}
+            {creatingOrder ? 'Preparing order…' : `Pay ${formatUSD(total)}`}
           </Button>
         </div>
       )}
