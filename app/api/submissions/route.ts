@@ -17,7 +17,7 @@ interface SubmissionItemInput {
   preCheckOptIn: boolean
 }
 
-const VALID_SPORTS: Sport[] = ['soccer', 'rugby', 'f1', 'nhl', 'nba']
+const VALID_SPORTS: Sport[] = ['soccer', 'rugby', 'f1', 'nhl', 'nba', 'mlb', 'nfl']
 
 function isValidItem(item: SubmissionItemInput): boolean {
   if (item.cardType !== 'pokemon' && item.cardType !== 'sports_card') return false

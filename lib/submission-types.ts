@@ -20,7 +20,7 @@ export type SubmissionTier =
 
 /** Which search flow a card entry uses -- see components/submit/card-shipment-row.tsx. */
 export type CardType = 'pokemon' | 'sports_card'
-export type Sport = 'soccer' | 'rugby' | 'f1' | 'nhl' | 'nba'
+export type Sport = 'soccer' | 'rugby' | 'f1' | 'nhl' | 'nba' | 'mlb' | 'nfl'
 
 export const SPORT_OPTIONS: { value: Sport; label: string }[] = [
   { value: 'soccer', label: 'Soccer' },
@@ -28,6 +28,8 @@ export const SPORT_OPTIONS: { value: Sport; label: string }[] = [
   { value: 'f1', label: 'F1' },
   { value: 'nhl', label: 'NHL' },
   { value: 'nba', label: 'NBA' },
+  { value: 'mlb', label: 'Baseball' },
+  { value: 'nfl', label: 'American Football' },
 ]
 
 export interface CardEntry {

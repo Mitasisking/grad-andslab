@@ -46,7 +46,7 @@ import type { Sport } from '@/lib/submission-types'
  *    clearly to the user rather than presented as equivalent to the
  *    Catalog version's tagging.
  *
- * If THECARDAPI_KEY isn't configured, or every one of the five queries
+ * If THECARDAPI_KEY isn't configured, or every one of the per-sport queries
  * fails, this returns a 501/502 rather than fabricated results -- these
  * results get selected straight into real grading submissions, so
  * silently faking "matches" here would be actively misleading rather than
@@ -64,6 +64,8 @@ const SPORT_KEYWORD: Record<Sport, string> = {
   f1: 'f1',
   nhl: 'nhl',
   nba: 'nba',
+  mlb: 'baseball',
+  nfl: 'football',
 }
 
 const ALL_SPORTS = Object.keys(SPORT_KEYWORD) as Sport[]
