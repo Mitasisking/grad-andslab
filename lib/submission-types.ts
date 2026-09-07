@@ -19,11 +19,31 @@ export type SubmissionTier =
   | 'ace_standard'
 export type PrecheckAction = 'proceed_regardless' | 'return_if_under_target'
 
+/** Which search flow a card entry uses -- see components/submit/card-shipment-row.tsx. */
+export type CardType = 'pokemon' | 'sports_card'
+export type Sport = 'soccer' | 'rugby' | 'f1' | 'nhl' | 'nba'
+
+export const SPORT_OPTIONS: { value: Sport; label: string }[] = [
+  { value: 'soccer', label: 'Soccer' },
+  { value: 'rugby', label: 'Rugby' },
+  { value: 'f1', label: 'F1' },
+  { value: 'nhl', label: 'NHL' },
+  { value: 'nba', label: 'NBA' },
+]
+
 export interface CardEntry {
   id: string
+  cardType: CardType
+  /** Only set (and only meaningful) when cardType is 'sports_card'. */
+  sport: Sport | null
   cardName: string
   setName: string
   cardNumber: string
+  /** Sports cards are commonly cataloged by year; Pokemon cards use setName instead. */
+  year: string | null
+  /** The catalog API's product id + which provider it came from, once a search result is picked. */
+  externalCardId: string | null
+  externalSource: string | null
   declaredValue: number
   marketValueEstimate: number | null
   marketValueSource: string | null
@@ -130,9 +150,14 @@ export interface SubmissionRow {
 export interface SubmissionItemRow {
   id: string
   submission_id: string
+  card_type: CardType
+  sport: Sport | null
   card_name: string
   set_name: string
   card_number: string | null
+  year: string | null
+  external_card_id: string | null
+  external_source: string | null
   declared_value: number
   market_value_estimate: number | null
   market_value_source: string | null

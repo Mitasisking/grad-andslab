@@ -4,7 +4,9 @@ import { useEffect, useState } from 'react'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { fetchMarketValue } from '@/lib/pricing-client'
-import type { CardEntry } from '@/lib/submission-types'
+import { SportsCardSearch, type SportsCardResult } from '@/components/submit/sports-card-search'
+import { SPORT_OPTIONS } from '@/lib/submission-types'
+import type { CardEntry, CardType } from '@/lib/submission-types'
 
 interface TCGdexSearchResult {
   id: string
@@ -188,6 +190,48 @@ export function CardShipmentRow({ card, index, canRemove, onUpdateCard, onRemove
     })
   }
 
+  function selectCardType(cardType: CardType) {
+    if (cardType === card.cardType) return
+    // Fields are provider-specific (TCGdex ids vs. a catalog product id), so
+    // switching flows starts the row's card fields clean rather than mixing
+    // half-Pokemon, half-sports-card state.
+    setSelectedCardImage(null)
+    onUpdateCard(card.id, {
+      cardType,
+      sport: null,
+      cardName: '',
+      setName: '',
+      cardNumber: '',
+      year: null,
+      externalCardId: null,
+      externalSource: null,
+      marketValueEstimate: null,
+      marketValueSource: null,
+    })
+  }
+
+  function selectSportsCard(result: SportsCardResult) {
+    onUpdateCard(card.id, {
+      cardName: result.playerName,
+      setName: result.brandSet ?? '',
+      cardNumber: result.cardNumber ?? '',
+      year: result.year,
+      externalCardId: result.id,
+      externalSource: 'pricecharting',
+    })
+    if (result.playerName && result.brandSet) {
+      onUpdateCard(card.id, { isFetchingValue: true })
+      fetchMarketValue(result.playerName, result.brandSet).then((estimate) => {
+        onUpdateCard(card.id, {
+          isFetchingValue: false,
+          marketValueEstimate: estimate?.estimate ?? null,
+          marketValueSource: estimate?.source ?? null,
+          declaredValue: card.declaredValue || estimate?.estimate || 0,
+        })
+      })
+    }
+  }
+
   const showDropdown = focusedField !== null && (isSearching || searchResults.length > 0)
 
   return (
@@ -208,7 +252,48 @@ export function CardShipmentRow({ card, index, canRemove, onUpdateCard, onRemove
         )}
       </div>
 
-      {selectedCardImage && (
+      <div className="flex gap-2 mb-4">
+        {(['pokemon', 'sports_card'] as CardType[]).map((type) => (
+          <button
+            key={type}
+            type="button"
+            onClick={() => selectCardType(type)}
+            className="px-3 py-1.5 text-[12.5px] rounded-[3px] border"
+            style={{
+              borderColor: card.cardType === type ? 'var(--seal)' : 'var(--line)',
+              background: card.cardType === type ? 'var(--seal)' : 'transparent',
+              color: card.cardType === type ? 'var(--seal-ink)' : 'var(--ink-muted)',
+            }}
+          >
+            {type === 'pokemon' ? 'Pokémon' : 'Sports Cards'}
+          </button>
+        ))}
+      </div>
+
+      {card.cardType === 'sports_card' && (
+        <div className="mb-4 max-w-[200px]">
+          <Label className="text-[12.5px]" style={{ color: 'var(--ink-muted)' }}>
+            Sport
+          </Label>
+          <select
+            value={card.sport ?? ''}
+            onChange={(e) => onUpdateCard(card.id, { sport: (e.target.value || null) as CardEntry['sport'] })}
+            className="w-full h-9 px-3 text-[13px] border rounded-[3px] bg-transparent"
+            style={{ borderColor: 'var(--line)', color: 'var(--ink)' }}
+          >
+            <option value="" disabled>
+              Choose a sport…
+            </option>
+            {SPORT_OPTIONS.map((s) => (
+              <option key={s.value} value={s.value}>
+                {s.label}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+
+      {card.cardType === 'pokemon' && selectedCardImage && (
         <div className="flex justify-center mb-3">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
@@ -220,64 +305,129 @@ export function CardShipmentRow({ card, index, canRemove, onUpdateCard, onRemove
         </div>
       )}
 
-      <div className="grid sm:grid-cols-2 gap-3">
-        <div className="relative">
-          <Label className="text-[12.5px]" style={{ color: 'var(--ink-muted)' }}>
-            Card name
-          </Label>
-          <Input
-            value={card.cardName}
-            onChange={(e) => onUpdateCard(card.id, { cardName: e.target.value })}
-            onFocus={() => setFocusedField('name')}
-            onBlur={() => {
-              setTimeout(() => setFocusedField((f) => (f === 'name' ? null : f)), 150)
-              lookupValue()
-            }}
-            placeholder="Charizard"
-          />
-          {focusedField === 'name' && showDropdown && (
-            <ResultsDropdown results={searchResults} isSearching={isSearching} onSelect={selectCard} />
-          )}
+      {card.cardType === 'pokemon' ? (
+        <div className="grid sm:grid-cols-2 gap-3">
+          <div className="relative">
+            <Label className="text-[12.5px]" style={{ color: 'var(--ink-muted)' }}>
+              Card name
+            </Label>
+            <Input
+              value={card.cardName}
+              onChange={(e) => onUpdateCard(card.id, { cardName: e.target.value })}
+              onFocus={() => setFocusedField('name')}
+              onBlur={() => {
+                setTimeout(() => setFocusedField((f) => (f === 'name' ? null : f)), 150)
+                lookupValue()
+              }}
+              placeholder="Charizard"
+            />
+            {focusedField === 'name' && showDropdown && (
+              <ResultsDropdown results={searchResults} isSearching={isSearching} onSelect={selectCard} />
+            )}
+          </div>
+          <div>
+            <Label className="text-[12.5px]" style={{ color: 'var(--ink-muted)' }}>
+              Set
+            </Label>
+            <Input
+              value={card.setName}
+              onChange={(e) => onUpdateCard(card.id, { setName: e.target.value })}
+              onBlur={lookupValue}
+              placeholder="Base Set Unlimited"
+            />
+          </div>
+          <div className="relative">
+            <Label className="text-[12.5px]" style={{ color: 'var(--ink-muted)' }}>
+              Card number
+            </Label>
+            <Input
+              value={card.cardNumber}
+              onChange={(e) => onUpdateCard(card.id, { cardNumber: e.target.value })}
+              onFocus={() => setFocusedField('number')}
+              onBlur={() => setTimeout(() => setFocusedField((f) => (f === 'number' ? null : f)), 150)}
+              placeholder="4/102"
+            />
+            {focusedField === 'number' && showDropdown && (
+              <ResultsDropdown results={searchResults} isSearching={isSearching} onSelect={selectCard} />
+            )}
+          </div>
+          <div>
+            <Label className="text-[12.5px]" style={{ color: 'var(--ink-muted)' }}>
+              Declared value (USD)
+            </Label>
+            <Input
+              type="number"
+              min={0}
+              step="0.01"
+              value={card.declaredValue}
+              onChange={(e) => onUpdateCard(card.id, { declaredValue: Number(e.target.value) })}
+            />
+          </div>
         </div>
-        <div>
-          <Label className="text-[12.5px]" style={{ color: 'var(--ink-muted)' }}>
-            Set
-          </Label>
-          <Input
-            value={card.setName}
-            onChange={(e) => onUpdateCard(card.id, { setName: e.target.value })}
-            onBlur={lookupValue}
-            placeholder="Base Set Unlimited"
-          />
+      ) : (
+        <div className="space-y-3">
+          <div>
+            <Label className="text-[12.5px]" style={{ color: 'var(--ink-muted)' }}>
+              Player Name
+            </Label>
+            {card.sport ? (
+              <SportsCardSearch
+                sport={card.sport}
+                value={card.cardName}
+                onChange={(value) => onUpdateCard(card.id, { cardName: value })}
+                onSelect={selectSportsCard}
+              />
+            ) : (
+              <Input value="" disabled readOnly placeholder="Choose a sport first" />
+            )}
+          </div>
+          <div className="grid sm:grid-cols-3 gap-3">
+            <div>
+              <Label className="text-[12.5px]" style={{ color: 'var(--ink-muted)' }}>
+                Year
+              </Label>
+              <Input
+                value={card.year ?? ''}
+                onChange={(e) => onUpdateCard(card.id, { year: e.target.value || null })}
+                placeholder="2023"
+              />
+            </div>
+            <div>
+              <Label className="text-[12.5px]" style={{ color: 'var(--ink-muted)' }}>
+                Brand/Set
+              </Label>
+              <Input
+                value={card.setName}
+                onChange={(e) => onUpdateCard(card.id, { setName: e.target.value })}
+                onBlur={lookupValue}
+                placeholder="Topps Chrome"
+              />
+            </div>
+            <div>
+              <Label className="text-[12.5px]" style={{ color: 'var(--ink-muted)' }}>
+                Card Number
+              </Label>
+              <Input
+                value={card.cardNumber}
+                onChange={(e) => onUpdateCard(card.id, { cardNumber: e.target.value })}
+                placeholder="123"
+              />
+            </div>
+          </div>
+          <div className="max-w-[200px]">
+            <Label className="text-[12.5px]" style={{ color: 'var(--ink-muted)' }}>
+              Declared value (USD)
+            </Label>
+            <Input
+              type="number"
+              min={0}
+              step="0.01"
+              value={card.declaredValue}
+              onChange={(e) => onUpdateCard(card.id, { declaredValue: Number(e.target.value) })}
+            />
+          </div>
         </div>
-        <div className="relative">
-          <Label className="text-[12.5px]" style={{ color: 'var(--ink-muted)' }}>
-            Card number
-          </Label>
-          <Input
-            value={card.cardNumber}
-            onChange={(e) => onUpdateCard(card.id, { cardNumber: e.target.value })}
-            onFocus={() => setFocusedField('number')}
-            onBlur={() => setTimeout(() => setFocusedField((f) => (f === 'number' ? null : f)), 150)}
-            placeholder="4/102"
-          />
-          {focusedField === 'number' && showDropdown && (
-            <ResultsDropdown results={searchResults} isSearching={isSearching} onSelect={selectCard} />
-          )}
-        </div>
-        <div>
-          <Label className="text-[12.5px]" style={{ color: 'var(--ink-muted)' }}>
-            Declared value (USD)
-          </Label>
-          <Input
-            type="number"
-            min={0}
-            step="0.01"
-            value={card.declaredValue}
-            onChange={(e) => onUpdateCard(card.id, { declaredValue: Number(e.target.value) })}
-          />
-        </div>
-      </div>
+      )}
 
       <p className="text-[12.5px] mt-3 min-h-[1.2em]" style={{ color: 'var(--ink-muted)' }}>
         {card.isFetchingValue && 'Checking market value…'}

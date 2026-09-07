@@ -14,9 +14,14 @@ const STEP_COUNT = 3
 function createEmptyCard(): CardEntry {
   return {
     id: crypto.randomUUID(),
+    cardType: 'pokemon',
+    sport: null,
     cardName: '',
     setName: '',
     cardNumber: '',
+    year: null,
+    externalCardId: null,
+    externalSource: null,
     declaredValue: 0,
     marketValueEstimate: null,
     marketValueSource: null,
