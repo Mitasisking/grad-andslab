@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { buildShopUrl, type ShopUrlParams } from '@/lib/shop/shop-url'
 
 const CATEGORIES: { value: string | null; label: string }[] = [
   { value: null, label: 'All' },
@@ -9,8 +10,14 @@ const CATEGORIES: { value: string | null; label: string }[] = [
   { value: 'cards', label: 'Raw Cards' },
 ]
 
+interface Props {
+  active: string | null
+  /** The full current param set, so switching tabs doesn't drop the product-type toggle or sports-card filters. */
+  current: ShopUrlParams
+}
+
 /** URL-driven filter (?category=), not client state — matches how app/shop/page.tsx fetches server-side. */
-export function CategoryTabs({ active }: { active: string | null }) {
+export function CategoryTabs({ active, current }: Props) {
   return (
     <div className="flex gap-2 flex-wrap">
       {CATEGORIES.map((c) => {
@@ -18,7 +25,7 @@ export function CategoryTabs({ active }: { active: string | null }) {
         return (
           <Link
             key={c.label}
-            href={c.value ? `/shop?category=${c.value}` : '/shop'}
+            href={buildShopUrl(current, { category: c.value })}
             className="px-3.5 py-1.5 text-[13.5px] rounded-[3px] border"
             style={{
               borderColor: selected ? 'var(--seal)' : 'var(--line)',

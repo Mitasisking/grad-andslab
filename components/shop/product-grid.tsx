@@ -13,6 +13,11 @@ export interface Product {
   images: string[]
   set_name: string | null
   release_date: string | null
+  card_type?: 'pokemon' | 'sports_card'
+  sport?: string | null
+  brand?: string | null
+  card_variant?: string | null
+  player_name?: string | null
 }
 
 // Low-value singles (commons pulled straight from Collectr's per-card
