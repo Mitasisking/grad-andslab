@@ -159,12 +159,12 @@ export default function AuctionsPage() {
                     <div className="space-y-3 pt-4 border-t border-slate-700/60">
                       <div className="flex gap-2">
                         <div className="relative flex-1">
-                          <span className="absolute left-3 top-2.5 text-xs text-slate-400 font-bold">$</span>
+                          <span className="absolute left-3 top-2.5 text-xs text-slate-400 font-bold">R</span>
                           <input
                             type="number"
                             min={minNextBid}
                             step="1"
-                            placeholder={`Min $${minNextBid}`}
+                            placeholder={`Min R${minNextBid}`}
                             value={bidAmounts[auction.id] || ''}
                             onChange={(e) => setBidAmounts({ ...bidAmounts, [auction.id]: e.target.value })}
                             className="w-full bg-slate-900 border border-slate-700 rounded-xl pl-7 pr-3 py-2 text-sm text-white focus:border-amber-400 focus:outline-none"

@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
 
   const intent = await getStripeClient().paymentIntents.create({
     amount: Math.round(Number(order.total) * 100),
-    currency: 'usd',
+    currency: 'zar',
     capture_method: 'automatic',
     automatic_payment_methods: { enabled: true },
     metadata: {

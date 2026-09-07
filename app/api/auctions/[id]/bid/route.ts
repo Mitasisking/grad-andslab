@@ -4,6 +4,7 @@ import { getSupabaseRouteClient } from '@/lib/supabase-route-client'
 import { getSupabaseServerClient } from '@/lib/supabase-server'
 import { getStripeClient } from '@/lib/stripe-server'
 import { finalizeAuthorizedBid } from '@/lib/auctions/finalize-bid'
+import { formatZAR } from '@/lib/currency'
 
 interface Body {
   amount: number
@@ -44,7 +45,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     : Number(auction.starting_price)
 
   if (body.amount < floor) {
-    return NextResponse.json({ error: `Bid must be at least $${floor.toFixed(2)}` }, { status: 400 })
+    return NextResponse.json({ error: `Bid must be at least ${formatZAR(floor)}` }, { status: 400 })
   }
 
   const { data: profile } = await supabase
@@ -77,7 +78,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     try {
       const intent = await stripe.paymentIntents.create({
         amount: amountCents,
-        currency: 'usd',
+        currency: 'zar',
         customer: customerId,
         payment_method: profile.default_payment_method_id,
         capture_method: 'manual',
@@ -110,7 +111,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   // client to confirm it, saving the payment method for next time.
   const intent = await stripe.paymentIntents.create({
     amount: amountCents,
-    currency: 'usd',
+    currency: 'zar',
     customer: customerId,
     capture_method: 'manual',
     setup_future_usage: 'off_session',
