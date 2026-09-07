@@ -84,19 +84,14 @@ function mapCardVariant(attributes) {
   return 'base'
 }
 
-function mapCategory() {
-  // Would ideally be 'graded' for Status="Graded" rows and 'cards' for
-  // "Raw" (matching how the existing Pokemon Graded/Raw Cards tabs work),
-  // but category='graded' currently fails chk_products_category_lowercase
-  // on this database no matter what else is set -- reproduced with a bare
-  // insert, unrelated to card_type/sport/any column this seed adds.
-  // Confirmed live, but not something fixable from here (no direct SQL
-  // access to inspect the constraint's actual current definition). Every
-  // row goes under 'cards' until that's sorted out; Graded rows can be
-  // moved with `update products set category = 'graded' where title like
-  // '[SEED-TEST]%' and description like '%PSA%' -- ...` (or similar) once
-  // it's fixed.
-  return 'cards'
+function mapCategory(status) {
+  // Matches how the existing Pokemon Graded/Raw Cards tabs already split
+  // this same category column. (An earlier version of this function
+  // returned 'cards' unconditionally, working around a since-fixed bug --
+  // 0028_fix_products_category_constraint.sql -- where the live
+  // chk_products_category_lowercase constraint had drifted into a
+  // hardcoded allow-list missing 'graded' entirely.)
+  return status.trim().toLowerCase() === 'graded' ? 'graded' : 'cards'
 }
 
 // Deterministic placeholder in ZAR -- matches the rest of the shop
@@ -130,7 +125,7 @@ function mapRow(row) {
     product: {
       title: `${TITLE_PREFIX}${row.Year} ${row.Set} ${row.Player} #${row['Card #']}`,
       description: buildDescription(row),
-      category: mapCategory(),
+      category: mapCategory(row.Status),
       price: placeholderPriceZAR(row),
       stock: 1,
       images: [PLACEHOLDER_IMAGE],
