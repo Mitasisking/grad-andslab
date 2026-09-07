@@ -58,6 +58,19 @@ export default async function AdminPage() {
               Look up an incoming submission by QR code and log its intake photo.
             </p>
           </Link>
+
+          <Link
+            href="/admin/shop"
+            className="block border rounded-[3px] p-6 hover:opacity-80 transition"
+            style={{ borderColor: 'var(--line)' }}
+          >
+            <p className="text-[16px]" style={{ color: 'var(--ink)' }}>
+              Shop inventory
+            </p>
+            <p className="text-[13px] mt-1" style={{ color: 'var(--ink-muted)' }}>
+              Add, edit, and remove products listed in the shop.
+            </p>
+          </Link>
         </div>
       </div>
     </div>
