@@ -5,7 +5,6 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { fetchMarketValue } from '@/lib/pricing-client'
 import { SportsCardSearch, type SportsCardResult } from '@/components/submit/sports-card-search'
-import { SPORT_OPTIONS } from '@/lib/submission-types'
 import type { CardEntry, CardType } from '@/lib/submission-types'
 
 interface TCGdexSearchResult {
@@ -212,12 +211,13 @@ export function CardShipmentRow({ card, index, canRemove, onUpdateCard, onRemove
 
   function selectSportsCard(result: SportsCardResult) {
     onUpdateCard(card.id, {
+      sport: result.sport,
       cardName: result.playerName,
       setName: result.brandSet ?? '',
       cardNumber: result.cardNumber ?? '',
       year: result.year,
       externalCardId: result.id,
-      externalSource: 'pricecharting',
+      externalSource: 'thecardapi',
     })
     if (result.playerName && result.brandSet) {
       onUpdateCard(card.id, { isFetchingValue: true })
@@ -269,29 +269,6 @@ export function CardShipmentRow({ card, index, canRemove, onUpdateCard, onRemove
           </button>
         ))}
       </div>
-
-      {card.cardType === 'sports_card' && (
-        <div className="mb-4 max-w-[200px]">
-          <Label className="text-[12.5px]" style={{ color: 'var(--ink-muted)' }}>
-            Sport
-          </Label>
-          <select
-            value={card.sport ?? ''}
-            onChange={(e) => onUpdateCard(card.id, { sport: (e.target.value || null) as CardEntry['sport'] })}
-            className="w-full h-9 px-3 text-[13px] border rounded-[3px] bg-transparent"
-            style={{ borderColor: 'var(--line)', color: 'var(--ink)' }}
-          >
-            <option value="" disabled>
-              Choose a sport…
-            </option>
-            {SPORT_OPTIONS.map((s) => (
-              <option key={s.value} value={s.value}>
-                {s.label}
-              </option>
-            ))}
-          </select>
-        </div>
-      )}
 
       {card.cardType === 'pokemon' && selectedCardImage && (
         <div className="flex justify-center mb-3">
@@ -370,16 +347,11 @@ export function CardShipmentRow({ card, index, canRemove, onUpdateCard, onRemove
             <Label className="text-[12.5px]" style={{ color: 'var(--ink-muted)' }}>
               Player Name
             </Label>
-            {card.sport ? (
-              <SportsCardSearch
-                sport={card.sport}
-                value={card.cardName}
-                onChange={(value) => onUpdateCard(card.id, { cardName: value })}
-                onSelect={selectSportsCard}
-              />
-            ) : (
-              <Input value="" disabled readOnly placeholder="Choose a sport first" />
-            )}
+            <SportsCardSearch
+              value={card.cardName}
+              onChange={(value) => onUpdateCard(card.id, { cardName: value })}
+              onSelect={selectSportsCard}
+            />
           </div>
           <div className="grid sm:grid-cols-3 gap-3">
             <div>

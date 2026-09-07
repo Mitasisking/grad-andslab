@@ -80,7 +80,17 @@ export function SubmissionWizard() {
   const canAdvanceFromStep1 =
     tier !== null &&
     cards.length > 0 &&
-    cards.every((c) => c.cardName.trim() && c.setName.trim() && c.declaredValue >= 0)
+    cards.every(
+      (c) =>
+        c.cardName.trim() &&
+        c.setName.trim() &&
+        c.declaredValue >= 0 &&
+        // Sports cards no longer have a manual sport picker -- sport is only
+        // ever set by picking a search result (card-shipment-row.tsx's
+        // selectSportsCard), so a card stuck on a manually-typed name with
+        // no match picked can't proceed rather than failing later at Pay.
+        (c.cardType !== 'sports_card' || c.sport !== null),
+    )
 
   const canAdvanceFromStep2 = cards.every(
     (c) => c.precheckAction === 'proceed_regardless' || (c.targetGrade !== null && c.targetGrade > 0),

@@ -2,18 +2,28 @@
 
 import { useEffect, useState } from 'react'
 import { Input } from '@/components/ui/input'
+import { SPORT_OPTIONS } from '@/lib/submission-types'
 import type { Sport } from '@/lib/submission-types'
 
 export interface SportsCardResult {
   id: string
+  // Which of our five supported sports this result came from -- the search
+  // has no sport picker of its own, so this is how card-shipment-row.tsx's
+  // selectSportsCard fills in the card's required sport field. See
+  // app/api/sports-cards/search/route.ts for why this is real (the sport we
+  // queried the provider under), not something read back from the provider.
+  sport: Sport
   playerName: string
   year: string | null
   brandSet: string | null
   cardNumber: string | null
 }
 
+const SPORT_LABEL: Record<Sport, string> = Object.fromEntries(
+  SPORT_OPTIONS.map((s) => [s.value, s.label]),
+) as Record<Sport, string>
+
 interface Props {
-  sport: Sport
   // Bound directly to the parent's cardName, same as the Pokemon flow's
   // "Card name" field -- typing always registers, whether or not the
   // provider ever returns a matching result (see selectSportsCard in
@@ -23,7 +33,7 @@ interface Props {
   onSelect: (result: SportsCardResult) => void
 }
 
-export function SportsCardSearch({ sport, value, onChange, onSelect }: Props) {
+export function SportsCardSearch({ value, onChange, onSelect }: Props) {
   const [results, setResults] = useState<SportsCardResult[]>([])
   const [isSearching, setIsSearching] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -40,7 +50,7 @@ export function SportsCardSearch({ sport, value, onChange, onSelect }: Props) {
     setIsSearching(true)
     const t = setTimeout(async () => {
       try {
-        const res = await fetch(`/api/sports-cards/search?sport=${sport}&q=${encodeURIComponent(trimmed)}`)
+        const res = await fetch(`/api/sports-cards/search?q=${encodeURIComponent(trimmed)}`)
         const data = await res.json()
         if (!res.ok) {
           setError(data.error ?? 'Search failed. Please try again.')
@@ -57,7 +67,7 @@ export function SportsCardSearch({ sport, value, onChange, onSelect }: Props) {
       }
     }, 450)
     return () => clearTimeout(t)
-  }, [value, sport])
+  }, [value])
 
   const showDropdown = focused && (isSearching || results.length > 0 || error !== null)
 
@@ -101,7 +111,7 @@ export function SportsCardSearch({ sport, value, onChange, onSelect }: Props) {
               >
                 <span className="truncate">{result.playerName}</span>
                 <span className="shrink-0" style={{ color: 'var(--ink-muted)' }}>
-                  {[result.year, result.brandSet, result.cardNumber && `#${result.cardNumber}`]
+                  {[SPORT_LABEL[result.sport], result.year, result.brandSet, result.cardNumber && `#${result.cardNumber}`]
                     .filter(Boolean)
                     .join(' · ')}
                 </span>
