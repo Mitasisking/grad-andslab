@@ -17,7 +17,6 @@ export type SubmissionTier =
   | 'ace_value'
   | 'ace_basic'
   | 'ace_standard'
-export type PrecheckAction = 'proceed_regardless' | 'return_if_under_target'
 
 /** Which search flow a card entry uses -- see components/submit/card-shipment-row.tsx. */
 export type CardType = 'pokemon' | 'sports_card'
@@ -49,8 +48,6 @@ export interface CardEntry {
   marketValueSource: string | null
   isFetchingValue: boolean
   preCheckOptIn: boolean
-  precheckAction: PrecheckAction
-  targetGrade: number | null
 }
 
 export interface ShippingAddress {
@@ -162,8 +159,6 @@ export interface SubmissionItemRow {
   market_value_estimate: number | null
   market_value_source: string | null
   pre_check_opt_in: boolean
-  precheck_action: PrecheckAction | null
-  target_grade: number | null
   grade_result: number | null
   grade_cert_number: string | null
   hi_res_photo_url: string | null

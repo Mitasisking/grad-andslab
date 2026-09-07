@@ -27,8 +27,6 @@ function createEmptyCard(): CardEntry {
     marketValueSource: null,
     isFetchingValue: false,
     preCheckOptIn: false,
-    precheckAction: 'proceed_regardless',
-    targetGrade: null,
   }
 }
 
@@ -92,10 +90,6 @@ export function SubmissionWizard() {
         (c.cardType !== 'sports_card' || c.sport !== null),
     )
 
-  const canAdvanceFromStep2 = cards.every(
-    (c) => c.precheckAction === 'proceed_regardless' || (c.targetGrade !== null && c.targetGrade > 0),
-  )
-
   const goNext = () => setStep((s) => Math.min(s + 1, STEP_COUNT - 1))
   const goBack = () => setStep((s) => Math.max(s - 1, 0))
 
@@ -128,13 +122,7 @@ export function SubmissionWizard() {
             )}
 
             {step === 1 && (
-              <StepAddOns
-                cards={cards}
-                onUpdateCard={updateCard}
-                onNext={goNext}
-                onBack={goBack}
-                canAdvance={canAdvanceFromStep2}
-              />
+              <StepAddOns cards={cards} onUpdateCard={updateCard} onNext={goNext} onBack={goBack} />
             )}
 
             {step === 2 && tier && (

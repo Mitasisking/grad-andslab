@@ -100,8 +100,6 @@ export function StepReviewPay({
           marketValueEstimate: c.marketValueEstimate,
           marketValueSource: c.marketValueSource,
           preCheckOptIn: c.preCheckOptIn,
-          precheckAction: c.precheckAction,
-          targetGrade: c.targetGrade,
         })),
       }),
     })

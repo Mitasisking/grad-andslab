@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseRouteClient } from '@/lib/supabase-route-client'
-import type { CardType, GradingCompany, PrecheckAction, Sport, SubmissionTier } from '@/lib/submission-types'
+import type { CardType, GradingCompany, Sport, SubmissionTier } from '@/lib/submission-types'
 
 interface SubmissionItemInput {
   cardType: CardType
@@ -15,8 +15,6 @@ interface SubmissionItemInput {
   marketValueEstimate: number | null
   marketValueSource: string | null
   preCheckOptIn: boolean
-  precheckAction: PrecheckAction
-  targetGrade: number | null
 }
 
 const VALID_SPORTS: Sport[] = ['soccer', 'rugby', 'f1', 'nhl', 'nba']
@@ -118,8 +116,6 @@ export async function POST(request: NextRequest) {
       market_value_estimate: item.marketValueEstimate,
       market_value_source: item.marketValueSource,
       pre_check_opt_in: item.preCheckOptIn,
-      precheck_action: item.precheckAction,
-      target_grade: item.targetGrade,
     })),
   )
 
