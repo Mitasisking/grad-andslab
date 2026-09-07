@@ -1,5 +1,6 @@
 'use client'
 
+import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
@@ -87,8 +88,8 @@ export default function Navbar() {
         
         {/* Left Side: Logo & Main Links */}
         <div className="flex items-center gap-8">
-          <Link href="/" className="text-2xl font-black text-amber-500 tracking-tighter hover:text-amber-400 transition">
-            CUPPA CARDS
+          <Link href="/" className="shrink-0 opacity-100 hover:opacity-80 transition">
+            <Image src="/logo.png" alt="Cuppa Cards" width={48} height={48} className="h-11 w-11 sm:h-12 sm:w-12" priority />
           </Link>
           
           <div className="hidden md:flex gap-6 text-sm font-medium text-slate-300">
