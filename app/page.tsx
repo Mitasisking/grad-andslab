@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { SOCIAL_LINKS } from '../lib/social-links'
 import { FacebookIcon, InstagramIcon, TiktokIcon, WhatsappIcon } from '../components/SocialIcons'
+import { WhatnotBanner } from '../components/WhatnotBanner'
 
 export default function HomePage() {
   return (
@@ -37,6 +38,8 @@ export default function HomePage() {
         {/* Background decorative glow */}
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-amber-500/5 rounded-full blur-3xl -z-10 pointer-events-none"></div>
       </section>
+
+      <WhatnotBanner />
 
       {/* How It Works Section */}
       <section className="py-24 bg-slate-950 border-y border-slate-800">
@@ -109,7 +112,7 @@ export default function HomePage() {
           <div className="flex gap-6">
             <Link href="/vendor" className="hover:text-amber-400 transition">Vendor Inquiries</Link>
             <Link href="/terms" className="hover:text-amber-400 transition">Terms of Service</Link>
-            <Link href="#" className="hover:text-amber-400 transition">Privacy Policy</Link>
+            <Link href="/privacy" className="hover:text-amber-400 transition">Privacy Policy</Link>
             <Link href="/contact" className="hover:text-amber-400 transition">Contact Us</Link>
           </div>
           <div className="flex items-center gap-4">
