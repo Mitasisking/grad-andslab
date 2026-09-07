@@ -7,26 +7,37 @@ import type { Sport } from '@/lib/submission-types'
  * mirroring the existing app/api/pricing/route.ts pattern -- the provider
  * key stays server-side, never sent to the browser.
  *
- * Wired up against PriceCharting's product search API:
- *   GET https://www.pricecharting.com/api/products?t={PRICECHARTING_API_KEY}&q={query}
- * using process.env.PRICECHARTING_API_KEY.
+ * Wired up against The Card API's Catalog search (thecardapi.com/docs),
+ * using process.env.THECARDAPI_KEY:
+ *   GET https://www.thecardapi.com/api/v1/catalog?q={query}&sport={sport}
+ *   header: x-api-key: {THECARDAPI_KEY}
+ *   response: { data: [{ ucid, subject, set_name, card_number, year, ... }], pagination: {...} }
  *
- * PriceCharting's trading-card catalog doesn't expose separate year/card-number
- * fields the way TCGdex does for Pokemon -- each result only has a free-text
- * `product-name` (typically "YYYY Brand Player #123") and a `console-name`
- * (the brand/set, e.g. "2023 Topps Chrome"). parseProductName() below pulls
- * year and card number out of that title with best-effort regexes; re-check
- * this against real response payloads once a live API key is configured,
- * since this has not been tested against the actual provider.
+ * SPORT_TO_API_VALUE below maps our five sport codes to the API's sport
+ * filter values. 'Soccer'/'Basketball'/'Hockey' are taken directly from
+ * their docs' own examples; 'Racing' (for f1) and 'Rugby' (for rugby) are
+ * this integration's best-effort guess, not confirmed against those exact
+ * strings in the docs -- if either sport starts returning zero results,
+ * check the real accepted values in thecardapi.com's dashboard/docs rather
+ * than assuming the catalog has no such cards.
  *
- * No key is configured in this environment, so until PRICECHARTING_API_KEY
- * is set, every request below returns a 501 rather than fabricated results --
- * these results get selected straight into real grading submissions, so
- * silently faking "matches" here would be actively misleading rather than a
- * harmless placeholder.
+ * If THECARDAPI_KEY isn't configured, every request below returns a 501
+ * rather than fabricated results -- these results get selected straight
+ * into real grading submissions, so silently faking "matches" here would
+ * be actively misleading rather than a harmless placeholder. The frontend
+ * (components/submit/sports-card-search.tsx) already treats both this and
+ * a zero-result search as non-blocking -- its input is bound directly to
+ * the card's real name field, so manual entry always works regardless of
+ * whether the provider is configured, times out, or finds nothing.
  */
 
-const VALID_SPORTS: Sport[] = ['soccer', 'rugby', 'f1', 'nhl', 'nba']
+const SPORT_TO_API_VALUE: Record<Sport, string> = {
+  soccer: 'Soccer',
+  rugby: 'Rugby',
+  f1: 'Racing',
+  nhl: 'Hockey',
+  nba: 'Basketball',
+}
 
 interface SportsCardResult {
   id: string
@@ -36,25 +47,16 @@ interface SportsCardResult {
   cardNumber: string | null
 }
 
-interface PriceChartingProduct {
-  id: string | number
-  'product-name'?: string
-  'console-name'?: string
+interface CardApiCard {
+  ucid: string
+  subject?: string
+  set_name?: string
+  card_number?: string
+  year?: number | string
 }
 
-function parseProductName(name: string): { year: string | null; cardNumber: string | null; playerName: string } {
-  const yearMatch = name.match(/\b(19|20)\d{2}\b/)
-  const numberMatch = name.match(/#\s?([A-Za-z0-9-]+)/)
-
-  let playerName = name
-  if (yearMatch) playerName = playerName.replace(yearMatch[0], '')
-  if (numberMatch) playerName = playerName.replace(numberMatch[0], '')
-
-  return {
-    year: yearMatch?.[0] ?? null,
-    cardNumber: numberMatch?.[1] ?? null,
-    playerName: playerName.replace(/\s+/g, ' ').trim(),
-  }
+interface CardApiResponse {
+  data?: CardApiCard[]
 }
 
 export async function GET(request: NextRequest) {
@@ -62,47 +64,51 @@ export async function GET(request: NextRequest) {
   const query = searchParams.get('q')?.trim()
   const sport = searchParams.get('sport') as Sport | null
 
-  if (!query) {
-    return NextResponse.json({ error: 'A search query is required.' }, { status: 400 })
+  if (!query || query.length < 2) {
+    return NextResponse.json({ error: 'A search query of at least 2 characters is required.' }, { status: 400 })
   }
-  if (!sport || !VALID_SPORTS.includes(sport)) {
+  if (!sport || !(sport in SPORT_TO_API_VALUE)) {
     return NextResponse.json({ error: 'A valid sport is required.' }, { status: 400 })
   }
 
-  const apiKey = process.env.PRICECHARTING_API_KEY
+  const apiKey = process.env.THECARDAPI_KEY
   if (!apiKey) {
     return NextResponse.json(
-      { error: 'Sports card search is not configured yet. Set PRICECHARTING_API_KEY to enable it.' },
+      { error: 'Sports card search is not configured yet. Set THECARDAPI_KEY to enable it.' },
       { status: 501 },
     )
   }
 
-  const providerUrl = `https://www.pricecharting.com/api/products?t=${encodeURIComponent(apiKey)}&q=${encodeURIComponent(`${sport} ${query}`)}`
+  const providerUrl = new URL('https://www.thecardapi.com/api/v1/catalog')
+  providerUrl.searchParams.set('q', query)
+  providerUrl.searchParams.set('sport', SPORT_TO_API_VALUE[sport])
 
   let response: Response
   try {
-    response = await fetch(providerUrl)
+    response = await fetch(providerUrl, { headers: { 'x-api-key': apiKey } })
   } catch {
     return NextResponse.json({ error: 'Could not reach the sports card provider.' }, { status: 502 })
   }
 
   if (!response.ok) {
+    // Logged server-side only -- the provider's error text can be genuinely
+    // useful for diagnosing plan/key issues (e.g. a 403 "Catalog access is
+    // not enabled for your key" from a free-tier key) but isn't something
+    // to surface verbatim to whoever's filling out the submission form.
+    console.error('The Card API error', response.status, await response.text().catch(() => '<no body>'))
     return NextResponse.json({ error: 'The sports card provider returned an error.' }, { status: 502 })
   }
 
-  const data = await response.json()
-  const rawProducts: PriceChartingProduct[] = Array.isArray(data.products) ? data.products : []
+  const body = (await response.json()) as CardApiResponse
+  const cards = Array.isArray(body.data) ? body.data : []
 
-  const results: SportsCardResult[] = rawProducts.slice(0, 25).map((p) => {
-    const { year, cardNumber, playerName } = parseProductName(p['product-name'] ?? '')
-    return {
-      id: String(p.id),
-      playerName,
-      year,
-      brandSet: p['console-name'] ?? null,
-      cardNumber,
-    }
-  })
+  const results: SportsCardResult[] = cards.slice(0, 25).map((card) => ({
+    id: card.ucid,
+    playerName: card.subject ?? '',
+    year: card.year != null ? String(card.year) : null,
+    brandSet: card.set_name ?? null,
+    cardNumber: card.card_number ?? null,
+  }))
 
   return NextResponse.json({ results })
 }
