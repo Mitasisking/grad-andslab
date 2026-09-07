@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import { WHATNOT_LINKS } from '../lib/social-links'
 
 // No verified official Whatnot logo mark is available here, so this is a
@@ -78,6 +79,14 @@ export function WhatnotBanner() {
           <StreamCard label="USA Stream" href={WHATNOT_LINKS.usa} />
           <StreamCard label="UK Stream" href={WHATNOT_LINKS.uk} />
         </div>
+
+        <p className="text-slate-500 text-[12.5px] mt-6">
+          Live auctions and giveaways are subject to our{' '}
+          <Link href="/terms" className="underline underline-offset-2 hover:text-slate-300 transition">
+            Terms of Service
+          </Link>
+          .
+        </p>
       </div>
     </section>
   )
