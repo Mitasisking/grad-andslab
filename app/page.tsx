@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { SOCIAL_LINKS } from '../lib/social-links'
-import { FacebookIcon, InstagramIcon, TiktokIcon } from '../components/SocialIcons'
+import { FacebookIcon, InstagramIcon, TiktokIcon, WhatsappIcon } from '../components/SocialIcons'
 
 export default function HomePage() {
   return (
@@ -44,7 +44,7 @@ export default function HomePage() {
           <div className="text-center mb-16">
             <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">The Easiest Way to Grade</h2>
             <p className="text-slate-400 max-w-xl mx-auto text-lg">
-              Skip the international shipping headaches and customs paperwork. We manage the entire pipeline from Cape Town to PCG and back.
+              Skip the international shipping headaches and customs paperwork. We manage the entire pipeline from South Africa to the world and back.
             </p>
           </div>
 
@@ -75,6 +75,29 @@ export default function HomePage() {
                 Track your order's progress live on your dashboard. Once graded, we handle all import customs and deliver the pristine slabs right back to your address.
               </p>
             </div>
+          </div>
+        </div>
+      </section>
+
+      {/* WhatsApp Community CTA */}
+      <section className="py-20 md:py-24">
+        <div className="max-w-4xl mx-auto px-6">
+          <div className="relative overflow-hidden rounded-3xl border border-[#25D366]/20 bg-gradient-to-br from-slate-800 to-slate-900 px-8 py-14 md:py-16 text-center">
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-[#25D366]/10 rounded-full blur-3xl -z-10 pointer-events-none" />
+            <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">Join the Cuppa Cards Community</h2>
+            <p className="text-slate-300 text-lg leading-relaxed mb-8 max-w-xl mx-auto">
+              Join our exclusive WhatsApp group to be the first to know about new product pre-orders, flash sales,
+              and upcoming grading submission deadlines!
+            </p>
+            <a
+              href={SOCIAL_LINKS.whatsapp}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2.5 bg-[#25D366] hover:bg-[#20bd5c] text-slate-950 font-bold text-lg px-8 py-4 rounded-xl transition shadow-[0_0_20px_rgba(37,211,102,0.25)] hover:shadow-[0_0_25px_rgba(37,211,102,0.4)]"
+            >
+              <WhatsappIcon className="w-5 h-5" />
+              Join the WhatsApp Group
+            </a>
           </div>
         </div>
       </section>
@@ -121,6 +144,16 @@ export default function HomePage() {
               >
                 <TiktokIcon className="w-4 h-4" />
                 <span>TikTok</span>
+              </a>
+              <a
+                href={SOCIAL_LINKS.whatsapp}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="Cuppa Cards on WhatsApp"
+                className="flex items-center gap-1.5 hover:text-[#25D366] transition"
+              >
+                <WhatsappIcon className="w-4 h-4" />
+                <span>WhatsApp</span>
               </a>
             </div>
           </div>
