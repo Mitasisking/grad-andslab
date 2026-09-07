@@ -83,9 +83,9 @@ export default function HomePage() {
           <p>© {new Date().getFullYear()} Grade & Slab. All rights reserved.</p>
           <div className="flex gap-6">
             <Link href="/vendor" className="hover:text-amber-400 transition">Vendor Inquiries</Link>
-            <Link href="#" className="hover:text-amber-400 transition">Terms of Service</Link>
+            <Link href="/terms" className="hover:text-amber-400 transition">Terms of Service</Link>
             <Link href="#" className="hover:text-amber-400 transition">Privacy Policy</Link>
-            <a href="mailto:support@gradeandslab.co.za" className="hover:text-amber-400 transition">Contact Support</a>
+            <Link href="/contact" className="hover:text-amber-400 transition">Contact Us</Link>
           </div>
         </div>
       </footer>

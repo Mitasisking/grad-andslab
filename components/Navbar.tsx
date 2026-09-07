@@ -102,6 +102,9 @@ export default function Navbar() {
             <Link href="/vendor" className={`hover:text-amber-400 transition ${pathname === '/vendor' ? 'text-amber-400' : ''}`}>
               Vendor
             </Link>
+            <Link href="/contact" className={`hover:text-amber-400 transition ${pathname === '/contact' ? 'text-amber-400' : ''}`}>
+              Contact
+            </Link>
           </div>
         </div>
 
