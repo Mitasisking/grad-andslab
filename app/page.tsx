@@ -1,4 +1,6 @@
 import Link from 'next/link'
+import { SOCIAL_LINKS } from '../lib/social-links'
+import { FacebookIcon, InstagramIcon, TiktokIcon } from '../components/SocialIcons'
 
 export default function HomePage() {
   return (
@@ -79,13 +81,48 @@ export default function HomePage() {
 
       {/* Footer */}
       <footer className="bg-slate-900 py-12">
-        <div className="max-w-6xl mx-auto px-6 flex flex-col md:flex-row justify-between items-center gap-4 text-sm text-slate-500">
+        <div className="max-w-6xl mx-auto px-6 flex flex-col md:flex-row justify-between items-center gap-8 md:gap-4 text-sm text-slate-500">
           <p>© {new Date().getFullYear()} Grade & Slab. All rights reserved.</p>
           <div className="flex gap-6">
             <Link href="/vendor" className="hover:text-amber-400 transition">Vendor Inquiries</Link>
             <Link href="/terms" className="hover:text-amber-400 transition">Terms of Service</Link>
             <Link href="#" className="hover:text-amber-400 transition">Privacy Policy</Link>
             <Link href="/contact" className="hover:text-amber-400 transition">Contact Us</Link>
+          </div>
+          <div className="flex items-center gap-4">
+            <span className="text-xs font-semibold uppercase tracking-wide text-slate-600">Follow Us</span>
+            <div className="flex items-center gap-4">
+              <a
+                href={SOCIAL_LINKS.facebook}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="Grade & Slab on Facebook"
+                className="flex items-center gap-1.5 hover:text-amber-400 transition"
+              >
+                <FacebookIcon className="w-4 h-4" />
+                <span>Facebook</span>
+              </a>
+              <a
+                href={SOCIAL_LINKS.instagram}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="Grade & Slab on Instagram"
+                className="flex items-center gap-1.5 hover:text-amber-400 transition"
+              >
+                <InstagramIcon className="w-4 h-4" />
+                <span>Instagram</span>
+              </a>
+              <a
+                href={SOCIAL_LINKS.tiktok}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="Grade & Slab on TikTok"
+                className="flex items-center gap-1.5 hover:text-amber-400 transition"
+              >
+                <TiktokIcon className="w-4 h-4" />
+                <span>TikTok</span>
+              </a>
+            </div>
           </div>
         </div>
       </footer>

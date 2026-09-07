@@ -4,6 +4,8 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
+import { SOCIAL_LINKS } from '../lib/social-links'
+import { FacebookIcon, InstagramIcon, TiktokIcon } from './SocialIcons'
 
 export default function Navbar() {
   const [user, setUser] = useState<any>(null)
@@ -110,6 +112,36 @@ export default function Navbar() {
 
         {/* Right Side: Auth & Admin Controls */}
         <div className="flex items-center gap-4">
+          <div className="hidden lg:flex items-center gap-3 pr-1 border-r border-slate-800 mr-1">
+            <a
+              href={SOCIAL_LINKS.facebook}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="Grade & Slab on Facebook"
+              className="text-slate-500 hover:text-amber-400 transition"
+            >
+              <FacebookIcon className="w-4 h-4" />
+            </a>
+            <a
+              href={SOCIAL_LINKS.instagram}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="Grade & Slab on Instagram"
+              className="text-slate-500 hover:text-amber-400 transition"
+            >
+              <InstagramIcon className="w-4 h-4" />
+            </a>
+            <a
+              href={SOCIAL_LINKS.tiktok}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="Grade & Slab on TikTok"
+              className="text-slate-500 hover:text-amber-400 transition"
+            >
+              <TiktokIcon className="w-4 h-4" />
+            </a>
+          </div>
+
           {isAdmin && (
             <Link 
               href="/admin" 
