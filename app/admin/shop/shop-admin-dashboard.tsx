@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { formatZAR } from '@/lib/currency'
 import { ProductFormModal } from './product-form-modal'
+import { ProductThumbnail } from './product-thumbnail'
 import type { AdminProduct } from './types'
 
 const CATEGORY_LABEL: Record<string, string> = {
@@ -96,9 +97,10 @@ export function ShopAdminDashboard() {
           <div className="border-t" style={{ borderColor: 'var(--line)' }}>
             {/* Header row */}
             <div
-              className="hidden sm:grid gap-4 py-2 text-[11.5px] uppercase tracking-wide border-b"
-              style={{ gridTemplateColumns: '2fr 1fr 1fr 1fr auto', borderColor: 'var(--line)', color: 'var(--ink-muted)' }}
+              className="hidden sm:grid gap-4 py-2 text-[11.5px] uppercase tracking-wide border-b items-center"
+              style={{ gridTemplateColumns: 'auto 2fr 1fr 1fr 1fr auto', borderColor: 'var(--line)', color: 'var(--ink-muted)' }}
             >
+              <span>Image</span>
               <span>Product</span>
               <span>Category</span>
               <span>Price</span>
@@ -111,9 +113,10 @@ export function ShopAdminDashboard() {
               return (
                 <div
                   key={product.id}
-                  className="grid sm:grid-cols-[2fr_1fr_1fr_1fr_auto] gap-2 sm:gap-4 py-3 border-b items-center"
+                  className="grid sm:grid-cols-[auto_2fr_1fr_1fr_1fr_auto] gap-2 sm:gap-4 py-3 border-b items-center"
                   style={{ borderColor: 'var(--line)' }}
                 >
+                  <ProductThumbnail src={product.images?.[0]} alt={product.title} />
                   <div>
                     <p className="text-[14px]" style={{ color: 'var(--ink)' }}>
                       {product.title}

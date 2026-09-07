@@ -1,11 +1,13 @@
 'use client'
 
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { SPORT_OPTIONS } from '@/lib/submission-types'
 import type { CardType, Sport } from '@/lib/submission-types'
 import { CARD_VARIANT_OPTIONS } from '@/lib/shop/product-type'
 import type { CardVariant } from '@/lib/shop/product-type'
 import type { ProductCategory } from '@/lib/admin/product-input'
+import { uploadProductImage } from '@/lib/admin/product-image-upload'
+import { ProductThumbnail } from './product-thumbnail'
 import type { AdminProduct } from './types'
 
 const CATEGORY_OPTIONS: { value: ProductCategory; label: string }[] = [
@@ -66,9 +68,29 @@ export function ProductFormModal({ product, onClose, onSaved }: Props) {
   const [draft, setDraft] = useState<Draft>(() => draftFromProduct(product))
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [uploading, setUploading] = useState(false)
+  const [uploadError, setUploadError] = useState<string | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   function update<K extends keyof Draft>(key: K, value: Draft[K]) {
     setDraft((prev) => ({ ...prev, [key]: value }))
+  }
+
+  async function handleFileSelected(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (fileInputRef.current) fileInputRef.current.value = ''
+    if (!file) return
+
+    setUploading(true)
+    setUploadError(null)
+    try {
+      const url = await uploadProductImage(file)
+      update('imageUrl', url)
+    } catch (err) {
+      setUploadError(err instanceof Error ? err.message : 'Could not upload image.')
+    } finally {
+      setUploading(false)
+    }
   }
 
   function selectCardType(cardType: CardType) {
@@ -217,14 +239,35 @@ export function ProductFormModal({ product, onClose, onSaved }: Props) {
             <label className={labelClass} style={labelStyle}>
               Image URL
             </label>
-            <input
-              type="text"
-              value={draft.imageUrl}
-              onChange={(e) => update('imageUrl', e.target.value)}
-              className={inputClass}
-              style={inputStyle}
-              placeholder="https://…"
-            />
+            <div className="flex items-start gap-3">
+              <div className="flex-1 space-y-2">
+                <input
+                  type="text"
+                  value={draft.imageUrl}
+                  onChange={(e) => update('imageUrl', e.target.value)}
+                  className={inputClass}
+                  style={inputStyle}
+                  placeholder="https://…"
+                />
+                <label className="text-[12.5px] underline underline-offset-2 cursor-pointer inline-block" style={{ color: 'var(--ink-muted)' }}>
+                  {uploading ? 'Uploading…' : 'Upload a file'}
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleFileSelected}
+                    disabled={uploading}
+                  />
+                </label>
+                {uploadError && (
+                  <p className="text-[12px]" style={{ color: 'var(--danger)' }}>
+                    {uploadError}
+                  </p>
+                )}
+              </div>
+              <ProductThumbnail src={draft.imageUrl || undefined} alt="Preview" size={72} />
+            </div>
           </div>
 
           <div>
