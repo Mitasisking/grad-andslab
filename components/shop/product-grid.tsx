@@ -1,7 +1,9 @@
 'use client'
 
+import { useState } from 'react'
 import { useCart } from '@/lib/cart/cart-context'
-import { formatZAR } from '@/lib/currency'
+import { formatByRegion } from '@/lib/currency'
+import type { ProductRegion } from '@/lib/shop/product-type'
 
 export interface Product {
   id: string
@@ -18,6 +20,7 @@ export interface Product {
   brand?: string | null
   card_variant?: string | null
   player_name?: string | null
+  region: ProductRegion
 }
 
 // Low-value singles (commons pulled straight from Collectr's per-card
@@ -29,9 +32,15 @@ const MIN_CARD_PRICE = 19.99
 /** Quick add-to-cart, no navigation required — per app/auctions/README.md's Phase 4 file map. */
 export function ProductGrid({ products }: { products: Product[] }) {
   const { addItem } = useCart()
+  const [cartError, setCartError] = useState<string | null>(null)
   const visibleProducts = products.filter(
     (p) => (p.category !== 'cards' || p.price >= MIN_CARD_PRICE) && p.images.length > 0,
   )
+
+  function handleAddItem(product: Product) {
+    const result = addItem(product)
+    setCartError(result.ok ? null : result.error)
+  }
 
   if (visibleProducts.length === 0) {
     return (
@@ -42,8 +51,14 @@ export function ProductGrid({ products }: { products: Product[] }) {
   }
 
   return (
-    <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-      {visibleProducts.map((product) => {
+    <div>
+      {cartError && (
+        <p className="text-[13px] mb-4" style={{ color: 'var(--danger)' }}>
+          {cartError}
+        </p>
+      )}
+      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        {visibleProducts.map((product) => {
         const outOfStock = product.stock <= 0
         return (
           <div
@@ -73,11 +88,11 @@ export function ProductGrid({ products }: { products: Product[] }) {
               )}
               <div className="flex items-center justify-between mt-auto pt-4">
                 <span className="text-[15px]" style={{ fontVariantNumeric: 'tabular-nums', color: 'var(--ink)' }}>
-                  {formatZAR(product.price)}
+                  {formatByRegion(product.price, product.region)}
                 </span>
                 <button
                   type="button"
-                  onClick={() => addItem(product)}
+                  onClick={() => handleAddItem(product)}
                   disabled={outOfStock}
                   className="px-3 py-1.5 text-[13px] rounded-[3px] disabled:opacity-40"
                   style={{ background: 'var(--vault)', color: 'var(--vault-ink)' }}
@@ -87,8 +102,9 @@ export function ProductGrid({ products }: { products: Product[] }) {
               </div>
             </div>
           </div>
-        )
-      })}
+          )
+        })}
+      </div>
     </div>
   )
 }

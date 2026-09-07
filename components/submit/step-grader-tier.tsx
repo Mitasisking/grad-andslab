@@ -2,14 +2,22 @@
 
 import { Button } from '@/components/ui/button'
 import { CardShipmentRow } from '@/components/submit/card-shipment-row'
-import { formatUSD } from '@/lib/currency'
-import { GRADING_COMPANY_OPTIONS, TIER_OPTIONS_BY_COMPANY } from '@/lib/submission-types'
-import type { CardEntry, GradingCompany, SubmissionTier } from '@/lib/submission-types'
+import { formatByRegion } from '@/lib/currency'
+import { GRADING_COMPANY_OPTIONS, TIER_OPTIONS_BY_COMPANY, tierPriceForRegion } from '@/lib/submission-types'
+import type { CardEntry, GradingCompany, ProductRegion, SubmissionTier } from '@/lib/submission-types'
+
+const COUNTRY_OPTIONS: { value: ProductRegion; label: string }[] = [
+  { value: 'sa', label: 'South Africa' },
+  { value: 'usa', label: 'United States' },
+  { value: 'uk', label: 'United Kingdom' },
+]
 
 interface Props {
+  region: ProductRegion
   company: GradingCompany
   tier: SubmissionTier | null
   cards: CardEntry[]
+  onSelectRegion: (region: ProductRegion) => void
   onSelectCompany: (company: GradingCompany) => void
   onSelectTier: (tier: SubmissionTier) => void
   onUpdateCard: (id: string, patch: Partial<CardEntry>) => void
@@ -20,9 +28,11 @@ interface Props {
 }
 
 export function StepGraderTier({
+  region,
   company,
   tier,
   cards,
+  onSelectRegion,
   onSelectCompany,
   onSelectTier,
   onUpdateCard,
@@ -36,6 +46,40 @@ export function StepGraderTier({
 
   return (
     <section className="space-y-10">
+      <div>
+        <h2 className="text-[22px]" style={{ fontFamily: 'var(--font-display)', color: 'var(--ink)' }}>
+          Country of origin
+        </h2>
+        <p className="text-[13.5px] mt-1" style={{ color: 'var(--ink-muted)' }}>
+          Sets the currency for grading fees and shipping below.
+        </p>
+        <div className="flex flex-col mt-4 border-t" style={{ borderColor: 'var(--line)' }}>
+          {COUNTRY_OPTIONS.map((c) => {
+            const selected = region === c.value
+            return (
+              <button
+                key={c.value}
+                type="button"
+                onClick={() => onSelectRegion(c.value)}
+                className="flex items-center gap-3 py-3.5 border-b text-left"
+                style={{ borderColor: 'var(--line)' }}
+              >
+                <span
+                  className="w-3.5 h-3.5 rounded-full border shrink-0"
+                  style={{
+                    borderColor: selected ? 'var(--seal)' : 'var(--line)',
+                    background: selected ? 'var(--seal)' : 'transparent',
+                  }}
+                />
+                <span className="text-[15px]" style={{ color: 'var(--ink)' }}>
+                  {c.label}
+                </span>
+              </button>
+            )
+          })}
+        </div>
+      </div>
+
       <div>
         <h2 className="text-[22px]" style={{ fontFamily: 'var(--font-display)', color: 'var(--ink)' }}>
           Grading company
@@ -121,7 +165,7 @@ export function StepGraderTier({
                   style={{ fontVariantNumeric: 'tabular-nums', color: 'var(--ink-muted)' }}
                 >
                   {t.turnaround ? `${t.turnaround} · ` : ''}
-                  {formatUSD(t.basePriceUSD)}/card
+                  {formatByRegion(tierPriceForRegion(t, region), region)}/card
                 </span>
               </button>
             )

@@ -7,7 +7,7 @@ import { StepGraderTier } from '@/components/submit/step-grader-tier'
 import { StepAddOns } from '@/components/submit/step-addons'
 import { StepReviewPay } from '@/components/submit/step-review-pay'
 import { fetchAddresses } from '@/lib/addresses-client'
-import type { CardEntry, GradingCompany, ShippingAddress, SubmissionTier } from '@/lib/submission-types'
+import type { CardEntry, GradingCompany, ProductRegion, ShippingAddress, SubmissionTier } from '@/lib/submission-types'
 
 const STEP_COUNT = 3
 
@@ -32,6 +32,7 @@ function createEmptyCard(): CardEntry {
 
 export function SubmissionWizard() {
   const [step, setStep] = useState(0)
+  const [region, setRegion] = useState<ProductRegion>('sa')
   const [company, setCompany] = useState<GradingCompany>('PCG')
   const [tier, setTier] = useState<SubmissionTier | null>(null)
   const [cards, setCards] = useState<CardEntry[]>([createEmptyCard()])
@@ -108,9 +109,11 @@ export function SubmissionWizard() {
           >
             {step === 0 && (
               <StepGraderTier
+                region={region}
                 company={company}
                 tier={tier}
                 cards={cards}
+                onSelectRegion={setRegion}
                 onSelectCompany={selectCompany}
                 onSelectTier={setTier}
                 onUpdateCard={updateCard}
@@ -127,6 +130,7 @@ export function SubmissionWizard() {
 
             {step === 2 && tier && (
               <StepReviewPay
+                region={region}
                 gradingCompany={company}
                 tier={tier}
                 cards={cards}

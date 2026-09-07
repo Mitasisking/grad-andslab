@@ -1,11 +1,14 @@
 import type { CardType, Sport } from '@/lib/submission-types'
-import type { CardVariant } from '@/lib/shop/product-type'
+import type { CardVariant, ProductRegion } from '@/lib/shop/product-type'
+import { REGION_OPTIONS } from '@/lib/shop/product-type'
 
+export type { ProductRegion }
 export type ProductCategory = 'sealed' | 'accessories' | 'graded' | 'cards'
 
 const VALID_CATEGORIES: ProductCategory[] = ['sealed', 'accessories', 'graded', 'cards']
 const VALID_SPORTS: Sport[] = ['soccer', 'rugby', 'f1', 'nhl', 'nba', 'mlb', 'nfl']
 const VALID_CARD_VARIANTS: CardVariant[] = ['rookie', 'auto', 'patch', 'parallel', 'base']
+const VALID_REGIONS: ProductRegion[] = REGION_OPTIONS.map((r) => r.value)
 
 export interface ProductInput {
   title: string
@@ -22,6 +25,7 @@ export interface ProductInput {
   brand: string | null
   cardVariant: CardVariant | null
   playerName: string | null
+  region: ProductRegion
 }
 
 /** Shared by app/api/admin/products' POST and [id]'s PATCH — same fields, same rules, either way in. */
@@ -46,6 +50,9 @@ export function validateProductInput(body: Partial<ProductInput>): string | null
   if (body.cardVariant && !VALID_CARD_VARIANTS.includes(body.cardVariant)) {
     return 'Invalid card type/variant.'
   }
+  if (!body.region || !VALID_REGIONS.includes(body.region)) {
+    return 'A valid region is required.'
+  }
   return null
 }
 
@@ -67,5 +74,6 @@ export function toProductRow(body: ProductInput) {
     brand: body.brand?.trim() || null,
     card_variant: body.cardVariant || null,
     player_name: body.playerName?.trim() || null,
+    region: body.region,
   }
 }

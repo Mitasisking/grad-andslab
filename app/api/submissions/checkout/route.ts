@@ -1,9 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getStripeClient } from '@/lib/stripe-server'
+import { REGION_CURRENCY } from '@/lib/shop/product-type'
+
+const VALID_CURRENCIES = new Set(Object.values(REGION_CURRENCY))
 
 interface CheckoutBody {
   amountCents: number
   submissionId: string
+  currency: 'usd' | 'gbp' | 'zar'
   customerId?: string
 }
 
@@ -21,10 +25,13 @@ export async function POST(request: NextRequest) {
   if (!body.submissionId) {
     return NextResponse.json({ error: 'submissionId is required' }, { status: 400 })
   }
+  if (!body.currency || !VALID_CURRENCIES.has(body.currency)) {
+    return NextResponse.json({ error: 'A valid currency is required' }, { status: 400 })
+  }
 
   const intent = await getStripeClient().paymentIntents.create({
     amount: Math.round(body.amountCents),
-    currency: 'usd',
+    currency: body.currency,
     customer: body.customerId,
     // Submission fees are captured immediately on payment. This differs from
     // auction bid pre-authorization (Phase 4), which uses capture_method: 'manual'.

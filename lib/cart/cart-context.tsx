@@ -1,6 +1,7 @@
 'use client'
 
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
+import { REGION_OPTIONS, type ProductRegion } from '@/lib/shop/product-type'
 
 export interface CartItem {
   productId: string
@@ -9,6 +10,7 @@ export interface CartItem {
   image: string | null
   quantity: number
   stock: number
+  region: ProductRegion
 }
 
 interface CartProduct {
@@ -17,12 +19,20 @@ interface CartProduct {
   price: number
   images: string[]
   stock: number
+  region: ProductRegion
 }
+
+type AddItemResult = { ok: true } | { ok: false; error: string }
+
+const REGION_LABEL = Object.fromEntries(REGION_OPTIONS.map((r) => [r.value, r.label])) as Record<
+  ProductRegion,
+  string
+>
 
 interface CartContextValue {
   items: CartItem[]
   subtotal: number
-  addItem: (product: CartProduct, quantity?: number) => void
+  addItem: (product: CartProduct, quantity?: number) => AddItemResult
   removeItem: (productId: string) => void
   setQuantity: (productId: string, quantity: number) => void
   clear: () => void
@@ -67,7 +77,19 @@ export function CartProvider({ children }: { children: ReactNode }) {
     }
   }, [items, hydrated])
 
-  function addItem(product: CartProduct, quantity = 1) {
+  function addItem(product: CartProduct, quantity = 1): AddItemResult {
+    // A product's price only means anything in its own region's currency
+    // (0031_add_product_region.sql) -- create_order() rejects a mixed-region
+    // cart server-side too, but catching it here means the customer finds
+    // out before they've picked an address and started paying.
+    const existingRegion = items[0]?.region
+    if (existingRegion && existingRegion !== product.region) {
+      return {
+        ok: false,
+        error: `Your cart already has ${REGION_LABEL[existingRegion]} items. Check out or clear your cart before adding ${REGION_LABEL[product.region]} items.`,
+      }
+    }
+
     setItems((prev) => {
       const existing = prev.find((i) => i.productId === product.id)
       if (existing) {
@@ -84,9 +106,11 @@ export function CartProvider({ children }: { children: ReactNode }) {
           image: product.images[0] ?? null,
           quantity: Math.min(quantity, product.stock),
           stock: product.stock,
+          region: product.region,
         },
       ]
     })
+    return { ok: true }
   }
 
   function removeItem(productId: string) {

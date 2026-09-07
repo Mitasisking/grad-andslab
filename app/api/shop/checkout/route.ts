@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseRouteClient } from '@/lib/supabase-route-client'
 import { getStripeClient } from '@/lib/stripe-server'
+import { REGION_CURRENCY } from '@/lib/shop/product-type'
 
 interface Body {
   orderId: string
@@ -27,7 +28,7 @@ export async function POST(request: NextRequest) {
 
   const { data: order, error } = await supabase
     .from('orders')
-    .select('id, total, payment_status')
+    .select('id, total, payment_status, region')
     .eq('id', body.orderId)
     .eq('user_id', user.id)
     .single()
@@ -41,7 +42,7 @@ export async function POST(request: NextRequest) {
 
   const intent = await getStripeClient().paymentIntents.create({
     amount: Math.round(Number(order.total) * 100),
-    currency: 'zar',
+    currency: REGION_CURRENCY[order.region as keyof typeof REGION_CURRENCY],
     capture_method: 'automatic',
     automatic_payment_methods: { enabled: true },
     metadata: {

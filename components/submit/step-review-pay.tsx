@@ -5,24 +5,43 @@ import { Button } from '@/components/ui/button'
 import { AddAddressForm } from '@/components/submit/add-address-form'
 import { StripePaymentForm } from '@/components/submit/stripe-payment-form'
 import { PackingSlip } from '@/components/submit/packing-slip'
-import { formatUSD } from '@/lib/currency'
-import { TIER_OPTIONS_BY_COMPANY } from '@/lib/submission-types'
-import type { CardEntry, GradingCompany, ShippingAddress, SubmissionTier } from '@/lib/submission-types'
+import { formatByRegion } from '@/lib/currency'
+import { REGION_CURRENCY } from '@/lib/shop/product-type'
+import { TIER_OPTIONS_BY_COMPANY, tierPriceForRegion } from '@/lib/submission-types'
+import type { CardEntry, GradingCompany, ProductRegion, ShippingAddress, SubmissionTier } from '@/lib/submission-types'
 
-// USD figures, converted from the original ZAR costs at ~18.5 ZAR/USD (same
-// rate used for TIER_OPTIONS_BY_COMPANY.PCG in lib/submission-types.ts) and
-// rounded to a clean price point -- edit directly to adjust real cost/margin.
+// GBP/ZAR figures are approximate conversions from the real USD costs
+// (0.79 USD/GBP, 18.5 USD/ZAR -- the same ZAR rate already used for
+// TIER_OPTIONS_BY_COMPANY.PCG in lib/submission-types.ts), rounded to a
+// clean price point, NOT separately invoiced courier costs. Replace with
+// the real per-region shipping cost once it's known -- edit directly.
 const COURIERS = [
-  { value: 'ups_ground', label: 'UPS Ground, insured', costUSD: 12 },
-  { value: 'ups_2day', label: 'UPS 2nd Day Air, insured', costUSD: 28 },
-  { value: 'fedex_overnight', label: 'FedEx Priority Overnight', costUSD: 46 },
+  { value: 'ups_ground', label: 'UPS Ground, insured', costUSD: 12, costGBP: 9, costZAR: 220 },
+  { value: 'ups_2day', label: 'UPS 2nd Day Air, insured', costUSD: 28, costGBP: 22, costZAR: 520 },
+  { value: 'fedex_overnight', label: 'FedEx Priority Overnight', costUSD: 46, costGBP: 36, costZAR: 850 },
 ]
 
+function courierCostForRegion(c: (typeof COURIERS)[number], region: ProductRegion): number {
+  if (region === 'usa') return c.costUSD
+  if (region === 'uk') return c.costGBP
+  return c.costZAR
+}
+
 // Flat per-card fee for the optional pre-grading inspection add-on (see
-// components/submit/step-addons.tsx). Edit directly to adjust.
+// components/submit/step-addons.tsx). Same approximate-conversion caveat as
+// COURIERS above. Edit directly to adjust.
 const INSPECTION_FEE_USD = 5
+const INSPECTION_FEE_GBP = 4
+const INSPECTION_FEE_ZAR = 92
+
+function inspectionFeeForRegion(region: ProductRegion): number {
+  if (region === 'usa') return INSPECTION_FEE_USD
+  if (region === 'uk') return INSPECTION_FEE_GBP
+  return INSPECTION_FEE_ZAR
+}
 
 interface Props {
+  region: ProductRegion
   gradingCompany: GradingCompany
   tier: SubmissionTier
   cards: CardEntry[]
@@ -37,6 +56,7 @@ interface Props {
 }
 
 export function StepReviewPay({
+  region,
   gradingCompany,
   tier,
   cards,
@@ -60,12 +80,14 @@ export function StepReviewPay({
   const courierMeta = COURIERS.find((c) => c.value === courier)
   const selectedAddress = addresses.find((a) => a.id === addressId) ?? null
 
-  // Everything here is USD, and api/submissions/checkout charges the Stripe
-  // PaymentIntent in currency: 'usd' to match.
-  const perCardFee = tierMeta.basePriceUSD
+  // Everything here is priced in the country-of-origin's currency (region,
+  // chosen in step 1 -- components/submit/step-grader-tier.tsx), and
+  // api/submissions/checkout charges the Stripe PaymentIntent in the
+  // matching currency to stay consistent with what's shown here.
+  const perCardFee = tierPriceForRegion(tierMeta, region)
   const gradingSubtotal = perCardFee * cards.length
-  const inspectionSubtotal = cards.filter((c) => c.preCheckOptIn).length * INSPECTION_FEE_USD
-  const shippingCost = courierMeta?.costUSD ?? 0
+  const inspectionSubtotal = cards.filter((c) => c.preCheckOptIn).length * inspectionFeeForRegion(region)
+  const shippingCost = courierMeta ? courierCostForRegion(courierMeta, region) : 0
   const serviceFee = gradingSubtotal + inspectionSubtotal
   const total = serviceFee + shippingCost
 
@@ -84,6 +106,7 @@ export function StepReviewPay({
       body: JSON.stringify({
         gradingCompany,
         tier,
+        region,
         addressId,
         courier,
         serviceFee,
@@ -118,7 +141,11 @@ export function StepReviewPay({
     const checkoutRes = await fetch('/api/submissions/checkout', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ amountCents: Math.round(total * 100), submissionId: submissionData.submissionId }),
+      body: JSON.stringify({
+        amountCents: Math.round(total * 100),
+        submissionId: submissionData.submissionId,
+        currency: REGION_CURRENCY[region],
+      }),
     })
     const checkoutData = await checkoutRes.json()
 
@@ -143,6 +170,7 @@ export function StepReviewPay({
         address={selectedAddress}
         courier={courierMeta?.label ?? ''}
         total={total}
+        region={region}
       />
     )
   }
@@ -222,7 +250,7 @@ export function StepReviewPay({
                 {c.label}
               </span>
               <span className="text-[13px]" style={{ fontVariantNumeric: 'tabular-nums', color: 'var(--ink-muted)' }}>
-                {formatUSD(c.costUSD)}
+                {formatByRegion(courierCostForRegion(c, region), region)}
               </span>
             </button>
           ))}
@@ -238,24 +266,24 @@ export function StepReviewPay({
             <span>
               {gradingCompany} grading × {cards.length} ({tierMeta.label})
             </span>
-            <span style={{ fontVariantNumeric: 'tabular-nums' }}>{formatUSD(gradingSubtotal)}</span>
+            <span style={{ fontVariantNumeric: 'tabular-nums' }}>{formatByRegion(gradingSubtotal, region)}</span>
           </div>
           {inspectionSubtotal > 0 && (
             <div className="flex justify-between gap-4">
               <span>Pre-grading inspection</span>
-              <span style={{ fontVariantNumeric: 'tabular-nums' }}>{formatUSD(inspectionSubtotal)}</span>
+              <span style={{ fontVariantNumeric: 'tabular-nums' }}>{formatByRegion(inspectionSubtotal, region)}</span>
             </div>
           )}
           <div className="flex justify-between gap-4">
             <span>Shipping{courierMeta ? ` (${courierMeta.label})` : ''}</span>
-            <span style={{ fontVariantNumeric: 'tabular-nums' }}>{formatUSD(shippingCost)}</span>
+            <span style={{ fontVariantNumeric: 'tabular-nums' }}>{formatByRegion(shippingCost, region)}</span>
           </div>
           <div
             className="flex justify-between gap-4 pt-2 mt-2 border-t text-[15px]"
             style={{ borderColor: 'var(--line)' }}
           >
             <span>Total due today</span>
-            <span style={{ fontVariantNumeric: 'tabular-nums' }}>{formatUSD(total)}</span>
+            <span style={{ fontVariantNumeric: 'tabular-nums' }}>{formatByRegion(total, region)}</span>
           </div>
         </div>
       </div>
@@ -277,7 +305,7 @@ export function StepReviewPay({
             className="rounded-[3px]"
             style={{ background: 'var(--vault)', color: 'var(--vault-ink)' }}
           >
-            {creatingOrder ? 'Preparing order…' : `Pay ${formatUSD(total)}`}
+            {creatingOrder ? 'Preparing order…' : `Pay ${formatByRegion(total, region)}`}
           </Button>
         </div>
       )}

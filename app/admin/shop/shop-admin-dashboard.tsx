@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { formatZAR } from '@/lib/currency'
+import { formatByRegion } from '@/lib/currency'
 import { ProductFormModal } from './product-form-modal'
 import { ProductThumbnail } from './product-thumbnail'
 import type { AdminProduct } from './types'
@@ -11,6 +11,12 @@ const CATEGORY_LABEL: Record<string, string> = {
   accessories: 'Accessories',
   graded: 'Graded',
   cards: 'Raw Cards',
+}
+
+const REGION_LABEL: Record<string, string> = {
+  sa: 'SA',
+  usa: 'USA',
+  uk: 'UK',
 }
 
 export function ShopAdminDashboard() {
@@ -129,9 +135,15 @@ export function ShopAdminDashboard() {
                   </div>
                   <span className="text-[13px]" style={{ color: 'var(--ink-muted)' }}>
                     {CATEGORY_LABEL[product.category] ?? product.category}
+                    <span
+                      className="ml-1.5 text-[10.5px] px-1.5 py-0.5 rounded-[3px]"
+                      style={{ background: 'var(--paper-raised)', color: 'var(--ink-muted)' }}
+                    >
+                      {REGION_LABEL[product.region] ?? product.region}
+                    </span>
                   </span>
                   <span className="text-[13.5px]" style={{ fontVariantNumeric: 'tabular-nums', color: 'var(--ink)' }}>
-                    {formatZAR(product.price)}
+                    {formatByRegion(product.price, product.region)}
                   </span>
                   <span>
                     <span

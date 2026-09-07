@@ -1,12 +1,15 @@
 import { getSupabaseRouteClient } from '@/lib/supabase-route-client'
 import { CategoryTabs } from '@/components/shop/category-tabs'
 import { ProductTypeToggle } from '@/components/shop/product-type-toggle'
+import { RegionToggle } from '@/components/shop/region-toggle'
 import { SportsCardFilters } from '@/components/shop/sports-card-filters'
 import { ShopBrowser } from '@/components/shop/shop-browser'
 import { ProductGrid } from '@/components/shop/product-grid'
 import { isOutOfPrint } from '@/lib/shop/availability'
-import type { ProductType } from '@/lib/shop/product-type'
+import { REGION_OPTIONS, type ProductType, type ProductRegion } from '@/lib/shop/product-type'
 import type { ShopUrlParams } from '@/lib/shop/shop-url'
+
+const VALID_REGIONS = new Set(REGION_OPTIONS.map((r) => r.value))
 
 // 'sealed-in-print' / 'sealed-out-of-print' aren't real products.category
 // values -- both are still stored as 'sealed'. They're split here by
@@ -15,7 +18,7 @@ import type { ShopUrlParams } from '@/lib/shop/shop-url'
 const SEALED_SPLITS = new Set(['sealed-in-print', 'sealed-out-of-print'])
 
 const PRODUCT_COLUMNS =
-  'id, title, description, category, price, stock, images, set_name, release_date, card_type, sport, brand, card_variant, player_name'
+  'id, title, description, category, price, stock, images, set_name, release_date, card_type, sport, brand, card_variant, player_name, region'
 
 function splitParam(value: string | undefined): string[] {
   return value ? value.split(',').filter(Boolean) : []
@@ -28,12 +31,14 @@ interface ShopSearchParams {
   brand?: string
   cardVariant?: string
   player?: string
+  region?: string
 }
 
 export default async function ShopPage({ searchParams }: { searchParams: Promise<ShopSearchParams> }) {
-  const { category, productType, sport, brand, cardVariant, player } = await searchParams
+  const { category, productType, sport, brand, cardVariant, player, region } = await searchParams
   const dbCategory = category && SEALED_SPLITS.has(category) ? 'sealed' : category
   const activeType: ProductType = productType === 'sports_card' ? 'sports_card' : 'pokemon'
+  const activeRegion: ProductRegion = region && VALID_REGIONS.has(region as ProductRegion) ? (region as ProductRegion) : 'sa'
 
   const sports = splitParam(sport)
   const brands = splitParam(brand)
@@ -46,17 +51,22 @@ export default async function ShopPage({ searchParams }: { searchParams: Promise
     brand: brands,
     cardVariant: cardVariants,
     player: player ?? null,
+    region: activeRegion === 'sa' ? null : activeRegion,
   }
 
   const supabase = await getSupabaseRouteClient()
 
   // Only is_active products are visible here at all — enforced by
   // products_select_public_active_or_admin (0001_init_schema.sql), not
-  // duplicated as a client-side filter.
+  // duplicated as a client-side filter. Scoped to one region so every
+  // product on the page shares one currency (see components/shop/
+  // region-toggle.tsx) -- products.price is never converted between
+  // regions, so mixing them in one grid/price-filter would be meaningless.
   let baseQuery = supabase
     .from('products')
     .select(PRODUCT_COLUMNS)
     .eq('card_type', activeType)
+    .eq('region', activeRegion)
     .order('created_at', { ascending: false })
 
   if (dbCategory) baseQuery = baseQuery.eq('category', dbCategory)
@@ -81,7 +91,11 @@ export default async function ShopPage({ searchParams }: { searchParams: Promise
   let products = baseProducts
 
   if (activeType === 'sports_card') {
-    let filteredQuery = supabase.from('products').select(PRODUCT_COLUMNS).eq('card_type', 'sports_card')
+    let filteredQuery = supabase
+      .from('products')
+      .select(PRODUCT_COLUMNS)
+      .eq('card_type', 'sports_card')
+      .eq('region', activeRegion)
     if (dbCategory) filteredQuery = filteredQuery.eq('category', dbCategory)
     if (sports.length > 0) filteredQuery = filteredQuery.in('sport', sports)
     if (brands.length > 0) filteredQuery = filteredQuery.in('brand', brands)
@@ -107,7 +121,10 @@ export default async function ShopPage({ searchParams }: { searchParams: Promise
 
   return (
     <div>
-      <ProductTypeToggle active={activeType} current={currentParams} />
+      <RegionToggle active={activeRegion} current={currentParams} />
+      <div className="mt-4">
+        <ProductTypeToggle active={activeType} current={currentParams} />
+      </div>
       <div className="mt-4">
         <CategoryTabs active={category ?? null} current={currentParams} />
       </div>

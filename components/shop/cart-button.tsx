@@ -3,13 +3,17 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { useCart } from '@/lib/cart/cart-context'
-import { formatZAR } from '@/lib/currency'
+import { formatByRegion } from '@/lib/currency'
 
 /** Slide-over drawer with quantity controls, per app/auctions/README.md's Phase 4 file map. */
 export function CartButton() {
   const { items, subtotal, removeItem, setQuantity } = useCart()
   const [open, setOpen] = useState(false)
   const count = items.reduce((sum, i) => sum + i.quantity, 0)
+  // Every item in the cart shares one region (cart-context.tsx's addItem
+  // enforces it), so any item's region -- or 'sa' as a harmless default
+  // while the cart is empty -- is the right one to format with.
+  const region = items[0]?.region ?? 'sa'
 
   return (
     <>
@@ -92,7 +96,7 @@ export function CartButton() {
                       className="text-[13.5px] shrink-0"
                       style={{ fontVariantNumeric: 'tabular-nums', color: 'var(--ink)' }}
                     >
-                      {formatZAR(item.price * item.quantity)}
+                      {formatByRegion(item.price * item.quantity, item.region)}
                     </span>
                   </div>
                 ))
@@ -103,7 +107,7 @@ export function CartButton() {
               <div className="pt-4 border-t" style={{ borderColor: 'var(--line)' }}>
                 <div className="flex justify-between text-[14.5px]" style={{ color: 'var(--ink)' }}>
                   <span>Subtotal</span>
-                  <span style={{ fontVariantNumeric: 'tabular-nums' }}>{formatZAR(subtotal)}</span>
+                  <span style={{ fontVariantNumeric: 'tabular-nums' }}>{formatByRegion(subtotal, region)}</span>
                 </div>
                 <Link
                   href="/shop/checkout"

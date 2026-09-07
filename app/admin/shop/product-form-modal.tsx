@@ -3,10 +3,11 @@
 import { useRef, useState } from 'react'
 import { SPORT_OPTIONS } from '@/lib/submission-types'
 import type { CardType, Sport } from '@/lib/submission-types'
-import { CARD_VARIANT_OPTIONS } from '@/lib/shop/product-type'
-import type { CardVariant } from '@/lib/shop/product-type'
+import { CARD_VARIANT_OPTIONS, REGION_OPTIONS } from '@/lib/shop/product-type'
+import type { CardVariant, ProductRegion } from '@/lib/shop/product-type'
 import type { ProductCategory } from '@/lib/admin/product-input'
 import { uploadProductImage } from '@/lib/admin/product-image-upload'
+import { formatByRegion } from '@/lib/currency'
 import { ProductThumbnail } from './product-thumbnail'
 import type { AdminProduct } from './types'
 
@@ -16,6 +17,12 @@ const CATEGORY_OPTIONS: { value: ProductCategory; label: string }[] = [
   { value: 'graded', label: 'Graded' },
   { value: 'cards', label: 'Raw Cards' },
 ]
+
+const REGION_CURRENCY_LABEL: Record<ProductRegion, string> = {
+  sa: 'ZAR',
+  usa: 'USD',
+  uk: 'GBP',
+}
 
 interface Draft {
   title: string
@@ -32,6 +39,7 @@ interface Draft {
   brand: string
   cardVariant: CardVariant | ''
   playerName: string
+  region: ProductRegion
 }
 
 function draftFromProduct(product: AdminProduct | null): Draft {
@@ -50,6 +58,7 @@ function draftFromProduct(product: AdminProduct | null): Draft {
     brand: product?.brand ?? '',
     cardVariant: product?.card_variant ?? '',
     playerName: product?.player_name ?? '',
+    region: product?.region ?? 'sa',
   }
 }
 
@@ -122,6 +131,7 @@ export function ProductFormModal({ product, onClose, onSaved }: Props) {
       brand: draft.brand.trim() || null,
       cardVariant: draft.cardVariant || null,
       playerName: draft.playerName.trim() || null,
+      region: draft.region,
     }
 
     const res = await fetch(product ? `/api/admin/products/${product.id}` : '/api/admin/products', {
@@ -191,7 +201,27 @@ export function ProductFormModal({ product, onClose, onSaved }: Props) {
             </div>
             <div>
               <label className={labelClass} style={labelStyle}>
-                Price (ZAR)
+                Region
+              </label>
+              <select
+                value={draft.region}
+                onChange={(e) => update('region', e.target.value as ProductRegion)}
+                className={inputClass}
+                style={inputStyle}
+              >
+                {REGION_OPTIONS.map((r) => (
+                  <option key={r.value} value={r.value}>
+                    {r.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className={labelClass} style={labelStyle}>
+                Price ({REGION_CURRENCY_LABEL[draft.region]})
               </label>
               <input
                 required
@@ -204,10 +234,12 @@ export function ProductFormModal({ product, onClose, onSaved }: Props) {
                 style={{ ...inputStyle, fontVariantNumeric: 'tabular-nums' }}
                 placeholder="250.00"
               />
+              {draft.price && !Number.isNaN(Number(draft.price)) && (
+                <p className="text-[11.5px] mt-1" style={{ color: 'var(--ink-muted)' }}>
+                  Shown to customers as {formatByRegion(Number(draft.price), draft.region)}
+                </p>
+              )}
             </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
             <div>
               <label className={labelClass} style={labelStyle}>
                 Stock
@@ -223,16 +255,17 @@ export function ProductFormModal({ product, onClose, onSaved }: Props) {
                 style={{ ...inputStyle, fontVariantNumeric: 'tabular-nums' }}
               />
             </div>
-            <div className="flex items-end pb-2.5">
-              <label className="flex items-center gap-2 text-[13.5px]" style={{ color: 'var(--ink)' }}>
-                <input
-                  type="checkbox"
-                  checked={draft.isActive}
-                  onChange={(e) => update('isActive', e.target.checked)}
-                />
-                Visible in shop
-              </label>
-            </div>
+          </div>
+
+          <div>
+            <label className="flex items-center gap-2 text-[13.5px]" style={{ color: 'var(--ink)' }}>
+              <input
+                type="checkbox"
+                checked={draft.isActive}
+                onChange={(e) => update('isActive', e.target.checked)}
+              />
+              Visible in shop
+            </label>
           </div>
 
           <div>

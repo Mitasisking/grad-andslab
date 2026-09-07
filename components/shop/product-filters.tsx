@@ -1,5 +1,6 @@
 'use client'
 
+import { REGION_SYMBOL } from '@/lib/shop/product-type'
 import type { Product } from './product-grid'
 
 export type Language = 'en' | 'jp'
@@ -51,6 +52,10 @@ export function ProductFilters({ products, filters, onChange }: Props) {
   const setNames = Array.from(new Set(products.map((p) => p.set_name).filter((s): s is string => !!s))).sort((a, b) =>
     a.localeCompare(b),
   )
+  // The shop page now scopes the whole grid to one region at a time, so
+  // every product here shares one currency -- safe to label the range
+  // filter with it instead of a currency-less "Price".
+  const currencySymbol = products[0] ? REGION_SYMBOL[products[0].region] : null
 
   const hasActiveFilters =
     filters.languages.length > 0 || filters.setNames.length > 0 || filters.minPrice !== '' || filters.maxPrice !== ''
@@ -111,7 +116,7 @@ export function ProductFilters({ products, filters, onChange }: Props) {
 
       <div className="mt-4 pt-4 border-t" style={{ borderColor: 'var(--line)' }}>
         <p className="text-[12.5px] mb-1.5" style={{ color: 'var(--ink)' }}>
-          Price (R)
+          Price{currencySymbol ? ` (${currencySymbol})` : ''}
         </p>
         <div className="flex items-center gap-2">
           <input

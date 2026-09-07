@@ -1,3 +1,7 @@
+import type { ProductRegion } from '@/lib/shop/product-type'
+
+export type { ProductRegion }
+
 /**
  * We grade through three partners -- see supabase/migrations/0016-0017 (PCG)
  * and 0021-0023 (PSA, ACE). Each company's tiers are their own real service
@@ -77,13 +81,21 @@ export interface TierOption {
   turnaround?: string
   note?: string
   basePriceUSD: number
+  basePriceGBP: number
+  basePriceZAR: number
 }
 
 /**
- * Per-card grading fee by company and tier, all in USD -- the grading
- * submission flow charges and displays exclusively in dollars (see
- * lib/currency.ts's formatUSD and app/api/submissions/checkout/route.ts),
- * independent of the ZAR the rest of the marketplace uses.
+ * Per-card grading fee by company and tier. basePriceUSD is the real,
+ * business-set cost (PSA/ACE as given; PCG converted from its original ZAR
+ * pricing -- see the note below). basePriceGBP/basePriceZAR are NOT
+ * separately invoiced costs -- nobody has set those yet -- they're USD
+ * converted at approximate flat rates (0.79 USD/GBP, 18.5 USD/ZAR, the same
+ * ZAR rate already used for PCG below) and rounded to a clean price point,
+ * matching how PCG's own USD figures were derived from ZAR. Replace with
+ * real invoiced GBP/ZAR costs the moment the business has them -- these
+ * are a stand-in, not a quoted price, exactly like PCG's basePriceUSD note
+ * already warned about its own conversion drifting.
  *
  * PCG's four tiers were originally configured in ZAR (R250/R180/R320/R650);
  * the basePriceUSD values below are those converted at ~18.5 ZAR/USD and
@@ -93,27 +105,65 @@ export interface TierOption {
  */
 export const TIER_OPTIONS_BY_COMPANY: Record<GradingCompany, TierOption[]> = {
   PCG: [
-    { value: 'authentication', label: 'Authentication', turnaround: '2–4 weeks', basePriceUSD: 14 },
-    { value: 'bulk', label: 'Bulk', turnaround: '8–10 weeks', note: 'Minimum 50+ cards', basePriceUSD: 10 },
+    {
+      value: 'authentication',
+      label: 'Authentication',
+      turnaround: '2–4 weeks',
+      basePriceUSD: 14,
+      basePriceGBP: 11,
+      basePriceZAR: 260,
+    },
+    {
+      value: 'bulk',
+      label: 'Bulk',
+      turnaround: '8–10 weeks',
+      note: 'Minimum 50+ cards',
+      basePriceUSD: 10,
+      basePriceGBP: 8,
+      basePriceZAR: 185,
+    },
     {
       value: 'standard',
       label: 'Standard',
       turnaround: '4–6 weeks',
       note: 'Includes sub-grades & metal labels',
       basePriceUSD: 17,
+      basePriceGBP: 13,
+      basePriceZAR: 315,
     },
-    { value: 'express', label: 'Express', turnaround: '5–7 days', basePriceUSD: 35 },
+    {
+      value: 'express',
+      label: 'Express',
+      turnaround: '5–7 days',
+      basePriceUSD: 35,
+      basePriceGBP: 28,
+      basePriceZAR: 650,
+    },
   ],
   PSA: [
-    { value: 'psa_value_bulk', label: 'Value Bulk', note: 'Minimum 50+ cards', basePriceUSD: 25 },
-    { value: 'psa_regular', label: 'Regular', basePriceUSD: 80 },
-    { value: 'psa_express', label: 'Express', basePriceUSD: 149 },
+    {
+      value: 'psa_value_bulk',
+      label: 'Value Bulk',
+      note: 'Minimum 50+ cards',
+      basePriceUSD: 25,
+      basePriceGBP: 20,
+      basePriceZAR: 465,
+    },
+    { value: 'psa_regular', label: 'Regular', basePriceUSD: 80, basePriceGBP: 63, basePriceZAR: 1480 },
+    { value: 'psa_express', label: 'Express', basePriceUSD: 149, basePriceGBP: 118, basePriceZAR: 2755 },
   ],
   ACE: [
-    { value: 'ace_value', label: 'Value', basePriceUSD: 20 },
-    { value: 'ace_basic', label: 'Basic', basePriceUSD: 24 },
-    { value: 'ace_standard', label: 'Standard', basePriceUSD: 34 },
+    { value: 'ace_value', label: 'Value', basePriceUSD: 20, basePriceGBP: 16, basePriceZAR: 370 },
+    { value: 'ace_basic', label: 'Basic', basePriceUSD: 24, basePriceGBP: 19, basePriceZAR: 445 },
+    { value: 'ace_standard', label: 'Standard', basePriceUSD: 34, basePriceGBP: 27, basePriceZAR: 630 },
   ],
+}
+
+/** Picks the right one of a TierOption's three currency fields for a region. */
+export function tierPriceForRegion(tier: TierOption, region: ProductRegion): number {
+  if (region === 'usa') return tier.basePriceUSD
+  if (region === 'uk') return tier.basePriceGBP
+  return tier.basePriceZAR
 }
 
 // ----------------------------------------------------------------------------
@@ -142,6 +192,7 @@ export interface SubmissionRow {
   stripe_payment_intent_id: string | null
   qr_code_token: string
   notes: string | null
+  region: ProductRegion
   created_at: string
   updated_at: string
 }

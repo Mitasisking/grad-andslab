@@ -15,3 +15,18 @@ export function formatZAR(amount: number): string {
 export function formatUSD(amount: number): string {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount)
 }
+
+export function formatGBP(amount: number): string {
+  return new Intl.NumberFormat('en-GB', { style: 'currency', currency: 'GBP' }).format(amount)
+}
+
+// Region-tagged shop products (0031_add_product_region.sql) each carry their
+// own price already denominated in their region's currency -- never
+// converted -- so formatting only needs to pick the right formatter, not do
+// any math. Import ProductRegion from lib/shop/product-type, not here, to
+// keep this file free of a circular import with that one.
+export function formatByRegion(amount: number, region: 'usa' | 'uk' | 'sa'): string {
+  if (region === 'usa') return formatUSD(amount)
+  if (region === 'uk') return formatGBP(amount)
+  return formatZAR(amount)
+}

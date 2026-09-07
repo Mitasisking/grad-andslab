@@ -2,8 +2,8 @@
 
 import { QRCodeSVG } from 'qrcode.react'
 import { Button } from '@/components/ui/button'
-import { formatUSD } from '@/lib/currency'
-import type { CardEntry, GradingCompany, ShippingAddress } from '@/lib/submission-types'
+import { formatByRegion, formatUSD } from '@/lib/currency'
+import type { CardEntry, GradingCompany, ProductRegion, ShippingAddress } from '@/lib/submission-types'
 
 interface Props {
   qrToken: string
@@ -13,9 +13,10 @@ interface Props {
   address: ShippingAddress | null
   courier: string
   total: number
+  region: ProductRegion
 }
 
-export function PackingSlip({ qrToken, gradingCompany, tier, cards, address, courier, total }: Props) {
+export function PackingSlip({ qrToken, gradingCompany, tier, cards, address, courier, total, region }: Props) {
   const intakeUrl = `https://app.example.com/admin/intake?token=${qrToken}`
 
   return (
@@ -105,7 +106,7 @@ export function PackingSlip({ qrToken, gradingCompany, tier, cards, address, cou
           style={{ borderColor: 'var(--line)' }}
         >
           <span style={{ color: 'var(--ink)' }}>Total paid</span>
-          <span style={{ fontVariantNumeric: 'tabular-nums', color: 'var(--ink)' }}>{formatUSD(total)}</span>
+          <span style={{ fontVariantNumeric: 'tabular-nums', color: 'var(--ink)' }}>{formatByRegion(total, region)}</span>
         </div>
       </div>
 

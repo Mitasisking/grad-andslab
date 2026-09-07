@@ -16,6 +16,7 @@ export interface ShopUrlParams {
   brand?: string[]
   cardVariant?: string[]
   player?: string | null
+  region?: string | null
 }
 
 export function buildShopUrl(current: ShopUrlParams, changes: Partial<ShopUrlParams>): string {
@@ -28,6 +29,7 @@ export function buildShopUrl(current: ShopUrlParams, changes: Partial<ShopUrlPar
   if (merged.brand?.length) params.set('brand', merged.brand.join(','))
   if (merged.cardVariant?.length) params.set('cardVariant', merged.cardVariant.join(','))
   if (merged.player?.trim()) params.set('player', merged.player.trim())
+  if (merged.region) params.set('region', merged.region)
 
   const qs = params.toString()
   return qs ? `/shop?${qs}` : '/shop'

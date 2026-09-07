@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseRouteClient } from '@/lib/supabase-route-client'
-import type { CardType, GradingCompany, Sport, SubmissionTier } from '@/lib/submission-types'
+import { REGION_OPTIONS } from '@/lib/shop/product-type'
+import type { CardType, GradingCompany, ProductRegion, Sport, SubmissionTier } from '@/lib/submission-types'
+
+const VALID_REGIONS = new Set(REGION_OPTIONS.map((r) => r.value))
 
 interface SubmissionItemInput {
   cardType: CardType
@@ -29,6 +32,7 @@ function isValidItem(item: SubmissionItemInput): boolean {
 interface CreateSubmissionBody {
   gradingCompany: GradingCompany
   tier: SubmissionTier
+  region: ProductRegion
   addressId: string
   courier: string
   serviceFee: number
@@ -52,6 +56,9 @@ export async function POST(request: NextRequest) {
   }
   if (!body.addressId) {
     return NextResponse.json({ error: 'A shipping address is required' }, { status: 400 })
+  }
+  if (!body.region || !VALID_REGIONS.has(body.region)) {
+    return NextResponse.json({ error: 'A valid country of origin is required' }, { status: 400 })
   }
   // Sport-vs-card_type consistency is also enforced by the database
   // (chk_submission_items_sport_matches_card_type, 0025_add_sports_card_fields.sql)
@@ -83,6 +90,7 @@ export async function POST(request: NextRequest) {
       user_id: user.id,
       grading_company: body.gradingCompany,
       tier: body.tier,
+      region: body.region,
       status: 'received',
       courier: body.courier,
       address_id: body.addressId,
