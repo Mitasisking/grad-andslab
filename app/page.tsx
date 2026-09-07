@@ -13,7 +13,7 @@ export default function HomePage() {
             OFFICIAL PCG SUBMISSION MIDDLEMAN
           </div>
           <h1 className="text-5xl md:text-7xl font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-400 to-amber-600 mb-6 tracking-tight">
-            Grade & Slab
+            Cuppa Cards
           </h1>
           <p className="text-xl md:text-2xl text-slate-300 max-w-2xl mx-auto mb-10 leading-relaxed">
             South Africa's premier middleman service for Premier Card Grading. We handle the international logistics, you get the grades.
@@ -82,7 +82,7 @@ export default function HomePage() {
       {/* Footer */}
       <footer className="bg-slate-900 py-12">
         <div className="max-w-6xl mx-auto px-6 flex flex-col md:flex-row justify-between items-center gap-8 md:gap-4 text-sm text-slate-500">
-          <p>© {new Date().getFullYear()} Grade & Slab. All rights reserved.</p>
+          <p>© {new Date().getFullYear()} Cuppa Cards. All rights reserved.</p>
           <div className="flex gap-6">
             <Link href="/vendor" className="hover:text-amber-400 transition">Vendor Inquiries</Link>
             <Link href="/terms" className="hover:text-amber-400 transition">Terms of Service</Link>
@@ -96,7 +96,7 @@ export default function HomePage() {
                 href={SOCIAL_LINKS.facebook}
                 target="_blank"
                 rel="noopener noreferrer"
-                aria-label="Grade & Slab on Facebook"
+                aria-label="Cuppa Cards on Facebook"
                 className="flex items-center gap-1.5 hover:text-amber-400 transition"
               >
                 <FacebookIcon className="w-4 h-4" />
@@ -106,7 +106,7 @@ export default function HomePage() {
                 href={SOCIAL_LINKS.instagram}
                 target="_blank"
                 rel="noopener noreferrer"
-                aria-label="Grade & Slab on Instagram"
+                aria-label="Cuppa Cards on Instagram"
                 className="flex items-center gap-1.5 hover:text-amber-400 transition"
               >
                 <InstagramIcon className="w-4 h-4" />
@@ -116,7 +116,7 @@ export default function HomePage() {
                 href={SOCIAL_LINKS.tiktok}
                 target="_blank"
                 rel="noopener noreferrer"
-                aria-label="Grade & Slab on TikTok"
+                aria-label="Cuppa Cards on TikTok"
                 className="flex items-center gap-1.5 hover:text-amber-400 transition"
               >
                 <TiktokIcon className="w-4 h-4" />

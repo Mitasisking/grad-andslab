@@ -105,7 +105,7 @@ export default function AuctionsPage() {
         <div className="inline-block mb-3 px-3 py-1 rounded-full bg-red-500/10 border border-red-500/20 text-xs font-semibold text-red-400 tracking-wide uppercase">
           ● Live Bidding Room
         </div>
-        <h1 className="text-4xl font-black text-amber-500 tracking-tight">Grade & Slab Auctions</h1>
+        <h1 className="text-4xl font-black text-amber-500 tracking-tight">Cuppa Cards Auctions</h1>
         <p className="mt-2 text-slate-400 text-lg">
           Compete for rare graded slabs and high-end collector pieces in real-time.
         </p>

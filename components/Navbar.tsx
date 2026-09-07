@@ -88,7 +88,7 @@ export default function Navbar() {
         {/* Left Side: Logo & Main Links */}
         <div className="flex items-center gap-8">
           <Link href="/" className="text-2xl font-black text-amber-500 tracking-tighter hover:text-amber-400 transition">
-            GRADE & SLAB
+            CUPPA CARDS
           </Link>
           
           <div className="hidden md:flex gap-6 text-sm font-medium text-slate-300">
@@ -117,7 +117,7 @@ export default function Navbar() {
               href={SOCIAL_LINKS.facebook}
               target="_blank"
               rel="noopener noreferrer"
-              aria-label="Grade & Slab on Facebook"
+              aria-label="Cuppa Cards on Facebook"
               className="text-slate-500 hover:text-amber-400 transition"
             >
               <FacebookIcon className="w-4 h-4" />
@@ -126,7 +126,7 @@ export default function Navbar() {
               href={SOCIAL_LINKS.instagram}
               target="_blank"
               rel="noopener noreferrer"
-              aria-label="Grade & Slab on Instagram"
+              aria-label="Cuppa Cards on Instagram"
               className="text-slate-500 hover:text-amber-400 transition"
             >
               <InstagramIcon className="w-4 h-4" />
@@ -135,7 +135,7 @@ export default function Navbar() {
               href={SOCIAL_LINKS.tiktok}
               target="_blank"
               rel="noopener noreferrer"
-              aria-label="Grade & Slab on TikTok"
+              aria-label="Cuppa Cards on TikTok"
               className="text-slate-500 hover:text-amber-400 transition"
             >
               <TiktokIcon className="w-4 h-4" />

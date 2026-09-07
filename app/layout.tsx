@@ -3,7 +3,7 @@ import type { Metadata } from 'next'
 import Navbar from '../components/Navbar'
 
 export const metadata: Metadata = {
-  title: 'Grade & Slab | PCG Middleman Service',
+  title: 'Cuppa Cards | PCG Middleman Service',
   description: 'Professional Pokémon card grading middleman service based in South Africa.',
 }
 

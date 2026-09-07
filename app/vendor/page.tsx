@@ -82,7 +82,7 @@ export default function VendorPage() {
             FOR EVENT ORGANIZERS
           </div>
           <h1 className="text-4xl md:text-6xl font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-400 to-amber-600 mb-6 tracking-tight">
-            Bring Grade &amp; Slab to Your Event
+            Bring Cuppa Cards to Your Event
           </h1>
           <p className="text-lg md:text-xl text-slate-300 max-w-2xl mx-auto mb-10 leading-relaxed">
             We vend at TCG expos and collector conventions across South Africa, giving attendees a way to

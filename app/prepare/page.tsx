@@ -36,7 +36,7 @@ const STEPS: Step[] = [
     items: [
       {
         label: 'Match the Packing Slip',
-        body: 'Stack your cards in the exact order they appear on your Grade & Slab digital packing slip.',
+        body: 'Stack your cards in the exact order they appear on your Cuppa Cards digital packing slip.',
       },
       {
         label: 'Labeling',
