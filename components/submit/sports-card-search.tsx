@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { Check } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { SPORT_OPTIONS } from '@/lib/submission-types'
 import type { Sport } from '@/lib/submission-types'
@@ -74,6 +75,11 @@ export function SportsCardSearch({ value, onChange, onSelect, brand, disabled, p
   const displayResults = active ? results : []
   const displayError = active ? error : null
   const displaySearching = active && isSearching
+  // Genuinely searched, came back empty, no error -- our own 50-row sports
+  // catalog is nowhere near a full card database, so this is the expected,
+  // fine-to-proceed case, not a broken search. See card-shipment-row.tsx's
+  // Pokemon-side equivalent for the same treatment.
+  const noResults = active && !displaySearching && !displayError && displayResults.length === 0
   const showDropdown = focused && (displaySearching || displayResults.length > 0 || displayError !== null)
 
   return (
@@ -85,7 +91,20 @@ export function SportsCardSearch({ value, onChange, onSelect, brand, disabled, p
         onBlur={() => setTimeout(() => setFocused(false), 150)}
         disabled={disabled}
         placeholder={placeholder ?? 'Search player, e.g. Messi'}
+        className={noResults ? 'pr-9' : undefined}
       />
+      {noResults && (
+        <Check
+          className="absolute right-2.5 top-1/2 -translate-y-1/2 size-4"
+          style={{ color: '#4ade80' }}
+          aria-label="Not in our catalog — your typed entry will be used as-is"
+        />
+      )}
+      {noResults && (
+        <p className="text-[12px] mt-1.5" style={{ color: 'var(--ink-muted)' }}>
+          Card not found in database. Please type the full card name and details above to proceed.
+        </p>
+      )}
       {showDropdown && (
         <div
           className="absolute left-0 right-0 top-full mt-1 border rounded-[3px] max-h-60 overflow-y-auto z-20"

@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { Check } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { formatZAR } from '@/lib/currency'
@@ -150,6 +151,11 @@ export function CardShipmentRow({ card, index, canRemove, onUpdateCard, onRemove
     card.cardType === 'pokemon' && card.cardName.trim()
       ? effectiveSetCards.filter((c) => c.name.toLowerCase().includes(card.cardName.trim().toLowerCase())).slice(0, 30)
       : []
+  // Genuinely searched this set, came back empty -- expected and
+  // fine-to-proceed, not a broken search (components/submit/sports-card-search.tsx
+  // has the identical treatment for the sports-card side).
+  const pokemonNoResults =
+    card.cardType === 'pokemon' && Boolean(card.setName) && Boolean(card.cardName.trim()) && !isLoadingSetCards && pokemonResults.length === 0
 
   function selectBrandSet(name: string) {
     if (card.cardType === 'pokemon') {
@@ -325,23 +331,38 @@ export function CardShipmentRow({ card, index, canRemove, onUpdateCard, onRemove
       )}
 
       {card.cardType === 'pokemon' ? (
-        <div className="relative">
+        <div>
           <Label className="text-[12.5px]" style={{ color: 'var(--ink-muted)' }}>
             Search card
           </Label>
-          <Input
-            value={card.cardName}
-            onChange={(e) => onUpdateCard(card.id, { cardName: e.target.value })}
-            onFocus={() => setFocused(true)}
-            onBlur={() => {
-              setTimeout(() => setFocused(false), 150)
-              lookupValue()
-            }}
-            disabled={!card.setName}
-            placeholder={card.setName ? 'Charizard — or type the card name directly' : 'Choose a set first'}
-          />
-          {showPokemonDropdown && (
-            <ResultsDropdown results={pokemonResults} isSearching={isLoadingSetCards} onSelect={selectPokemonCard} />
+          <div className="relative">
+            <Input
+              value={card.cardName}
+              onChange={(e) => onUpdateCard(card.id, { cardName: e.target.value })}
+              onFocus={() => setFocused(true)}
+              onBlur={() => {
+                setTimeout(() => setFocused(false), 150)
+                lookupValue()
+              }}
+              disabled={!card.setName}
+              placeholder={card.setName ? 'Charizard — or type the card name directly' : 'Choose a set first'}
+              className={pokemonNoResults ? 'pr-9' : undefined}
+            />
+            {pokemonNoResults && (
+              <Check
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 size-4"
+                style={{ color: '#4ade80' }}
+                aria-label="Not in our catalog — your typed entry will be used as-is"
+              />
+            )}
+            {showPokemonDropdown && (
+              <ResultsDropdown results={pokemonResults} isSearching={isLoadingSetCards} onSelect={selectPokemonCard} />
+            )}
+          </div>
+          {pokemonNoResults && (
+            <p className="text-[12px] mt-1.5" style={{ color: 'var(--ink-muted)' }}>
+              Card not found in database. Please type the full card name and details above to proceed.
+            </p>
           )}
         </div>
       ) : (
