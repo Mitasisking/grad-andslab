@@ -176,6 +176,13 @@ export type SubmissionStatus = 'received' | 'inspected' | 'shipped' | 'graded' |
 
 export type PaymentStatus = 'pending' | 'authorized' | 'captured' | 'failed' | 'refunded'
 
+/**
+ * Lifecycle of the BATCH a submission ships in, distinct from the
+ * submission's own SubmissionStatus above -- a submission can be 'received'
+ * while its pool is still 'open'. See supabase/migrations/0035_submission_pools.sql.
+ */
+export type PoolStatus = 'open' | 'closed' | 'shipped' | 'completed'
+
 export interface SubmissionRow {
   id: string
   user_id: string
@@ -193,8 +200,61 @@ export interface SubmissionRow {
   qr_code_token: string
   notes: string | null
   region: ProductRegion
+  needs_clean_and_polish: boolean
+  pool_id: string | null
+  pool_status: PoolStatus | null
   created_at: string
   updated_at: string
+}
+
+/** Mirrors supabase/migrations/0035_submission_pools.sql's public.pools table. */
+export interface PoolRow {
+  id: string
+  grading_company: GradingCompany
+  tier: SubmissionTier
+  label: string
+  capacity: number
+  current_count: number
+  status: PoolStatus
+  opened_at: string
+  closed_at: string | null
+  shipped_at: string | null
+  created_at: string
+  updated_at: string
+}
+
+/**
+ * Flat "Clean and Polish" pre-grading add-on (components/submit/step-addons.tsx)
+ * -- R500 as set by the business; USD/GBP are the same approximate-conversion
+ * stand-in as every other cross-currency figure in this file (~18.5 USD/ZAR,
+ * ~0.79 USD/GBP). Edit directly if the business sets a real invoiced rate.
+ */
+export const CLEAN_AND_POLISH_FEE_USD = 27
+export const CLEAN_AND_POLISH_FEE_GBP = 21
+export const CLEAN_AND_POLISH_FEE_ZAR = 500
+
+export function cleanAndPolishFeeForRegion(region: ProductRegion): number {
+  if (region === 'usa') return CLEAN_AND_POLISH_FEE_USD
+  if (region === 'uk') return CLEAN_AND_POLISH_FEE_GBP
+  return CLEAN_AND_POLISH_FEE_ZAR
+}
+
+/**
+ * Flat per-card fee for the optional pre-grading inspection add-on
+ * (components/submit/step-addons.tsx's `preCheckOptIn`). Same
+ * approximate-conversion caveat as every other cross-currency figure here.
+ * Moved here (rather than staying local to step-review-pay.tsx) so
+ * lib/email's order-confirmation template can price the same line item
+ * server-side without duplicating the numbers.
+ */
+export const INSPECTION_FEE_USD = 5
+export const INSPECTION_FEE_GBP = 4
+export const INSPECTION_FEE_ZAR = 92
+
+export function inspectionFeeForRegion(region: ProductRegion): number {
+  if (region === 'usa') return INSPECTION_FEE_USD
+  if (region === 'uk') return INSPECTION_FEE_GBP
+  return INSPECTION_FEE_ZAR
 }
 
 export interface SubmissionItemRow {

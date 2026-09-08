@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseRouteClient } from '@/lib/supabase-route-client'
 import { getStripeClient } from '@/lib/stripe-server'
+import { createPayfastCheckoutUrl } from '@/lib/payments/payfast'
 import { REGION_CURRENCY } from '@/lib/shop/product-type'
 
 interface Body {
@@ -38,6 +39,24 @@ export async function POST(request: NextRequest) {
   }
   if (order.payment_status !== 'pending') {
     return NextResponse.json({ error: 'This order has already been paid or is no longer payable' }, { status: 400 })
+  }
+
+  // SA storefront routes through Payfast (ZAR-only, the same currency
+  // REGION_CURRENCY.sa already resolves to) instead of Stripe -- everything
+  // else (UK/USA) is unchanged below.
+  if (order.region === 'sa') {
+    const origin = request.headers.get('origin') ?? new URL(request.url).origin
+    const redirectUrl = createPayfastCheckoutUrl({
+      mPaymentId: order.id,
+      amount: Number(order.total),
+      itemName: `Cuppa Cards order #${order.id.slice(0, 8).toUpperCase()}`,
+      emailAddress: user.email,
+      returnUrl: `${origin}/shop?success=true&orderId=${order.id}`,
+      cancelUrl: `${origin}/shop?canceled=true`,
+      notifyUrl: `${origin}/api/webhooks/payfast`,
+      flow: 'marketplace_order',
+    })
+    return NextResponse.json({ redirectUrl })
   }
 
   const intent = await getStripeClient().paymentIntents.create({

@@ -73,6 +73,19 @@ export default async function AdminPage() {
           </Link>
 
           <Link
+            href="/admin/pools"
+            className="block border rounded-[3px] p-6 hover:opacity-80 transition"
+            style={{ borderColor: 'var(--line)' }}
+          >
+            <p className="text-[16px]" style={{ color: 'var(--ink)' }}>
+              Batches
+            </p>
+            <p className="text-[13px] mt-1" style={{ color: 'var(--ink-muted)' }}>
+              See current grading batches, their fill progress, and the submissions in each.
+            </p>
+          </Link>
+
+          <Link
             href="/admin/financials"
             className="block border rounded-[3px] p-6 hover:opacity-80 transition"
             style={{ borderColor: 'var(--line)' }}

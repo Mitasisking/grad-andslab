@@ -36,6 +36,7 @@ interface CreateSubmissionBody {
   addressId: string
   courier: string
   serviceFee: number
+  needsCleanAndPolish: boolean
   items: SubmissionItemInput[]
 }
 
@@ -109,8 +110,9 @@ export async function POST(request: NextRequest) {
       tax_rate: taxRate,
       tax_collected: taxCollected,
       exchange_rate_to_zar: exchangeRate,
+      needs_clean_and_polish: Boolean(body.needsCleanAndPolish),
     })
-    .select('id, qr_code_token')
+    .select('id, qr_code_token, pool_id')
     .single()
 
   if (submissionError || !submission) {
@@ -172,5 +174,6 @@ export async function POST(request: NextRequest) {
   return NextResponse.json({
     submissionId: submission.id,
     qrCodeToken: submission.qr_code_token,
+    poolId: submission.pool_id,
   })
 }

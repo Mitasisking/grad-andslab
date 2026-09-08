@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useRealtimeSubmission } from '@/lib/hooks/use-realtime-submission'
 import { PipelineProgress } from '@/components/dashboard/pipeline-progress'
 import { PhotoModal } from '@/components/dashboard/photo-modal'
+import { PoolTracker } from '@/components/PoolTracker'
 import type { SubmissionRow, SubmissionItemRow } from '@/lib/submission-types'
 
 interface Props {
@@ -34,6 +35,12 @@ export function SubmissionDetail({ initialSubmission, initialItems }: Props) {
       <div className="mt-10">
         <PipelineProgress status={submission.status} />
       </div>
+
+      {submission.pool_id && (
+        <div className="mt-8 max-w-xs">
+          <PoolTracker poolId={submission.pool_id} />
+        </div>
+      )}
 
       <div className="mt-12 space-y-3">
         {items.map((item, i) => {

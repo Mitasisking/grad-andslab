@@ -65,6 +65,15 @@ export default function ShopCheckoutPage() {
       body: JSON.stringify({ orderId: orderData.orderId }),
     })
     const checkoutData = await checkoutRes.json()
+
+    // SA orders route through Payfast (app/api/shop/checkout/route.ts),
+    // which hands back a redirect URL instead of a Stripe client secret —
+    // the browser goes straight there instead of mounting StripePaymentForm.
+    if (checkoutRes.ok && checkoutData.redirectUrl) {
+      window.location.href = checkoutData.redirectUrl
+      return
+    }
+
     setCreatingOrder(false)
 
     if (!checkoutRes.ok || !checkoutData.clientSecret) {

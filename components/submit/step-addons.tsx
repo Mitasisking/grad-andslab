@@ -2,16 +2,31 @@
 
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
-import type { CardEntry } from '@/lib/submission-types'
+import { formatByRegion } from '@/lib/currency'
+import { cleanAndPolishFeeForRegion } from '@/lib/submission-types'
+import type { CardEntry, ProductRegion } from '@/lib/submission-types'
 
 interface Props {
   cards: CardEntry[]
   onUpdateCard: (id: string, patch: Partial<CardEntry>) => void
+  needsCleanAndPolish: boolean
+  onToggleCleanAndPolish: (value: boolean) => void
+  region: ProductRegion
   onNext: () => void
   onBack: () => void
 }
 
-export function StepAddOns({ cards, onUpdateCard, onNext, onBack }: Props) {
+export function StepAddOns({
+  cards,
+  onUpdateCard,
+  needsCleanAndPolish,
+  onToggleCleanAndPolish,
+  region,
+  onNext,
+  onBack,
+}: Props) {
+  const cleanAndPolishFee = cleanAndPolishFeeForRegion(region)
+
   return (
     <section className="space-y-6">
       <div>
@@ -48,6 +63,34 @@ export function StepAddOns({ cards, onUpdateCard, onNext, onBack }: Props) {
             </div>
           </div>
         ))}
+      </div>
+
+      <div>
+        <h2 className="text-[22px]" style={{ fontFamily: 'var(--font-display)', color: 'var(--ink)' }}>
+          Clean and Polish
+        </h2>
+        <p className="text-[14px] mt-2 max-w-lg leading-relaxed" style={{ color: 'var(--ink-muted)' }}>
+          A deeper surface clean and polish pass across your entire submission before it ships to the grader —
+          separate from the free per-card inspection above.
+        </p>
+
+        <div
+          className="mt-4 border rounded-[3px] p-4 flex items-center justify-between gap-4"
+          style={{ borderColor: 'var(--line)' }}
+        >
+          <label className="flex items-center gap-3">
+            <Checkbox
+              checked={needsCleanAndPolish}
+              onCheckedChange={(checked) => onToggleCleanAndPolish(checked === true)}
+            />
+            <span className="text-[14px]" style={{ color: 'var(--ink)' }}>
+              Add Clean and Polish for this submission
+            </span>
+          </label>
+          <span className="text-[14px] shrink-0" style={{ fontVariantNumeric: 'tabular-nums', color: 'var(--ink-muted)' }}>
+            {formatByRegion(cleanAndPolishFee, region)}
+          </span>
+        </div>
       </div>
 
       <div className="flex justify-between pt-2">

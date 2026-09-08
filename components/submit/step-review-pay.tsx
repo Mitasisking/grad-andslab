@@ -7,7 +7,12 @@ import { StripePaymentForm } from '@/components/submit/stripe-payment-form'
 import { PackingSlip } from '@/components/submit/packing-slip'
 import { formatByRegion } from '@/lib/currency'
 import { REGION_CURRENCY } from '@/lib/shop/product-type'
-import { TIER_OPTIONS_BY_COMPANY, tierPriceForRegion } from '@/lib/submission-types'
+import {
+  TIER_OPTIONS_BY_COMPANY,
+  cleanAndPolishFeeForRegion,
+  inspectionFeeForRegion,
+  tierPriceForRegion,
+} from '@/lib/submission-types'
 import type { CardEntry, GradingCompany, ProductRegion, ShippingAddress, SubmissionTier } from '@/lib/submission-types'
 
 // GBP/ZAR figures are approximate conversions from the real USD costs
@@ -27,19 +32,6 @@ function courierCostForRegion(c: (typeof COURIERS)[number], region: ProductRegio
   return c.costZAR
 }
 
-// Flat per-card fee for the optional pre-grading inspection add-on (see
-// components/submit/step-addons.tsx). Same approximate-conversion caveat as
-// COURIERS above. Edit directly to adjust.
-const INSPECTION_FEE_USD = 5
-const INSPECTION_FEE_GBP = 4
-const INSPECTION_FEE_ZAR = 92
-
-function inspectionFeeForRegion(region: ProductRegion): number {
-  if (region === 'usa') return INSPECTION_FEE_USD
-  if (region === 'uk') return INSPECTION_FEE_GBP
-  return INSPECTION_FEE_ZAR
-}
-
 interface Props {
   region: ProductRegion
   gradingCompany: GradingCompany
@@ -49,6 +41,7 @@ interface Props {
   addressesLoaded: boolean
   addressId: string | null
   courier: string | null
+  needsCleanAndPolish: boolean
   onSelectAddress: (id: string) => void
   onSelectCourier: (value: string) => void
   onAddressCreated: (address: ShippingAddress) => void
@@ -64,6 +57,7 @@ export function StepReviewPay({
   addressesLoaded,
   addressId,
   courier,
+  needsCleanAndPolish,
   onSelectAddress,
   onSelectCourier,
   onAddressCreated,
@@ -87,8 +81,9 @@ export function StepReviewPay({
   const perCardFee = tierPriceForRegion(tierMeta, region)
   const gradingSubtotal = perCardFee * cards.length
   const inspectionSubtotal = cards.filter((c) => c.preCheckOptIn).length * inspectionFeeForRegion(region)
+  const cleanAndPolishSubtotal = needsCleanAndPolish ? cleanAndPolishFeeForRegion(region) : 0
   const shippingCost = courierMeta ? courierCostForRegion(courierMeta, region) : 0
-  const serviceFee = gradingSubtotal + inspectionSubtotal
+  const serviceFee = gradingSubtotal + inspectionSubtotal + cleanAndPolishSubtotal
   const total = serviceFee + shippingCost
 
   async function beginCheckout() {
@@ -110,6 +105,7 @@ export function StepReviewPay({
         addressId,
         courier,
         serviceFee,
+        needsCleanAndPolish,
         items: cards.map((c) => ({
           cardType: c.cardType,
           sport: c.sport,
@@ -148,6 +144,14 @@ export function StepReviewPay({
       }),
     })
     const checkoutData = await checkoutRes.json()
+
+    // SA submissions route through Payfast (app/api/submissions/checkout/route.ts),
+    // which hands back a redirect URL instead of a Stripe client secret —
+    // the browser goes straight there instead of mounting StripePaymentForm.
+    if (checkoutRes.ok && checkoutData.redirectUrl) {
+      window.location.href = checkoutData.redirectUrl
+      return
+    }
 
     setCreatingOrder(false)
 
@@ -272,6 +276,12 @@ export function StepReviewPay({
             <div className="flex justify-between gap-4">
               <span>Pre-grading inspection</span>
               <span style={{ fontVariantNumeric: 'tabular-nums' }}>{formatByRegion(inspectionSubtotal, region)}</span>
+            </div>
+          )}
+          {cleanAndPolishSubtotal > 0 && (
+            <div className="flex justify-between gap-4">
+              <span>Clean and Polish</span>
+              <span style={{ fontVariantNumeric: 'tabular-nums' }}>{formatByRegion(cleanAndPolishSubtotal, region)}</span>
             </div>
           )}
           <div className="flex justify-between gap-4">

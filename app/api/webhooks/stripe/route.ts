@@ -3,6 +3,26 @@ import type Stripe from 'stripe'
 import { getSupabaseServerClient } from '@/lib/supabase-server'
 import { getStripeClient } from '@/lib/stripe-server'
 import { finalizeAuthorizedBid } from '@/lib/auctions/finalize-bid'
+import { sendSubmissionConfirmationEmail, sendShopOrderConfirmationEmail } from '@/lib/email/send-order-confirmation'
+
+/**
+ * Stripe's webhook payload doesn't expand latest_charge into a full Charge
+ * object, so receipt_url (used for the "View receipt" link in the
+ * confirmation email) needs its own lookup. Best-effort: a missing/failed
+ * lookup should still let the confirmation email send, just without that
+ * link, rather than blocking it.
+ */
+async function getReceiptUrl(intent: Stripe.PaymentIntent): Promise<string | null> {
+  const chargeId = typeof intent.latest_charge === 'string' ? intent.latest_charge : intent.latest_charge?.id
+  if (!chargeId) return null
+  try {
+    const charge = await getStripeClient().charges.retrieve(chargeId)
+    return charge.receipt_url ?? null
+  } catch (err) {
+    console.error('Could not retrieve charge for receipt_url', chargeId, err)
+    return null
+  }
+}
 
 export async function POST(request: NextRequest) {
   const signature = request.headers.get('stripe-signature')
@@ -36,6 +56,18 @@ export async function POST(request: NextRequest) {
             stripe_payment_intent_id: intent.id,
           })
           .eq('id', intent.metadata.submissionId)
+
+        // Best-effort: a bookkeeping/email failure shouldn't fail this
+        // webhook response (Stripe retries the whole event on a non-2xx),
+        // so this is fire-and-forget with its own error logging, same
+        // contract as post_submission_ledger_entries in
+        // app/api/submissions/route.ts.
+        if (succeeded) {
+          const receiptUrl = await getReceiptUrl(intent)
+          sendSubmissionConfirmationEmail(intent.metadata.submissionId, receiptUrl).catch((err) =>
+            console.error('Could not send submission confirmation email', intent.metadata.submissionId, err),
+          )
+        }
       }
 
       if (intent.metadata.flow === 'marketplace_order' && intent.metadata.orderId) {
@@ -54,6 +86,13 @@ export async function POST(request: NextRequest) {
         // it's already held.
         if (!succeeded) {
           await supabase.rpc('release_order_stock', { p_order_id: intent.metadata.orderId })
+        }
+
+        if (succeeded) {
+          const receiptUrl = await getReceiptUrl(intent)
+          sendShopOrderConfirmationEmail(intent.metadata.orderId, receiptUrl).catch((err) =>
+            console.error('Could not send order confirmation email', intent.metadata.orderId, err),
+          )
         }
       }
       break

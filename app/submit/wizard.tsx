@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { ManifestRail } from '@/components/submit/manifest-rail'
+import { PoolTracker } from '@/components/PoolTracker'
 import { StepGraderTier } from '@/components/submit/step-grader-tier'
 import { StepAddOns } from '@/components/submit/step-addons'
 import { StepReviewPay } from '@/components/submit/step-review-pay'
@@ -40,6 +41,7 @@ export function SubmissionWizard() {
   const [addressesLoaded, setAddressesLoaded] = useState(false)
   const [addressId, setAddressId] = useState<string | null>(null)
   const [courier, setCourier] = useState<string | null>(null)
+  const [needsCleanAndPolish, setNeedsCleanAndPolish] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -96,7 +98,14 @@ export function SubmissionWizard() {
 
   return (
     <div className="grid lg:grid-cols-[220px_1fr] gap-10 lg:gap-16">
-      <ManifestRail currentStep={step} />
+      <div className="lg:sticky lg:top-10 lg:self-start space-y-10">
+        <ManifestRail currentStep={step} />
+        {tier && (
+          <div className="hidden lg:block">
+            <PoolTracker gradingCompany={company} tier={tier} limit={1} />
+          </div>
+        )}
+      </div>
 
       <div className="min-w-0">
         <AnimatePresence mode="wait" initial={false}>
@@ -125,7 +134,15 @@ export function SubmissionWizard() {
             )}
 
             {step === 1 && (
-              <StepAddOns cards={cards} onUpdateCard={updateCard} onNext={goNext} onBack={goBack} />
+              <StepAddOns
+                cards={cards}
+                onUpdateCard={updateCard}
+                needsCleanAndPolish={needsCleanAndPolish}
+                onToggleCleanAndPolish={setNeedsCleanAndPolish}
+                region={region}
+                onNext={goNext}
+                onBack={goBack}
+              />
             )}
 
             {step === 2 && tier && (
@@ -138,6 +155,7 @@ export function SubmissionWizard() {
                 addressesLoaded={addressesLoaded}
                 addressId={addressId}
                 courier={courier}
+                needsCleanAndPolish={needsCleanAndPolish}
                 onSelectAddress={setAddressId}
                 onSelectCourier={setCourier}
                 onAddressCreated={handleAddressCreated}
