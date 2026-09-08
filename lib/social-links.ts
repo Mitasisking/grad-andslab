@@ -1,12 +1,12 @@
-// Placeholder URLs -- swap these for the real profiles/group once they exist.
+// facebook/tiktok/whatsapp are still placeholders -- swap for the real
+// profiles/group once they exist. instagram is the real profile.
 export const SOCIAL_LINKS = {
   facebook: 'https://facebook.com/cuppacards',
-  instagram: 'https://instagram.com/cuppacards',
+  instagram: 'https://www.instagram.com/cuppascards',
   tiktok: 'https://tiktok.com/@cuppacards',
   whatsapp: 'https://chat.whatsapp.com/placeholder',
 } as const
 
-// Placeholder URL -- swap for the real Whatnot storefront once it exists.
 export const WHATNOT_LINKS = {
-  usa: 'https://whatnot.com/user/cuppacards_usa',
+  usa: 'https://www.whatnot.com/user/cuppascards',
 } as const
