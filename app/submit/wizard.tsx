@@ -86,10 +86,11 @@ export function SubmissionWizard() {
         c.cardName.trim() &&
         c.setName.trim() &&
         c.declaredValue >= 0 &&
-        // Sports cards no longer have a manual sport picker -- sport is only
-        // ever set by picking a search result (card-shipment-row.tsx's
-        // selectSportsCard), so a card stuck on a manually-typed name with
-        // no match picked can't proceed rather than failing later at Pay.
+        // Sport has its own manual dropdown (card-shipment-row.tsx) so it
+        // can be set without relying on a search-result match -- required
+        // here so a card stuck on a free-typed name still can't reach Pay
+        // without one, since submissions.sport is a not-null column for
+        // sports cards.
         (c.cardType !== 'sports_card' || c.sport !== null),
     )
 
