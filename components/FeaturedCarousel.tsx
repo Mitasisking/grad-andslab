@@ -57,11 +57,16 @@ export function FeaturedCarousel({ products }: { products: FeaturedProduct[] }) 
   const [paused, setPaused] = useState(false)
   const count = products.length
 
+  // `index` is a dependency, not just state read inside the effect, so a
+  // manual click (an arrow or a dot -- both go through goTo, which sets
+  // index) tears down this interval and starts a fresh one instead of
+  // firing on whatever's left of the previous countdown -- otherwise a
+  // manual advance could be followed by an auto-advance a moment later.
   useEffect(() => {
     if (paused || count <= 1) return
     const id = setInterval(() => setIndex((i) => (i + 1) % count), AUTO_ROTATE_MS)
     return () => clearInterval(id)
-  }, [paused, count])
+  }, [paused, count, index])
 
   if (count === 0) return null
 
