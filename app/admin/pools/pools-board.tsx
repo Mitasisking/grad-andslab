@@ -159,6 +159,22 @@ export function AdminPoolsBoard({ pools, submissionsByPool }: Props) {
                             Clean &amp; Polish
                           </span>
                         )}
+                        {m.needs_semi_rigids && (
+                          <span
+                            className="text-[11px] px-1.5 py-0.5 rounded-[2px]"
+                            style={{ background: 'var(--paper-raised)', color: 'var(--ink-muted)', border: '1px solid var(--line)' }}
+                          >
+                            Semi-rigids
+                          </span>
+                        )}
+                        {m.interested_in_consignment && (
+                          <span
+                            className="text-[11px] px-1.5 py-0.5 rounded-[2px]"
+                            style={{ background: 'var(--paper-raised)', color: 'var(--ink-muted)', border: '1px solid var(--line)' }}
+                          >
+                            Consignment
+                          </span>
+                        )}
                         <span style={{ color: 'var(--ink-muted)' }}>
                           {new Date(m.created_at).toLocaleDateString()}
                         </span>

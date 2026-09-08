@@ -37,6 +37,8 @@ interface CreateSubmissionBody {
   courier: string
   serviceFee: number
   needsCleanAndPolish: boolean
+  needsSemiRigids: boolean
+  interestedInConsignment: boolean
   items: SubmissionItemInput[]
 }
 
@@ -111,6 +113,8 @@ export async function POST(request: NextRequest) {
       tax_collected: taxCollected,
       exchange_rate_to_zar: exchangeRate,
       needs_clean_and_polish: Boolean(body.needsCleanAndPolish),
+      needs_semi_rigids: Boolean(body.needsSemiRigids),
+      interested_in_consignment: Boolean(body.interestedInConsignment),
     })
     .select('id, qr_code_token, pool_id')
     .single()

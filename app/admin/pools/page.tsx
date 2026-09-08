@@ -7,6 +7,8 @@ export interface PoolSubmissionRow {
   id: string
   tier: string
   needs_clean_and_polish: boolean
+  needs_semi_rigids: boolean
+  interested_in_consignment: boolean
   created_at: string
   profiles: { full_name: string | null; email: string } | null
 }
@@ -29,7 +31,9 @@ export default async function AdminPoolsPage() {
 
   const { data: submissions } = await supabase
     .from('submissions')
-    .select('id, pool_id, tier, needs_clean_and_polish, created_at, profiles(full_name, email)')
+    .select(
+      'id, pool_id, tier, needs_clean_and_polish, needs_semi_rigids, interested_in_consignment, created_at, profiles(full_name, email)',
+    )
     .not('pool_id', 'is', null)
 
   const submissionsByPool = new Map<string, PoolSubmissionRow[]>()

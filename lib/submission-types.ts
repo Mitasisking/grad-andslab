@@ -201,6 +201,8 @@ export interface SubmissionRow {
   notes: string | null
   region: ProductRegion
   needs_clean_and_polish: boolean
+  needs_semi_rigids: boolean
+  interested_in_consignment: boolean
   pool_id: string | null
   pool_status: PoolStatus | null
   created_at: string

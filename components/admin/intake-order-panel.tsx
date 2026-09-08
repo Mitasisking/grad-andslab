@@ -106,6 +106,35 @@ export function IntakeOrderPanel({ submission, items, statusHistory, onRefresh, 
         </button>
       </div>
 
+      {(submission.needs_clean_and_polish || submission.needs_semi_rigids || submission.interested_in_consignment) && (
+        <div className="flex flex-wrap gap-2 mt-3">
+          {submission.needs_clean_and_polish && (
+            <span
+              className="text-[11.5px] px-2 py-1 rounded-[3px]"
+              style={{ background: 'var(--paper-raised)', color: 'var(--seal)', border: '1px solid var(--line)' }}
+            >
+              Clean and Polish requested
+            </span>
+          )}
+          {submission.needs_semi_rigids && (
+            <span
+              className="text-[11.5px] px-2 py-1 rounded-[3px]"
+              style={{ background: 'var(--paper-raised)', color: 'var(--seal)', border: '1px solid var(--line)' }}
+            >
+              Semi-rigids requested
+            </span>
+          )}
+          {submission.interested_in_consignment && (
+            <span
+              className="text-[11.5px] px-2 py-1 rounded-[3px]"
+              style={{ background: 'var(--paper-raised)', color: 'var(--seal)', border: '1px solid var(--line)' }}
+            >
+              Interested in consignment
+            </span>
+          )}
+        </div>
+      )}
+
       <div
         className="mt-6 flex items-center justify-between border rounded-[3px] p-4 gap-4"
         style={{ borderColor: 'var(--line)' }}

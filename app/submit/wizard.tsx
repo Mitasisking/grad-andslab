@@ -42,6 +42,8 @@ export function SubmissionWizard() {
   const [addressId, setAddressId] = useState<string | null>(null)
   const [courier, setCourier] = useState<string | null>(null)
   const [needsCleanAndPolish, setNeedsCleanAndPolish] = useState(false)
+  const [needsSemiRigids, setNeedsSemiRigids] = useState(false)
+  const [interestedInConsignment, setInterestedInConsignment] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -140,6 +142,10 @@ export function SubmissionWizard() {
                 onUpdateCard={updateCard}
                 needsCleanAndPolish={needsCleanAndPolish}
                 onToggleCleanAndPolish={setNeedsCleanAndPolish}
+                needsSemiRigids={needsSemiRigids}
+                onToggleSemiRigids={setNeedsSemiRigids}
+                interestedInConsignment={interestedInConsignment}
+                onToggleConsignment={setInterestedInConsignment}
                 region={region}
                 onNext={goNext}
                 onBack={goBack}
@@ -157,6 +163,8 @@ export function SubmissionWizard() {
                 addressId={addressId}
                 courier={courier}
                 needsCleanAndPolish={needsCleanAndPolish}
+                needsSemiRigids={needsSemiRigids}
+                interestedInConsignment={interestedInConsignment}
                 onSelectAddress={setAddressId}
                 onSelectCourier={setCourier}
                 onAddressCreated={handleAddressCreated}

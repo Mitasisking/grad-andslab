@@ -42,6 +42,8 @@ interface Props {
   addressId: string | null
   courier: string | null
   needsCleanAndPolish: boolean
+  needsSemiRigids: boolean
+  interestedInConsignment: boolean
   onSelectAddress: (id: string) => void
   onSelectCourier: (value: string) => void
   onAddressCreated: (address: ShippingAddress) => void
@@ -58,6 +60,8 @@ export function StepReviewPay({
   addressId,
   courier,
   needsCleanAndPolish,
+  needsSemiRigids,
+  interestedInConsignment,
   onSelectAddress,
   onSelectCourier,
   onAddressCreated,
@@ -106,6 +110,8 @@ export function StepReviewPay({
         courier,
         serviceFee,
         needsCleanAndPolish,
+        needsSemiRigids,
+        interestedInConsignment,
         items: cards.map((c) => ({
           cardType: c.cardType,
           sport: c.sport,
