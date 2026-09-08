@@ -4,8 +4,11 @@ import { REGION_OPTIONS } from '@/lib/shop/product-type'
 
 export type { ProductRegion }
 export type ProductCategory = 'sealed' | 'accessories' | 'graded' | 'cards'
+/** Mirrors public.product_franchise (0036_add_product_franchise.sql) -- see that migration for why this is separate from CardType. */
+export type ProductFranchise = 'pokemon' | 'sports' | 'general'
 
 const VALID_CATEGORIES: ProductCategory[] = ['sealed', 'accessories', 'graded', 'cards']
+const VALID_FRANCHISES: ProductFranchise[] = ['pokemon', 'sports', 'general']
 const VALID_SPORTS: Sport[] = ['soccer', 'rugby', 'f1', 'nhl', 'nba', 'mlb', 'nfl']
 const VALID_CARD_VARIANTS: CardVariant[] = ['rookie', 'auto', 'patch', 'parallel', 'base']
 const VALID_REGIONS: ProductRegion[] = REGION_OPTIONS.map((r) => r.value)
@@ -14,6 +17,7 @@ export interface ProductInput {
   title: string
   description: string | null
   category: ProductCategory
+  franchise: ProductFranchise
   price: number
   stock: number
   images: string[]
@@ -32,6 +36,7 @@ export interface ProductInput {
 export function validateProductInput(body: Partial<ProductInput>): string | null {
   if (!body.title?.trim()) return 'Product name is required.'
   if (!body.category || !VALID_CATEGORIES.includes(body.category)) return 'A valid category is required.'
+  if (!body.franchise || !VALID_FRANCHISES.includes(body.franchise)) return 'A valid franchise is required.'
   if (typeof body.price !== 'number' || !Number.isFinite(body.price) || body.price < 0) {
     return 'Price must be a non-negative number.'
   }
@@ -63,6 +68,7 @@ export function toProductRow(body: ProductInput) {
     title: body.title.trim(),
     description: body.description?.trim() || null,
     category: body.category,
+    franchise: body.franchise,
     price: body.price,
     stock: body.stock,
     images: body.images ?? [],

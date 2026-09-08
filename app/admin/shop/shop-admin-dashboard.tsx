@@ -5,6 +5,7 @@ import { formatByRegion } from '@/lib/currency'
 import { ProductFormModal } from './product-form-modal'
 import { ProductThumbnail } from './product-thumbnail'
 import type { AdminProduct } from './types'
+import type { ProductCategory, ProductFranchise } from '@/lib/admin/product-input'
 
 const CATEGORY_LABEL: Record<string, string> = {
   sealed: 'Sealed',
@@ -12,6 +13,30 @@ const CATEGORY_LABEL: Record<string, string> = {
   graded: 'Graded',
   cards: 'Raw Cards',
 }
+
+const FRANCHISE_LABEL: Record<string, string> = {
+  pokemon: 'Pokémon',
+  sports: 'Sports',
+  general: 'General',
+}
+
+const CATEGORY_FILTER_OPTIONS: { value: ProductCategory | 'all'; label: string }[] = [
+  { value: 'all', label: 'All categories' },
+  { value: 'sealed', label: 'Sealed' },
+  { value: 'accessories', label: 'Accessories' },
+  { value: 'graded', label: 'Graded' },
+  { value: 'cards', label: 'Raw Cards' },
+]
+
+const FRANCHISE_FILTER_OPTIONS: { value: ProductFranchise | 'all'; label: string }[] = [
+  { value: 'all', label: 'All franchises' },
+  { value: 'pokemon', label: 'Pokémon' },
+  { value: 'sports', label: 'Sports' },
+  { value: 'general', label: 'General' },
+]
+
+const selectClass = 'border rounded-[3px] px-3 py-2 text-[13.5px] bg-transparent'
+const selectStyle = { borderColor: 'var(--line)', color: 'var(--ink)' }
 
 const REGION_LABEL: Record<string, string> = {
   sa: 'SA',
@@ -25,6 +50,14 @@ export function ShopAdminDashboard() {
   const [error, setError] = useState<string | null>(null)
   const [modalProduct, setModalProduct] = useState<AdminProduct | 'new' | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [franchiseFilter, setFranchiseFilter] = useState<ProductFranchise | 'all'>('all')
+  const [categoryFilter, setCategoryFilter] = useState<ProductCategory | 'all'>('all')
+
+  const filteredProducts = products.filter(
+    (p) =>
+      (franchiseFilter === 'all' || p.franchise === franchiseFilter) &&
+      (categoryFilter === 'all' || p.category === categoryFilter),
+  )
 
   useEffect(() => {
     fetch('/api/admin/products')
@@ -90,6 +123,33 @@ export function ShopAdminDashboard() {
         </p>
       )}
 
+      <div className="flex flex-wrap gap-3 mt-6">
+        <select
+          value={franchiseFilter}
+          onChange={(e) => setFranchiseFilter(e.target.value as ProductFranchise | 'all')}
+          className={selectClass}
+          style={selectStyle}
+        >
+          {FRANCHISE_FILTER_OPTIONS.map((f) => (
+            <option key={f.value} value={f.value}>
+              {f.label}
+            </option>
+          ))}
+        </select>
+        <select
+          value={categoryFilter}
+          onChange={(e) => setCategoryFilter(e.target.value as ProductCategory | 'all')}
+          className={selectClass}
+          style={selectStyle}
+        >
+          {CATEGORY_FILTER_OPTIONS.map((c) => (
+            <option key={c.value} value={c.value}>
+              {c.label}
+            </option>
+          ))}
+        </select>
+      </div>
+
       <div className="mt-8">
         {loading ? (
           <p className="text-[13.5px]" style={{ color: 'var(--ink-muted)' }}>
@@ -98,6 +158,10 @@ export function ShopAdminDashboard() {
         ) : products.length === 0 ? (
           <p className="text-[13.5px]" style={{ color: 'var(--ink-muted)' }}>
             No products yet.
+          </p>
+        ) : filteredProducts.length === 0 ? (
+          <p className="text-[13.5px]" style={{ color: 'var(--ink-muted)' }}>
+            No products match these filters.
           </p>
         ) : (
           <div className="border-t" style={{ borderColor: 'var(--line)' }}>
@@ -114,7 +178,7 @@ export function ShopAdminDashboard() {
               <span></span>
             </div>
 
-            {products.map((product) => {
+            {filteredProducts.map((product) => {
               const outOfStock = product.stock <= 0
               return (
                 <div
@@ -135,6 +199,12 @@ export function ShopAdminDashboard() {
                   </div>
                   <span className="text-[13px]" style={{ color: 'var(--ink-muted)' }}>
                     {CATEGORY_LABEL[product.category] ?? product.category}
+                    <span
+                      className="ml-1.5 text-[10.5px] px-1.5 py-0.5 rounded-[3px]"
+                      style={{ background: 'var(--paper-raised)', color: 'var(--ink-muted)' }}
+                    >
+                      {FRANCHISE_LABEL[product.franchise] ?? product.franchise}
+                    </span>
                     <span
                       className="ml-1.5 text-[10.5px] px-1.5 py-0.5 rounded-[3px]"
                       style={{ background: 'var(--paper-raised)', color: 'var(--ink-muted)' }}

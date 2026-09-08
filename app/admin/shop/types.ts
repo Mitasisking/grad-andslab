@@ -1,13 +1,14 @@
 import type { CardType, Sport } from '@/lib/submission-types'
 import type { CardVariant } from '@/lib/shop/product-type'
-import type { ProductCategory, ProductRegion } from '@/lib/admin/product-input'
+import type { ProductCategory, ProductFranchise, ProductRegion } from '@/lib/admin/product-input'
 
-/** Mirrors `select('*')` against public.products (0001_init_schema.sql + 0012/0020/0026/0031's additions). */
+/** Mirrors `select('*')` against public.products (0001_init_schema.sql + 0012/0020/0026/0031/0036's additions). */
 export interface AdminProduct {
   id: string
   title: string
   description: string | null
   category: ProductCategory
+  franchise: ProductFranchise
   price: number
   stock: number
   sku: string | null

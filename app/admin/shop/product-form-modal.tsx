@@ -5,7 +5,7 @@ import { SPORT_OPTIONS } from '@/lib/submission-types'
 import type { CardType, Sport } from '@/lib/submission-types'
 import { CARD_VARIANT_OPTIONS, REGION_OPTIONS } from '@/lib/shop/product-type'
 import type { CardVariant, ProductRegion } from '@/lib/shop/product-type'
-import type { ProductCategory } from '@/lib/admin/product-input'
+import type { ProductCategory, ProductFranchise } from '@/lib/admin/product-input'
 import { uploadProductImage } from '@/lib/admin/product-image-upload'
 import { formatByRegion } from '@/lib/currency'
 import { ProductThumbnail } from './product-thumbnail'
@@ -18,6 +18,12 @@ const CATEGORY_OPTIONS: { value: ProductCategory; label: string }[] = [
   { value: 'cards', label: 'Raw Cards' },
 ]
 
+const FRANCHISE_OPTIONS: { value: ProductFranchise; label: string }[] = [
+  { value: 'pokemon', label: 'Pokémon' },
+  { value: 'sports', label: 'Sports' },
+  { value: 'general', label: 'General' },
+]
+
 const REGION_CURRENCY_LABEL: Record<ProductRegion, string> = {
   sa: 'ZAR',
   usa: 'USD',
@@ -28,6 +34,7 @@ interface Draft {
   title: string
   description: string
   category: ProductCategory
+  franchise: ProductFranchise
   price: string
   stock: string
   imageUrl: string
@@ -47,6 +54,7 @@ function draftFromProduct(product: AdminProduct | null): Draft {
     title: product?.title ?? '',
     description: product?.description ?? '',
     category: product?.category ?? 'sealed',
+    franchise: product?.franchise ?? 'general',
     price: product ? String(product.price) : '',
     stock: product ? String(product.stock) : '0',
     imageUrl: product?.images?.[0] ?? '',
@@ -120,6 +128,7 @@ export function ProductFormModal({ product, onClose, onSaved }: Props) {
       title: draft.title.trim(),
       description: draft.description.trim() || null,
       category: draft.category,
+      franchise: draft.franchise,
       price,
       stock,
       images: draft.imageUrl.trim() ? [draft.imageUrl.trim()] : [],
@@ -181,7 +190,7 @@ export function ProductFormModal({ product, onClose, onSaved }: Props) {
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-3 gap-3">
             <div>
               <label className={labelClass} style={labelStyle}>
                 Category
@@ -195,6 +204,23 @@ export function ProductFormModal({ product, onClose, onSaved }: Props) {
                 {CATEGORY_OPTIONS.map((c) => (
                   <option key={c.value} value={c.value}>
                     {c.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className={labelClass} style={labelStyle}>
+                Franchise
+              </label>
+              <select
+                value={draft.franchise}
+                onChange={(e) => update('franchise', e.target.value as ProductFranchise)}
+                className={inputClass}
+                style={inputStyle}
+              >
+                {FRANCHISE_OPTIONS.map((f) => (
+                  <option key={f.value} value={f.value}>
+                    {f.label}
                   </option>
                 ))}
               </select>
