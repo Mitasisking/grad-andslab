@@ -34,16 +34,16 @@ export default async function HomePage({ searchParams }: HomePageProps) {
           <div className="inline-block mb-4 px-3 py-1 rounded-full bg-slate-800 border border-slate-700 text-xs font-semibold text-emerald-400 tracking-wide uppercase">
             Official PSA, ACE and PCG middleman
           </div>
-          <h1 className="text-5xl md:text-7xl font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-400 to-amber-600 mb-6 tracking-tight">
+          <h1 className="text-5xl md:text-7xl font-black text-[#D4AF37] mb-6 tracking-tight [-webkit-text-stroke:1.5px_black]">
             Cuppa Cards
           </h1>
           <p className="text-xl md:text-2xl text-slate-300 max-w-2xl mx-auto mb-10 leading-relaxed">
             South Africa's premier middleman service. We make it easy to grade your cards.
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-            <Link 
-              href="/dashboard" 
-              className="w-full sm:w-auto bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-lg px-8 py-4 rounded-xl transition shadow-[0_0_20px_rgba(245,158,11,0.2)] hover:shadow-[0_0_25px_rgba(245,158,11,0.4)]"
+            <Link
+              href="/dashboard"
+              className="w-full sm:w-auto bg-[#D4AF37] hover:bg-[#c4a02f] text-black font-bold text-lg px-8 py-4 rounded-xl border-2 border-black transition shadow-[0_0_20px_rgba(212,175,55,0.25)] hover:shadow-[0_0_25px_rgba(212,175,55,0.45)]"
             >
               Start a Submission
             </Link>
