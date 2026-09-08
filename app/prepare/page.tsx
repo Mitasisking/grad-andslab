@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { PackagingGuidelines } from '@/components/PackagingGuidelines'
 
 interface StepItem {
   label: string
@@ -120,6 +121,8 @@ export default function PrepareCardsPage() {
           ))}
         </div>
       </section>
+
+      <PackagingGuidelines />
 
       {/* CTA */}
       <section className="py-20 md:py-24">

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseRouteClient } from '@/lib/supabase-route-client'
-import { REGION_OPTIONS } from '@/lib/shop/product-type'
+import { REGION_EXCHANGE_RATE_TO_ZAR, REGION_OPTIONS, REGION_TAX_RATE } from '@/lib/shop/product-type'
 import type { CardType, GradingCompany, ProductRegion, Sport, SubmissionTier } from '@/lib/submission-types'
 
 const VALID_REGIONS = new Set(REGION_OPTIONS.map((r) => r.value))
@@ -82,6 +82,14 @@ export async function POST(request: NextRequest) {
 
   const totalDeclaredValue = body.items.reduce((sum, item) => sum + item.declaredValue, 0)
 
+  // Bookkeeping only -- doesn't change body.serviceFee, what the customer
+  // is actually charged (app/api/submissions/checkout/route.ts). Rates are
+  // static placeholders (lib/shop/product-type.ts's REGION_TAX_RATE /
+  // REGION_EXCHANGE_RATE_TO_ZAR), not real jurisdiction/FX figures yet.
+  const taxRate = REGION_TAX_RATE[body.region]
+  const exchangeRate = REGION_EXCHANGE_RATE_TO_ZAR[body.region]
+  const taxCollected = Math.round(body.serviceFee * taxRate * 100) / 100
+
   // qr_code_token is generated server-side by Postgres (default gen_random_uuid())
   // and only ever read back here — the client never supplies or invents it.
   const { data: submission, error: submissionError } = await supabase
@@ -98,6 +106,9 @@ export async function POST(request: NextRequest) {
       total_declared_value: totalDeclaredValue,
       service_fee: body.serviceFee,
       payment_status: 'pending',
+      tax_rate: taxRate,
+      tax_collected: taxCollected,
+      exchange_rate_to_zar: exchangeRate,
     })
     .select('id, qr_code_token')
     .single()
@@ -132,6 +143,30 @@ export async function POST(request: NextRequest) {
     // silently leaving an empty submission; the caller can retry or the
     // submission can be cleaned up by an admin/cron sweep of empty orders.
     return NextResponse.json({ error: itemsError.message }, { status: 500 })
+  }
+
+  // Revenue/liability/tax split (0034_accounting_foundations.sql's
+  // post_submission_ledger_entries -- a security definer RPC, since this
+  // customer's own session isn't an admin and ledger_entries' RLS is
+  // admin-only for direct table access). The liability lookup (what we
+  // actually pay this grading_company for this tier) happens inside that
+  // function, against grading_tier_costs -- every row there is null until
+  // a real wholesale cost is filled in, so liability posts as 0 today and
+  // the whole post-tax fee is revenue, not a fabricated split. Best-effort:
+  // a bookkeeping failure here shouldn't fail a real submission the
+  // customer already paid to create, but it is logged so it doesn't
+  // disappear silently.
+  const feeZar = body.serviceFee * exchangeRate
+  const taxZar = taxCollected * exchangeRate
+  const { error: ledgerError } = await supabase.rpc('post_submission_ledger_entries', {
+    p_submission_id: submission.id,
+    p_grading_company: body.gradingCompany,
+    p_tier: body.tier,
+    p_fee_zar: feeZar,
+    p_tax_collected_zar: taxZar,
+  })
+  if (ledgerError) {
+    console.error('Could not post ledger entries for submission', submission.id, ledgerError.message)
   }
 
   return NextResponse.json({
