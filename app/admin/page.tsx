@@ -71,6 +71,19 @@ export default async function AdminPage() {
               Add, edit, and remove products listed in the shop.
             </p>
           </Link>
+
+          <Link
+            href="/admin/financials"
+            className="block border rounded-[3px] p-6 hover:opacity-80 transition"
+            style={{ borderColor: 'var(--line)' }}
+          >
+            <p className="text-[16px]" style={{ color: 'var(--ink)' }}>
+              Financials
+            </p>
+            <p className="text-[13px] mt-1" style={{ color: 'var(--ink-muted)' }}>
+              Revenue, COGS, and tax figures — foundational skeleton, not yet a finished reporting suite.
+            </p>
+          </Link>
         </div>
       </div>
     </div>
