@@ -47,3 +47,10 @@ next-env.d.ts
 export.csv
 
 .vercel
+
+# local scratch notes with real payment-provider credentials -- not secrets
+# files Next.js knows about (those are .env*, already ignored above), just
+# plaintext notes kept for reference until they're moved into .env.local
+resend dot com.txt
+stripe.txt
+stripe trigger payment.txt
