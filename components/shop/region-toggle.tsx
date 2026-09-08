@@ -19,7 +19,7 @@ interface Props {
 export function RegionToggle({ active, current }: Props) {
   return (
     <div
-      className="inline-flex border rounded-[3px] p-1 gap-1"
+      className="inline-flex border rounded-full p-1 gap-1"
       style={{ borderColor: 'var(--line)', background: 'var(--paper-raised)' }}
     >
       {REGION_OPTIONS.map((r) => {
@@ -34,7 +34,7 @@ export function RegionToggle({ active, current }: Props) {
               cardVariant: [],
               player: null,
             })}
-            className="px-4 py-1.5 text-[13.5px] rounded-[3px]"
+            className="px-4 py-1.5 text-[13.5px] rounded-full transition-colors duration-200"
             style={{
               background: selected ? 'var(--seal)' : 'transparent',
               color: selected ? 'var(--seal-ink)' : 'var(--ink-muted)',

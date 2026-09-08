@@ -37,7 +37,7 @@ function StreamCard({ label, href }: StreamCardProps) {
       href={href}
       target="_blank"
       rel="noopener noreferrer"
-      className="group w-full sm:w-auto flex items-center justify-between gap-5 bg-slate-800/80 hover:bg-slate-800 border border-slate-700 hover:border-amber-500/50 rounded-xl px-6 py-4 transition"
+      className="group w-full sm:w-auto sm:min-w-[300px] flex items-center justify-between gap-5 bg-slate-800/80 hover:bg-slate-800 border border-slate-700 hover:border-amber-500/50 rounded-xl px-6 py-4 transition"
     >
       <span className="flex items-center gap-3">
         <BroadcastIcon className="w-6 h-6 text-amber-400 shrink-0" />
@@ -75,9 +75,8 @@ export function WhatnotBanner() {
           Join our daily live streams for exclusive box breaks, singles auctions, and giveaways.
         </p>
 
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+        <div className="flex justify-center">
           <StreamCard label="USA Stream" href={WHATNOT_LINKS.usa} />
-          <StreamCard label="UK Stream" href={WHATNOT_LINKS.uk} />
         </div>
 
         <p className="text-slate-500 text-[12.5px] mt-6">

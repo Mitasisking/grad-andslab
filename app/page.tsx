@@ -2,8 +2,29 @@ import Link from 'next/link'
 import { SOCIAL_LINKS } from '../lib/social-links'
 import { FacebookIcon, InstagramIcon, TiktokIcon, WhatsappIcon } from '../components/SocialIcons'
 import { WhatnotBanner } from '../components/WhatnotBanner'
+import { FeaturedCarousel } from '../components/FeaturedCarousel'
+import { getSupabaseRouteClient } from '../lib/supabase-route-client'
+import { getFeaturedProducts } from '../lib/shop/featured-products'
+import { REGION_OPTIONS, type ProductRegion } from '../lib/shop/product-type'
 
-export default function HomePage() {
+const VALID_REGIONS = new Set(REGION_OPTIONS.map((r) => r.value))
+
+interface HomePageProps {
+  searchParams: Promise<{ region?: string }>
+}
+
+export default async function HomePage({ searchParams }: HomePageProps) {
+  // No site-wide "active region" concept exists yet (RegionToggle on /shop
+  // is purely a per-request URL param, not a persisted preference) -- 'sa'
+  // is the default every other region-aware surface in this app already
+  // falls back to, and ?region= lets a link (e.g. from /shop) opt into a
+  // different one for this carousel specifically.
+  const { region } = await searchParams
+  const activeRegion: ProductRegion = region && VALID_REGIONS.has(region as ProductRegion) ? (region as ProductRegion) : 'sa'
+
+  const supabase = await getSupabaseRouteClient()
+  const featuredProducts = await getFeaturedProducts(supabase, activeRegion)
+
   return (
     <div className="min-h-screen bg-slate-900 text-white selection:bg-amber-500 selection:text-slate-900">
       
@@ -40,6 +61,8 @@ export default function HomePage() {
       </section>
 
       <WhatnotBanner />
+
+      <FeaturedCarousel products={featuredProducts} />
 
       {/* How It Works Section */}
       <section className="py-24 bg-slate-950 border-y border-slate-800">

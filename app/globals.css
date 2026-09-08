@@ -1,8 +1,8 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #0a0908;
+  --foreground: #f3efe4;
 
   /* ----------------------------------------------------------------------
    * Ledger/manifest palette — the design language used by the Phase 2-4
@@ -12,36 +12,30 @@
    * `style={{ color: 'var(--ink)' }}` etc. — this is the first place
    * they're actually defined.
    *
-   * --ink/--seal/--paper below are not invented: they match
-   * components/submit/stripe-payment-form.tsx's existing Stripe Elements
-   * theme (colorText/colorPrimary/colorBackground) verbatim, since that's
-   * the one place in the delivered code a real color decision had already
-   * been made. Everything else is built to sit consistently alongside it.
+   * Rebranded to the Cuppa Cards black-and-gold identity: a rich near-black
+   * "paper" with warm off-white ink and a gold seal/vault, replacing the
+   * original cream-paper palette outright (that light theme used to be the
+   * default with these dark values only under prefers-color-scheme: dark —
+   * now dark is the one and only theme, matching the rest of the site's
+   * already-dark homepage/navbar/footer, so the media-query override block
+   * that used to hold these values is gone; there's nothing left for it to
+   * override).
    *
-   * Deliberately global (:root), not split into the three separate files
-   * the phase READMEs describe (app/submit/submit-tokens.css,
-   * styles/ledger-tokens.css, a distinct app/auctions/layout.tsx palette):
-   * every one of these surfaces cross-links to the others (dashboard ->
-   * /auctions/new, /auctions/[id] -> dashboard, etc.), so one consistent
-   * palette avoids the page changing look mid-navigation. Applied per-route
-   * via each area's own layout.tsx (app/submit/layout.tsx,
-   * app/auctions/[id]/layout.tsx, app/auctions/new/layout.tsx,
-   * app/admin/grading/layout.tsx, app/admin/intake/layout.tsx,
-   * app/dashboard/submissions/layout.tsx, app/shop/layout.tsx) — not here
-   * on body — specifically so it never touches the legacy
-   * dashboard/shop/auctions/admin/login/signup pages, none of which
-   * reference these variable names at all.
+   * Deliberately global (:root): every one of these surfaces cross-links to
+   * the others (dashboard -> /auctions/new, /auctions/[id] -> dashboard,
+   * etc.), so one consistent palette avoids the page changing look
+   * mid-navigation.
    */
-  --paper: #f5f2ea;
-  --paper-raised: #ede7d8;
-  --ink: #1c1b18;
-  --ink-muted: #6b6558;
-  --line: #ddd6c7;
-  --seal: #b8862f;
-  --seal-ink: #241d0d;
-  --vault: #1f3d2e;
-  --vault-ink: #f5f2ea;
-  --danger: #a23b2e;
+  --paper: #120f0b;
+  --paper-raised: #1d1812;
+  --ink: #f3efe4;
+  --ink-muted: #a99f8c;
+  --line: #3a3226;
+  --seal: #d4a24c;
+  --seal-ink: #1c1408;
+  --vault: #d4a24c;
+  --vault-ink: #1c1408;
+  --danger: #e2645a;
   --font-display: Georgia, 'Iowan Old Style', 'Palatino Linotype', 'Book Antiqua', serif;
 }
 
@@ -50,24 +44,6 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-
-    --paper: #1a1814;
-    --paper-raised: #242019;
-    --ink: #ede7d8;
-    --ink-muted: #9b9382;
-    --line: #3a352a;
-    --seal: #d4a24c;
-    --seal-ink: #241d0d;
-    --vault: #2e5941;
-    --vault-ink: #f5f2ea;
-    --danger: #c4574a;
-  }
 }
 
 body {

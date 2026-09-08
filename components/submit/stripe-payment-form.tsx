@@ -60,11 +60,18 @@ export function StripePaymentForm({ clientSecret, onSuccess }: { clientSecret: s
       options={{
         clientSecret,
         appearance: {
-          theme: 'stripe',
+          // 'night' as the base, not 'stripe' -- the variables below only
+          // override specific tokens, and 'stripe' assumes a light page
+          // around them for the rest (borders, placeholder text) that
+          // 'night' gets right by default against the app's dark theme
+          // (app/globals.css's --paper/--ink, which this can't reference
+          // directly since Stripe Elements takes real hex, not CSS vars).
+          theme: 'night',
           variables: {
-            colorPrimary: '#B8862F',
-            colorText: '#1C1B18',
-            colorBackground: '#F5F2EA',
+            colorPrimary: '#D4A24C',
+            colorText: '#F3EFE4',
+            colorBackground: '#1D1812',
+            colorDanger: '#E2645A',
             borderRadius: '3px',
           },
         },

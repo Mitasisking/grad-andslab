@@ -121,16 +121,14 @@ export default async function ShopPage({ searchParams }: { searchParams: Promise
 
   return (
     <div>
-      <RegionToggle active={activeRegion} current={currentParams} />
-      <div className="mt-4">
+      <div className="flex flex-col items-center w-full gap-5 pb-8 mb-8 border-b" style={{ borderColor: 'var(--line)' }}>
+        <RegionToggle active={activeRegion} current={currentParams} />
         <ProductTypeToggle active={activeType} current={currentParams} />
-      </div>
-      <div className="mt-4">
         <CategoryTabs active={category ?? null} current={currentParams} />
       </div>
 
       {activeType === 'sports_card' ? (
-        <div className="flex flex-col lg:flex-row gap-8 mt-6 items-start">
+        <div className="flex flex-col lg:flex-row gap-8 items-start">
           <SportsCardFilters facetSourceProducts={baseProducts} current={currentParams} />
           <div className="flex-1 min-w-0 w-full">
             <ProductGrid products={products} />

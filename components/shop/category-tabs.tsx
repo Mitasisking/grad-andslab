@@ -19,18 +19,20 @@ interface Props {
 /** URL-driven filter (?category=), not client state — matches how app/shop/page.tsx fetches server-side. */
 export function CategoryTabs({ active, current }: Props) {
   return (
-    <div className="flex gap-2 flex-wrap">
+    <div
+      className="inline-flex flex-wrap justify-center border rounded-full p-1 gap-1"
+      style={{ borderColor: 'var(--line)', background: 'var(--paper-raised)' }}
+    >
       {CATEGORIES.map((c) => {
         const selected = active === c.value
         return (
           <Link
             key={c.label}
             href={buildShopUrl(current, { category: c.value })}
-            className="px-3.5 py-1.5 text-[13.5px] rounded-[3px] border"
+            className="px-3.5 py-1.5 text-[13.5px] rounded-full transition-colors duration-200"
             style={{
-              borderColor: selected ? 'var(--seal)' : 'var(--line)',
-              background: selected ? 'var(--paper-raised)' : 'transparent',
-              color: 'var(--ink)',
+              background: selected ? 'var(--seal)' : 'transparent',
+              color: selected ? 'var(--seal-ink)' : 'var(--ink-muted)',
             }}
           >
             {c.label}
