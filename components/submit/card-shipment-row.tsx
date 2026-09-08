@@ -3,82 +3,86 @@
 import { useEffect, useState } from 'react'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { formatZAR } from '@/lib/currency'
 import { fetchMarketValue } from '@/lib/pricing-client'
 import { SportsCardSearch, type SportsCardResult } from '@/components/submit/sports-card-search'
 import type { CardEntry, CardType } from '@/lib/submission-types'
 
-interface TCGdexSearchResult {
+interface PokemonSet {
+  id: string
+  name: string
+}
+
+interface PokemonSetCard {
   id: string
   localId: string
   name: string
-  lang: 'en' | 'ja' | 'ja-translated'
+  image?: string
 }
 
-async function parseResults(res: Response | null, lang: 'en' | 'ja'): Promise<TCGdexSearchResult[]> {
-  if (!res || !res.ok) return []
-  const data = await res.json()
-  return Array.isArray(data) ? data.map((c: { id: string; localId: string; name: string }) => ({ ...c, lang })) : []
+interface PokemonSetDetail {
+  releaseDate: string | null
+  cards: PokemonSetCard[]
 }
 
-function dedupeById(cards: TCGdexSearchResult[]): TCGdexSearchResult[] {
-  return Array.from(new Map(cards.map((c) => [c.id, c])).values())
-}
+const EMPTY_SET_DETAIL: PokemonSetDetail = { releaseDate: null, cards: [] }
 
 /**
- * Live TCGdex search for the card name/number fields below, ported from the
- * pre-rebuild dashboard's single card-add form (app/dashboard/page.tsx,
- * replaced with a link to /submit earlier this session) -- same four-way
- * EN/JA name+localId search with a translation pass for Japanese-exclusive
- * results, just scoped to one row in a dynamic card list instead of a
- * single add-one-card form.
+ * Set list, brand list, and a given set's detail (card list + release
+ * date) are each the same regardless of which row in the shipment asks --
+ * module-level caches (shared across every CardShipmentRow instance, not
+ * per-row state) so a shipment with many cards fetches each exactly once
+ * instead of once per row.
  */
-async function searchTcgdexCards(name: string, number: string): Promise<TCGdexSearchResult[]> {
-  if (!name && !number) return []
-  const encodedName = encodeURIComponent(name)
-  const encodedNumber = encodeURIComponent(number)
+let pokemonSetsPromise: Promise<PokemonSet[]> | null = null
+function loadPokemonSets(): Promise<PokemonSet[]> {
+  if (!pokemonSetsPromise) {
+    pokemonSetsPromise = fetch('https://api.tcgdex.net/v2/en/sets')
+      .then((res) => (res.ok ? res.json() : []))
+      .then((data: { id: string; name: string }[]) => (Array.isArray(data) ? data.map((s) => ({ id: s.id, name: s.name })) : []))
+      .catch((err) => {
+        console.error('Could not load Pokemon set list', err)
+        return []
+      })
+  }
+  return pokemonSetsPromise
+}
 
-  const [nameEnRes, nameJaRes, idEnRes, idJaRes] = await Promise.all([
-    name ? fetch(`https://api.tcgdex.net/v2/en/cards?name=${encodedName}`) : Promise.resolve(null),
-    name ? fetch(`https://api.tcgdex.net/v2/ja/cards?name=${encodedName}`) : Promise.resolve(null),
-    number ? fetch(`https://api.tcgdex.net/v2/en/cards?localId=${encodedNumber}`) : Promise.resolve(null),
-    number ? fetch(`https://api.tcgdex.net/v2/ja/cards?localId=${encodedNumber}`) : Promise.resolve(null),
-  ])
+let sportsBrandsPromise: Promise<string[]> | null = null
+function loadSportsBrands(): Promise<string[]> {
+  if (!sportsBrandsPromise) {
+    sportsBrandsPromise = fetch('/api/sports-cards/brands')
+      .then((res) => (res.ok ? res.json() : { brands: [] }))
+      .then((data) => (Array.isArray(data.brands) ? data.brands : []))
+      .catch((err) => {
+        console.error('Could not load sports card brands', err)
+        return []
+      })
+  }
+  return sportsBrandsPromise
+}
 
-  const [nameEn, nameJa, idEn, idJa] = await Promise.all([
-    parseResults(nameEnRes, 'en'),
-    parseResults(nameJaRes, 'ja'),
-    parseResults(idEnRes, 'en'),
-    parseResults(idJaRes, 'ja'),
-  ])
-
-  const uniqueEn = dedupeById([...nameEn, ...idEn])
-  const uniqueJa = dedupeById([...nameJa, ...idJa])
-  const enIds = new Set(uniqueEn.map((c) => c.id))
-  const exclusiveJa = uniqueJa.filter((c) => !enIds.has(c.id)).slice(0, 15)
-
-  const translatedJa = await Promise.all(
-    exclusiveJa.map(async (card) => {
-      try {
-        const res = await fetch(`https://api.tcgdex.net/v2/en/cards/${card.id}`)
-        if (res.ok) {
-          const fullEn = await res.json()
-          if (fullEn.name) return { ...card, name: fullEn.name, lang: 'ja-translated' as const }
-        }
-        const translateRes = await fetch(
-          `https://translate.googleapis.com/translate_a/single?client=gtx&sl=ja&tl=en&dt=t&q=${encodeURIComponent(card.name)}`,
+// The sets-LIST endpoint (loadPokemonSets above) doesn't include
+// releaseDate, only {id, name, logo, cardCount} -- confirmed against the
+// live API, not assumed. Only the per-set DETAIL endpoint has it, so that's
+// what's cached here, and what selectPokemonCard's year auto-populate reads.
+const setDetailCache = new Map<string, Promise<PokemonSetDetail>>()
+function loadSetDetail(setId: string): Promise<PokemonSetDetail> {
+  if (!setDetailCache.has(setId)) {
+    setDetailCache.set(
+      setId,
+      fetch(`https://api.tcgdex.net/v2/en/sets/${setId}`)
+        .then((res) => (res.ok ? res.json() : null))
+        .then((data: { cards?: PokemonSetCard[]; releaseDate?: string } | null) =>
+          data ? { releaseDate: data.releaseDate ?? null, cards: data.cards ?? [] } : EMPTY_SET_DETAIL,
         )
-        if (translateRes.ok) {
-          const transData = await translateRes.json()
-          if (transData?.[0]?.[0]?.[0]) return { ...card, name: transData[0][0][0], lang: 'ja-translated' as const }
-        }
-      } catch (err) {
-        console.error('Translation fetch failed', err)
-      }
-      return card
-    }),
-  )
-
-  return [...uniqueEn.slice(0, 30), ...translatedJa]
+        .catch((err) => {
+          console.error('Could not load set detail', setId, err)
+          return EMPTY_SET_DETAIL
+        }),
+    )
+  }
+  return setDetailCache.get(setId)!
 }
 
 function ResultsDropdown({
@@ -86,9 +90,9 @@ function ResultsDropdown({
   isSearching,
   onSelect,
 }: {
-  results: TCGdexSearchResult[]
+  results: PokemonSetCard[]
   isSearching: boolean
-  onSelect: (result: TCGdexSearchResult) => void
+  onSelect: (result: PokemonSetCard) => void
 }) {
   return (
     <div
@@ -102,7 +106,7 @@ function ResultsDropdown({
       )}
       {results.map((result) => (
         <button
-          key={`${result.id}-${result.lang}`}
+          key={result.id}
           type="button"
           onMouseDown={(e) => e.preventDefault()}
           onClick={() => onSelect(result)}
@@ -111,7 +115,7 @@ function ResultsDropdown({
         >
           <span className="truncate">{result.name}</span>
           <span className="shrink-0" style={{ color: 'var(--ink-muted)' }}>
-            #{result.localId} {result.lang === 'en' ? '(EN)' : '(JP)'}
+            #{result.localId}
           </span>
         </button>
       ))}
@@ -128,53 +132,95 @@ interface Props {
 }
 
 export function CardShipmentRow({ card, index, canRemove, onUpdateCard, onRemoveCard }: Props) {
-  const [searchResults, setSearchResults] = useState<TCGdexSearchResult[]>([])
-  const [isSearching, setIsSearching] = useState(false)
-  const [focusedField, setFocusedField] = useState<'name' | 'number' | null>(null)
+  const [pokemonSets, setPokemonSets] = useState<PokemonSet[]>([])
+  const [sportsBrands, setSportsBrands] = useState<string[]>([])
+  const [selectedSetId, setSelectedSetId] = useState<string | null>(null)
+  const [setDetail, setSetDetail] = useState<PokemonSetDetail>(EMPTY_SET_DETAIL)
+  const [isLoadingSetCards, setIsLoadingSetCards] = useState(false)
+  const [focused, setFocused] = useState(false)
   const [selectedCardImage, setSelectedCardImage] = useState<string | null>(null)
+  // Locked once a specific card has been picked from search -- Year/Card
+  // number become read-only so the data stays exactly what the grader will
+  // see, per the submission form's accuracy requirement. "Change" clears it.
+  const [isLocked, setIsLocked] = useState(false)
 
   useEffect(() => {
-    const nameQuery = card.cardName.trim()
-    const numberQuery = card.cardNumber.split('/')[0].trim()
-    if (!nameQuery && !numberQuery) {
-      setSearchResults([])
-      setIsSearching(false)
-      return
-    }
-    setIsSearching(true)
-    const t = setTimeout(async () => {
-      try {
-        setSearchResults(await searchTcgdexCards(nameQuery, numberQuery))
-      } catch (err) {
-        console.error('TCGdex search error', err)
-        setSearchResults([])
-      } finally {
-        setIsSearching(false)
-      }
-    }, 450)
-    return () => clearTimeout(t)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [card.cardName, card.cardNumber])
+    loadPokemonSets().then(setPokemonSets)
+    loadSportsBrands().then(setSportsBrands)
+  }, [])
 
-  async function selectCard(result: TCGdexSearchResult) {
-    setFocusedField(null)
-    setSearchResults([])
-    const primaryLang = result.lang === 'ja' ? 'ja' : 'en'
+  useEffect(() => {
+    if (!selectedSetId) return
+    let cancelled = false
+    Promise.resolve().then(() => {
+      if (!cancelled) setIsLoadingSetCards(true)
+    })
+    loadSetDetail(selectedSetId).then((detail) => {
+      if (cancelled) return
+      setSetDetail(detail)
+      setIsLoadingSetCards(false)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [selectedSetId])
+
+  const effectiveSetCards = selectedSetId ? setDetail.cards : []
+
+  const pokemonResults =
+    card.cardType === 'pokemon' && card.cardName.trim()
+      ? effectiveSetCards.filter((c) => c.name.toLowerCase().includes(card.cardName.trim().toLowerCase())).slice(0, 30)
+      : []
+
+  function resetSearchState() {
+    setIsLocked(false)
+    setSelectedCardImage(null)
+    onUpdateCard(card.id, {
+      cardName: '',
+      cardNumber: '',
+      year: null,
+      externalCardId: null,
+      externalSource: null,
+      marketValueEstimate: null,
+      marketValueSource: null,
+    })
+  }
+
+  function selectBrandSet(name: string) {
+    if (card.cardType === 'pokemon') {
+      const set = pokemonSets.find((s) => s.name === name) ?? null
+      setSelectedSetId(set?.id ?? null)
+    }
+    resetSearchState()
+    onUpdateCard(card.id, { setName: name })
+  }
+
+  async function selectPokemonCard(result: PokemonSetCard) {
+    setFocused(false)
+    const year = setDetail.releaseDate?.slice(0, 4) ?? card.year
     try {
-      let res = await fetch(`https://api.tcgdex.net/v2/${primaryLang}/cards/${result.id}`)
-      if (!res.ok) res = await fetch(`https://api.tcgdex.net/v2/${primaryLang === 'en' ? 'ja' : 'en'}/cards/${result.id}`)
-      if (res.ok) {
-        const fullCard = await res.json()
-        onUpdateCard(card.id, {
-          cardName: fullCard.name ?? result.name,
-          cardNumber: fullCard.localId ?? result.localId,
-          setName: fullCard.set?.name ?? card.setName,
-        })
-        setSelectedCardImage(fullCard.image ? `${fullCard.image}/high.png` : null)
-      }
+      const res = await fetch(`https://api.tcgdex.net/v2/en/cards/${result.id}`)
+      const fullCard = res.ok ? await res.json() : null
+      onUpdateCard(card.id, {
+        cardName: fullCard?.name ?? result.name,
+        cardNumber: fullCard?.localId ?? result.localId,
+        year,
+        externalCardId: result.id,
+        externalSource: 'tcgdex',
+      })
+      setSelectedCardImage(fullCard?.image ? `${fullCard.image}/high.png` : null)
     } catch (err) {
       console.error('Card detail fetch error', err)
+      onUpdateCard(card.id, {
+        cardName: result.name,
+        cardNumber: result.localId,
+        year,
+        externalCardId: result.id,
+        externalSource: 'tcgdex',
+      })
     }
+    setIsLocked(true)
+    lookupValue()
   }
 
   async function lookupValue() {
@@ -195,6 +241,8 @@ export function CardShipmentRow({ card, index, canRemove, onUpdateCard, onRemove
     // switching flows starts the row's card fields clean rather than mixing
     // half-Pokemon, half-sports-card state.
     setSelectedCardImage(null)
+    setSelectedSetId(null)
+    setIsLocked(false)
     onUpdateCard(card.id, {
       cardType,
       sport: null,
@@ -213,15 +261,15 @@ export function CardShipmentRow({ card, index, canRemove, onUpdateCard, onRemove
     onUpdateCard(card.id, {
       sport: result.sport,
       cardName: result.playerName,
-      setName: result.brandSet ?? '',
       cardNumber: result.cardNumber ?? '',
       year: result.year,
       externalCardId: result.id,
-      externalSource: 'thecardapi',
+      externalSource: 'catalog',
     })
-    if (result.playerName && result.brandSet) {
+    setIsLocked(true)
+    if (result.playerName && card.setName) {
       onUpdateCard(card.id, { isFetchingValue: true })
-      fetchMarketValue(result.playerName, result.brandSet).then((estimate) => {
+      fetchMarketValue(result.playerName, card.setName).then((estimate) => {
         onUpdateCard(card.id, {
           isFetchingValue: false,
           marketValueEstimate: estimate?.estimate ?? null,
@@ -232,7 +280,8 @@ export function CardShipmentRow({ card, index, canRemove, onUpdateCard, onRemove
     }
   }
 
-  const showDropdown = focusedField !== null && (isSearching || searchResults.length > 0)
+  const brandSetOptions = card.cardType === 'pokemon' ? pokemonSets.map((s) => s.name) : sportsBrands
+  const showPokemonDropdown = card.cardType === 'pokemon' && focused && card.setName && (isLoadingSetCards || pokemonResults.length > 0)
 
   return (
     <div className="border rounded-[3px] p-4" style={{ borderColor: 'var(--line)' }}>
@@ -252,7 +301,7 @@ export function CardShipmentRow({ card, index, canRemove, onUpdateCard, onRemove
         )}
       </div>
 
-      <div className="flex gap-2 mb-4">
+      <div className="flex gap-2 mb-3">
         {(['pokemon', 'sports_card'] as CardType[]).map((type) => (
           <button
             key={type}
@@ -270,6 +319,27 @@ export function CardShipmentRow({ card, index, canRemove, onUpdateCard, onRemove
         ))}
       </div>
 
+      <div className="mb-4">
+        <Label className="text-[12.5px]" style={{ color: 'var(--ink-muted)' }}>
+          Brand/Set
+        </Label>
+        <select
+          value={card.setName}
+          onChange={(e) => selectBrandSet(e.target.value)}
+          className="w-full border rounded-[3px] px-3 py-2 text-[14px] bg-transparent"
+          style={{ borderColor: 'var(--line)', color: 'var(--ink)' }}
+        >
+          <option value="" disabled>
+            {card.cardType === 'pokemon' ? 'Choose a set…' : 'Choose a brand…'}
+          </option>
+          {brandSetOptions.map((name) => (
+            <option key={name} value={name}>
+              {name}
+            </option>
+          ))}
+        </select>
+      </div>
+
       {card.cardType === 'pokemon' && selectedCardImage && (
         <div className="flex justify-center mb-3">
           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -284,119 +354,129 @@ export function CardShipmentRow({ card, index, canRemove, onUpdateCard, onRemove
 
       {card.cardType === 'pokemon' ? (
         <div className="grid sm:grid-cols-2 gap-3">
-          <div className="relative">
+          <div className="relative sm:col-span-2">
             <Label className="text-[12.5px]" style={{ color: 'var(--ink-muted)' }}>
-              Card name
+              Search card
             </Label>
             <Input
               value={card.cardName}
               onChange={(e) => onUpdateCard(card.id, { cardName: e.target.value })}
-              onFocus={() => setFocusedField('name')}
-              onBlur={() => {
-                setTimeout(() => setFocusedField((f) => (f === 'name' ? null : f)), 150)
-                lookupValue()
-              }}
-              placeholder="Charizard"
+              onFocus={() => setFocused(true)}
+              onBlur={() => setTimeout(() => setFocused(false), 150)}
+              disabled={!card.setName}
+              placeholder={card.setName ? 'Charizard' : 'Choose a set first'}
             />
-            {focusedField === 'name' && showDropdown && (
-              <ResultsDropdown results={searchResults} isSearching={isSearching} onSelect={selectCard} />
+            {showPokemonDropdown && (
+              <ResultsDropdown results={pokemonResults} isSearching={isLoadingSetCards} onSelect={selectPokemonCard} />
             )}
           </div>
           <div>
-            <Label className="text-[12.5px]" style={{ color: 'var(--ink-muted)' }}>
-              Set
-            </Label>
-            <Input
-              value={card.setName}
-              onChange={(e) => onUpdateCard(card.id, { setName: e.target.value })}
-              onBlur={lookupValue}
-              placeholder="Base Set Unlimited"
-            />
+            <div className="flex items-baseline justify-between">
+              <Label className="text-[12.5px]" style={{ color: 'var(--ink-muted)' }}>
+                Year
+              </Label>
+              {isLocked && (
+                <button
+                  type="button"
+                  onClick={resetSearchState}
+                  className="text-[11px] underline underline-offset-2"
+                  style={{ color: 'var(--ink-muted)' }}
+                >
+                  Change
+                </button>
+              )}
+            </div>
+            <Input value={card.year ?? ''} readOnly disabled={!isLocked} placeholder="Select a card" />
           </div>
-          <div className="relative">
+          <div>
             <Label className="text-[12.5px]" style={{ color: 'var(--ink-muted)' }}>
               Card number
             </Label>
-            <Input
-              value={card.cardNumber}
-              onChange={(e) => onUpdateCard(card.id, { cardNumber: e.target.value })}
-              onFocus={() => setFocusedField('number')}
-              onBlur={() => setTimeout(() => setFocusedField((f) => (f === 'number' ? null : f)), 150)}
-              placeholder="4/102"
-            />
-            {focusedField === 'number' && showDropdown && (
-              <ResultsDropdown results={searchResults} isSearching={isSearching} onSelect={selectCard} />
-            )}
+            <Input value={card.cardNumber} readOnly disabled={!isLocked} placeholder="Select a card" />
           </div>
-          <div>
+          <div className="sm:col-span-2">
             <Label className="text-[12.5px]" style={{ color: 'var(--ink-muted)' }}>
-              Declared value (USD)
+              Declared value (R)
             </Label>
-            <Input
-              type="number"
-              min={0}
-              step="0.01"
-              value={card.declaredValue}
-              onChange={(e) => onUpdateCard(card.id, { declaredValue: Number(e.target.value) })}
-            />
+            <div className="relative">
+              <span
+                className="absolute left-3 top-1/2 -translate-y-1/2 text-[13.5px] pointer-events-none"
+                style={{ color: 'var(--ink-muted)' }}
+              >
+                R
+              </span>
+              <Input
+                type="number"
+                min={0}
+                step="0.01"
+                value={card.declaredValue}
+                onChange={(e) => onUpdateCard(card.id, { declaredValue: Number(e.target.value) })}
+                className="pl-7"
+              />
+            </div>
           </div>
         </div>
       ) : (
         <div className="space-y-3">
           <div>
             <Label className="text-[12.5px]" style={{ color: 'var(--ink-muted)' }}>
-              Player Name
+              Search card
             </Label>
             <SportsCardSearch
               value={card.cardName}
               onChange={(value) => onUpdateCard(card.id, { cardName: value })}
               onSelect={selectSportsCard}
+              brand={card.setName}
+              disabled={!card.setName}
+              placeholder={card.setName ? 'Search player, e.g. Messi' : 'Choose a brand first'}
             />
           </div>
-          <div className="grid sm:grid-cols-3 gap-3">
+          <div className="grid sm:grid-cols-2 gap-3">
             <div>
-              <Label className="text-[12.5px]" style={{ color: 'var(--ink-muted)' }}>
-                Year
-              </Label>
-              <Input
-                value={card.year ?? ''}
-                onChange={(e) => onUpdateCard(card.id, { year: e.target.value || null })}
-                placeholder="2023"
-              />
-            </div>
-            <div>
-              <Label className="text-[12.5px]" style={{ color: 'var(--ink-muted)' }}>
-                Brand/Set
-              </Label>
-              <Input
-                value={card.setName}
-                onChange={(e) => onUpdateCard(card.id, { setName: e.target.value })}
-                onBlur={lookupValue}
-                placeholder="Topps Chrome"
-              />
+              <div className="flex items-baseline justify-between">
+                <Label className="text-[12.5px]" style={{ color: 'var(--ink-muted)' }}>
+                  Year
+                </Label>
+                {isLocked && (
+                  <button
+                    type="button"
+                    onClick={resetSearchState}
+                    className="text-[11px] underline underline-offset-2"
+                    style={{ color: 'var(--ink-muted)' }}
+                  >
+                    Change
+                  </button>
+                )}
+              </div>
+              <Input value={card.year ?? ''} readOnly disabled={!isLocked} placeholder="Select a card" />
             </div>
             <div>
               <Label className="text-[12.5px]" style={{ color: 'var(--ink-muted)' }}>
                 Card Number
               </Label>
-              <Input
-                value={card.cardNumber}
-                onChange={(e) => onUpdateCard(card.id, { cardNumber: e.target.value })}
-                placeholder="123"
-              />
+              <Input value={card.cardNumber} readOnly disabled={!isLocked} placeholder="Select a card" />
             </div>
           </div>
-          <div className="max-w-[200px]">
+          <div className="max-w-[220px]">
             <Label className="text-[12.5px]" style={{ color: 'var(--ink-muted)' }}>
-              Declared value (USD)
+              Declared value (R)
             </Label>
-            <Input
-              type="number"
-              min={0}
-              step="0.01"
-              value={card.declaredValue}
-              onChange={(e) => onUpdateCard(card.id, { declaredValue: Number(e.target.value) })}
-            />
+            <div className="relative">
+              <span
+                className="absolute left-3 top-1/2 -translate-y-1/2 text-[13.5px] pointer-events-none"
+                style={{ color: 'var(--ink-muted)' }}
+              >
+                R
+              </span>
+              <Input
+                type="number"
+                min={0}
+                step="0.01"
+                value={card.declaredValue}
+                onChange={(e) => onUpdateCard(card.id, { declaredValue: Number(e.target.value) })}
+                className="pl-7"
+              />
+            </div>
           </div>
         </div>
       )}
@@ -406,7 +486,7 @@ export function CardShipmentRow({ card, index, canRemove, onUpdateCard, onRemove
         {!card.isFetchingValue && card.marketValueEstimate !== null && (
           <>
             Market estimate:{' '}
-            <span style={{ fontVariantNumeric: 'tabular-nums' }}>${card.marketValueEstimate.toFixed(2)}</span>{' '}
+            <span style={{ fontVariantNumeric: 'tabular-nums' }}>{formatZAR(card.marketValueEstimate)}</span>{' '}
             ({card.marketValueSource})
           </>
         )}

@@ -25,32 +25,34 @@ const SPORT_LABEL: Record<Sport, string> = Object.fromEntries(
 
 interface Props {
   // Bound directly to the parent's cardName, same as the Pokemon flow's
-  // "Card name" field -- typing always registers, whether or not the
-  // provider ever returns a matching result (see selectSportsCard in
-  // card-shipment-row.tsx for what a click on a result additionally fills in).
+  // search field -- typing always registers, whether or not the catalog
+  // has a matching result (see selectSportsCard in card-shipment-row.tsx
+  // for what a click on a result additionally fills in).
   value: string
   onChange: (value: string) => void
   onSelect: (result: SportsCardResult) => void
+  /** Scopes the search to one brand (app/api/sports-cards/brands) -- required, per the "filter first" flow. */
+  brand: string
+  disabled?: boolean
+  placeholder?: string
 }
 
-export function SportsCardSearch({ value, onChange, onSelect }: Props) {
+export function SportsCardSearch({ value, onChange, onSelect, brand, disabled, placeholder }: Props) {
   const [results, setResults] = useState<SportsCardResult[]>([])
   const [isSearching, setIsSearching] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [focused, setFocused] = useState(false)
 
+  const trimmedValue = value.trim()
+  const active = Boolean(trimmedValue) && !disabled
+
   useEffect(() => {
-    const trimmed = value.trim()
-    if (!trimmed) {
-      setResults([])
-      setError(null)
-      setIsSearching(false)
-      return
-    }
-    setIsSearching(true)
+    if (!active) return
     const t = setTimeout(async () => {
+      setIsSearching(true)
       try {
-        const res = await fetch(`/api/sports-cards/search?q=${encodeURIComponent(trimmed)}`)
+        const params = new URLSearchParams({ q: trimmedValue, brand })
+        const res = await fetch(`/api/sports-cards/search?${params}`)
         const data = await res.json()
         if (!res.ok) {
           setError(data.error ?? 'Search failed. Please try again.')
@@ -65,11 +67,14 @@ export function SportsCardSearch({ value, onChange, onSelect }: Props) {
       } finally {
         setIsSearching(false)
       }
-    }, 450)
+    }, 350)
     return () => clearTimeout(t)
-  }, [value])
+  }, [active, trimmedValue, brand])
 
-  const showDropdown = focused && (isSearching || results.length > 0 || error !== null)
+  const displayResults = active ? results : []
+  const displayError = active ? error : null
+  const displaySearching = active && isSearching
+  const showDropdown = focused && (displaySearching || displayResults.length > 0 || displayError !== null)
 
   return (
     <div className="relative">
@@ -78,26 +83,27 @@ export function SportsCardSearch({ value, onChange, onSelect }: Props) {
         onChange={(e) => onChange(e.target.value)}
         onFocus={() => setFocused(true)}
         onBlur={() => setTimeout(() => setFocused(false), 150)}
-        placeholder="Search player, e.g. Messi 2022"
+        disabled={disabled}
+        placeholder={placeholder ?? 'Search player, e.g. Messi'}
       />
       {showDropdown && (
         <div
           className="absolute left-0 right-0 top-full mt-1 border rounded-[3px] max-h-60 overflow-y-auto z-20"
           style={{ borderColor: 'var(--line)', background: 'var(--paper-raised)' }}
         >
-          {isSearching && (
+          {displaySearching && (
             <p className="text-[12px] px-3 py-2" style={{ color: 'var(--ink-muted)' }}>
               Searching…
             </p>
           )}
-          {!isSearching && error && (
+          {!displaySearching && displayError && (
             <p className="text-[12px] px-3 py-2" style={{ color: 'var(--danger)' }}>
-              {error}
+              {displayError}
             </p>
           )}
-          {!isSearching &&
-            !error &&
-            results.map((result) => (
+          {!displaySearching &&
+            !displayError &&
+            displayResults.map((result) => (
               <button
                 key={result.id}
                 type="button"
