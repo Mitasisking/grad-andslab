@@ -3,7 +3,7 @@
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { formatByRegion } from '@/lib/currency'
-import { cleanAndPolishFeeForRegion } from '@/lib/submission-types'
+import { cleanAndPolishFeeForRegion, inspectionFeeForRegion } from '@/lib/submission-types'
 import type { CardEntry, ProductRegion } from '@/lib/submission-types'
 
 interface Props {
@@ -26,6 +26,7 @@ export function StepAddOns({
   onBack,
 }: Props) {
   const cleanAndPolishFee = cleanAndPolishFeeForRegion(region)
+  const inspectionFee = inspectionFeeForRegion(region)
 
   return (
     <section className="space-y-6">
@@ -51,13 +52,19 @@ export function StepAddOns({
                   <span style={{ color: 'var(--ink-muted)' }}> — {card.setName || 'Unspecified set'}</span>
                 </p>
               </div>
-              <label className="flex items-center gap-2 shrink-0">
+              <label className="flex items-center gap-3 shrink-0">
                 <Checkbox
                   checked={card.preCheckOptIn}
                   onCheckedChange={(checked) => onUpdateCard(card.id, { preCheckOptIn: checked === true })}
                 />
                 <span className="text-[13.5px]" style={{ color: 'var(--ink)' }}>
                   Inspect &amp; clean
+                </span>
+                <span
+                  className="text-[13px]"
+                  style={{ fontVariantNumeric: 'tabular-nums', color: 'var(--ink-muted)' }}
+                >
+                  {formatByRegion(inspectionFee, region)}
                 </span>
               </label>
             </div>
@@ -71,7 +78,7 @@ export function StepAddOns({
         </h2>
         <p className="text-[14px] mt-2 max-w-lg leading-relaxed" style={{ color: 'var(--ink-muted)' }}>
           A deeper surface clean and polish pass across your entire submission before it ships to the grader —
-          separate from the free per-card inspection above.
+          separate from the per-card inspection above.
         </p>
 
         <div

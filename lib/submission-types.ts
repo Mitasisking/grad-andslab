@@ -241,15 +241,16 @@ export function cleanAndPolishFeeForRegion(region: ProductRegion): number {
 
 /**
  * Flat per-card fee for the optional pre-grading inspection add-on
- * (components/submit/step-addons.tsx's `preCheckOptIn`). Same
- * approximate-conversion caveat as every other cross-currency figure here.
+ * (components/submit/step-addons.tsx's `preCheckOptIn`) -- R200 as set by
+ * the business; USD/GBP are the same approximate-conversion stand-in as
+ * every other cross-currency figure here (~18.5 USD/ZAR, ~0.79 USD/GBP).
  * Moved here (rather than staying local to step-review-pay.tsx) so
  * lib/email's order-confirmation template can price the same line item
  * server-side without duplicating the numbers.
  */
-export const INSPECTION_FEE_USD = 5
-export const INSPECTION_FEE_GBP = 4
-export const INSPECTION_FEE_ZAR = 92
+export const INSPECTION_FEE_USD = 11
+export const INSPECTION_FEE_GBP = 8
+export const INSPECTION_FEE_ZAR = 200
 
 export function inspectionFeeForRegion(region: ProductRegion): number {
   if (region === 'usa') return INSPECTION_FEE_USD
