@@ -10,6 +10,8 @@ export interface AdminProduct {
   category: ProductCategory
   franchise: ProductFranchise
   price: number
+  /** Nullable -- most of the catalog has no known cost yet (see 0034_accounting_foundations.sql). */
+  cost_basis: number | null
   stock: number
   sku: string | null
   images: string[]

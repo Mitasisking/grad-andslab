@@ -36,6 +36,7 @@ interface Draft {
   category: ProductCategory
   franchise: ProductFranchise
   price: string
+  costBasis: string
   stock: string
   imageUrl: string
   isActive: boolean
@@ -56,6 +57,7 @@ function draftFromProduct(product: AdminProduct | null): Draft {
     category: product?.category ?? 'sealed',
     franchise: product?.franchise ?? 'general',
     price: product ? String(product.price) : '',
+    costBasis: product?.cost_basis != null ? String(product.cost_basis) : '',
     stock: product ? String(product.stock) : '0',
     imageUrl: product?.images?.[0] ?? '',
     isActive: product?.is_active ?? true,
@@ -130,6 +132,7 @@ export function ProductFormModal({ product, onClose, onSaved }: Props) {
       category: draft.category,
       franchise: draft.franchise,
       price,
+      costBasis: draft.costBasis.trim() ? Number(draft.costBasis) : null,
       stock,
       images: draft.imageUrl.trim() ? [draft.imageUrl.trim()] : [],
       isActive: draft.isActive,
@@ -268,19 +271,38 @@ export function ProductFormModal({ product, onClose, onSaved }: Props) {
             </div>
             <div>
               <label className={labelClass} style={labelStyle}>
-                Stock
+                Cost Price (ZAR)
               </label>
               <input
-                required
                 type="number"
                 min={0}
-                step="1"
-                value={draft.stock}
-                onChange={(e) => update('stock', e.target.value)}
+                step="0.01"
+                value={draft.costBasis}
+                onChange={(e) => update('costBasis', e.target.value)}
                 className={inputClass}
                 style={{ ...inputStyle, fontVariantNumeric: 'tabular-nums' }}
+                placeholder="150.00"
               />
+              <p className="text-[11.5px] mt-1" style={{ color: 'var(--ink-muted)' }}>
+                Internal only -- used for margin reporting, never shown to customers.
+              </p>
             </div>
+          </div>
+
+          <div>
+            <label className={labelClass} style={labelStyle}>
+              Stock
+            </label>
+            <input
+              required
+              type="number"
+              min={0}
+              step="1"
+              value={draft.stock}
+              onChange={(e) => update('stock', e.target.value)}
+              className={inputClass}
+              style={{ ...inputStyle, fontVariantNumeric: 'tabular-nums' }}
+            />
           </div>
 
           <div>

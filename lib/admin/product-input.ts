@@ -19,6 +19,8 @@ export interface ProductInput {
   category: ProductCategory
   franchise: ProductFranchise
   price: number
+  /** Nullable -- see products.cost_basis (0034_accounting_foundations.sql). Internal cost, never shown to customers. */
+  costBasis: number | null
   stock: number
   images: string[]
   isActive: boolean
@@ -39,6 +41,9 @@ export function validateProductInput(body: Partial<ProductInput>): string | null
   if (!body.franchise || !VALID_FRANCHISES.includes(body.franchise)) return 'A valid franchise is required.'
   if (typeof body.price !== 'number' || !Number.isFinite(body.price) || body.price < 0) {
     return 'Price must be a non-negative number.'
+  }
+  if (body.costBasis != null && (!Number.isFinite(body.costBasis) || body.costBasis < 0)) {
+    return 'Cost price must be a non-negative number.'
   }
   if (typeof body.stock !== 'number' || !Number.isFinite(body.stock) || body.stock < 0 || !Number.isInteger(body.stock)) {
     return 'Stock must be a non-negative whole number.'
@@ -70,6 +75,7 @@ export function toProductRow(body: ProductInput) {
     category: body.category,
     franchise: body.franchise,
     price: body.price,
+    cost_basis: body.costBasis ?? null,
     stock: body.stock,
     images: body.images ?? [],
     is_active: body.isActive ?? true,
