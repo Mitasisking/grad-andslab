@@ -10,7 +10,7 @@ export interface PoolSubmissionRow {
   needs_semi_rigids: boolean
   interested_in_consignment: boolean
   created_at: string
-  profiles: { full_name: string | null; email: string } | null
+  profiles: { full_name: string | null } | null
 }
 
 export default async function AdminPoolsPage() {
@@ -29,17 +29,28 @@ export default async function AdminPoolsPage() {
     .order('status', { ascending: true })
     .order('opened_at', { ascending: false })
 
+  // public.profiles has no foreign key relationship pointing at it anywhere
+  // in production (confirmed directly against pg_constraint), so
+  // PostgREST's `profiles(...)` embed syntax can never resolve here --
+  // fetched as a separate batched lookup instead (see
+  // lib/email/send-order-confirmation.ts's getContact for the same fix
+  // applied to the confirmation-email path).
   const { data: submissions } = await supabase
     .from('submissions')
-    .select(
-      'id, pool_id, tier, needs_clean_and_polish, needs_semi_rigids, interested_in_consignment, created_at, profiles(full_name, email)',
-    )
+    .select('id, pool_id, user_id, tier, needs_clean_and_polish, needs_semi_rigids, interested_in_consignment, created_at')
     .not('pool_id', 'is', null)
 
+  const userIds = Array.from(new Set((submissions ?? []).map((s) => s.user_id)))
+  const { data: profiles } = userIds.length
+    ? await supabase.from('profiles').select('id, full_name').in('id', userIds)
+    : { data: [] as { id: string; full_name: string | null }[] }
+  const fullNameById = new Map((profiles ?? []).map((p) => [p.id, p.full_name]))
+
   const submissionsByPool = new Map<string, PoolSubmissionRow[]>()
-  for (const s of (submissions ?? []) as unknown as (PoolSubmissionRow & { pool_id: string })[]) {
+  for (const s of (submissions ?? []) as unknown as (Omit<PoolSubmissionRow, 'profiles'> & { pool_id: string; user_id: string })[]) {
+    const row: PoolSubmissionRow = { ...s, profiles: { full_name: fullNameById.get(s.user_id) ?? null } }
     const list = submissionsByPool.get(s.pool_id) ?? []
-    list.push(s)
+    list.push(row)
     submissionsByPool.set(s.pool_id, list)
   }
 

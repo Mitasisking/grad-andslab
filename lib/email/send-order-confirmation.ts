@@ -10,9 +10,41 @@ import {
 import type { ProductRegion } from '@/lib/shop/product-type'
 import type { GradingCompany, SubmissionTier } from '@/lib/submission-types'
 
-interface ProfileContact {
-  email: string
-  full_name: string | null
+/**
+ * public.profiles has NO foreign key relationship pointing at it anywhere
+ * in the production database (confirmed directly: zero rows from
+ * `pg_constraint where confrelid = 'public.profiles'::regclass`), so
+ * PostgREST's embedded-resource syntax -- `.select('..., profiles(...)')`,
+ * used throughout this codebase -- can never resolve for it; it always
+ * fails with PGRST200 ("Could not find a relationship"), independent of
+ * which columns are requested. profiles also has no email column at all
+ * (0040_fix_handle_new_user_missing_email_column.sql) -- the live table
+ * predates the migration history describing it and was never reconciled.
+ *
+ * So this fetches full_name and email as two plain, un-embedded lookups:
+ * full_name via a direct profiles query (works fine without an FK -- only
+ * the embed syntax needs one), and email via the Admin API against
+ * auth.users, which is the sanctioned way to read a real email address
+ * server-side regardless of what profiles.email ends up being long-term.
+ */
+async function getContact(
+  supabase: ReturnType<typeof getSupabaseServerClient>,
+  userId: string,
+): Promise<{ fullName: string | null; email: string | null }> {
+  const [profileResult, userResult] = await Promise.all([
+    supabase.from('profiles').select('full_name').eq('id', userId).single(),
+    supabase.auth.admin.getUserById(userId),
+  ])
+  if (profileResult.error) {
+    console.error('Could not look up profile', userId, profileResult.error.message)
+  }
+  if (userResult.error) {
+    console.error('Could not look up user email', userId, userResult.error.message)
+  }
+  return {
+    fullName: profileResult.data?.full_name ?? null,
+    email: userResult.data.user?.email ?? null,
+  }
 }
 
 /**
@@ -32,9 +64,7 @@ export async function sendSubmissionConfirmationEmail(submissionId: string, rece
 
   const { data: submission } = await supabase
     .from('submissions')
-    .select(
-      'id, user_id, grading_company, tier, region, service_fee, tax_collected, needs_clean_and_polish, profiles(email, full_name)',
-    )
+    .select('id, user_id, grading_company, tier, region, service_fee, tax_collected, needs_clean_and_polish')
     .eq('id', submissionId)
     .single()
 
@@ -48,8 +78,8 @@ export async function sendSubmissionConfirmationEmail(submissionId: string, rece
     .select('card_name, set_name, pre_check_opt_in')
     .eq('submission_id', submissionId)
 
-  const profile = submission.profiles as unknown as ProfileContact | null
-  if (!profile?.email) {
+  const { fullName, email } = await getContact(supabase, submission.user_id)
+  if (!email) {
     console.error('sendSubmissionConfirmationEmail: no contact email on submission', submissionId)
     return
   }
@@ -79,7 +109,7 @@ export async function sendSubmissionConfirmationEmail(submissionId: string, rece
   }
 
   const { subject, html } = renderOrderConfirmationEmail({
-    customerName: profile.full_name || profile.email,
+    customerName: fullName || email,
     region,
     orderLabel: `Grading Submission #${submissionId.slice(0, 8).toUpperCase()}`,
     gradingLineItems,
@@ -89,7 +119,7 @@ export async function sendSubmissionConfirmationEmail(submissionId: string, rece
     receiptUrl,
   })
 
-  await getResendClient().emails.send({ from: getEmailFrom(), to: profile.email, subject, html })
+  await getResendClient().emails.send({ from: getEmailFrom(), to: email, subject, html })
 }
 
 /**
@@ -102,7 +132,7 @@ export async function sendShopOrderConfirmationEmail(orderId: string, receiptUrl
 
   const { data: order } = await supabase
     .from('orders')
-    .select('id, region, subtotal, shipping_cost, total, profiles(email, full_name)')
+    .select('id, user_id, region, subtotal, shipping_cost, total')
     .eq('id', orderId)
     .single()
 
@@ -116,8 +146,8 @@ export async function sendShopOrderConfirmationEmail(orderId: string, receiptUrl
     .select('title, unit_price, quantity')
     .eq('order_id', orderId)
 
-  const profile = order.profiles as unknown as ProfileContact | null
-  if (!profile?.email) {
+  const { fullName, email } = await getContact(supabase, order.user_id)
+  if (!email) {
     console.error('sendShopOrderConfirmationEmail: no contact email on order', orderId)
     return
   }
@@ -129,7 +159,7 @@ export async function sendShopOrderConfirmationEmail(orderId: string, receiptUrl
   }))
 
   const { subject, html } = renderOrderConfirmationEmail({
-    customerName: profile.full_name || profile.email,
+    customerName: fullName || email,
     region: order.region as ProductRegion,
     orderLabel: `Order #${orderId.slice(0, 8).toUpperCase()}`,
     shopLineItems,
@@ -138,5 +168,5 @@ export async function sendShopOrderConfirmationEmail(orderId: string, receiptUrl
     receiptUrl,
   })
 
-  await getResendClient().emails.send({ from: getEmailFrom(), to: profile.email, subject, html })
+  await getResendClient().emails.send({ from: getEmailFrom(), to: email, subject, html })
 }

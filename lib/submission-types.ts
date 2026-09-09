@@ -291,7 +291,7 @@ export interface SubmissionStatusLogRow {
   changed_by: string
   reason: string | null
   created_at: string
-  /** Present when selected with `select('*, profiles(full_name)')`, as the admin intake panel does. */
+  /** Merged in by app/api/admin/intake/lookup/route.ts via a separate batched profiles lookup (public.profiles has no FK anywhere in production, so PostgREST's embed syntax can't be used here). */
   profiles?: { full_name: string | null } | null
 }
 

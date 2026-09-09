@@ -27,15 +27,32 @@ export async function GET(request: NextRequest) {
     .eq('submission_id', submission.id)
     .order('created_at', { ascending: true })
 
-  const { data: statusHistory } = await supabase
+  // public.profiles has no foreign key relationship pointing at it anywhere
+  // in production (confirmed directly against pg_constraint), so
+  // PostgREST's `profiles(...)` embed syntax can never resolve here --
+  // fetched as a separate batched lookup instead (same root cause and fix
+  // as lib/email/send-order-confirmation.ts's getContact and
+  // app/admin/pools/page.tsx).
+  const { data: statusLog } = await supabase
     .from('submission_status_log')
-    .select('*, profiles(full_name)')
+    .select('*')
     .eq('submission_id', submission.id)
     .order('created_at', { ascending: true })
+
+  const changedByIds = Array.from(new Set((statusLog ?? []).map((s) => s.changed_by)))
+  const { data: changedByProfiles } = changedByIds.length
+    ? await supabase.from('profiles').select('id, full_name').in('id', changedByIds)
+    : { data: [] as { id: string; full_name: string | null }[] }
+  const fullNameById = new Map((changedByProfiles ?? []).map((p) => [p.id, p.full_name]))
+
+  const statusHistory = (statusLog ?? []).map((s) => ({
+    ...s,
+    profiles: { full_name: fullNameById.get(s.changed_by) ?? null },
+  }))
 
   return NextResponse.json({
     submission,
     items: items ?? [],
-    statusHistory: statusHistory ?? [],
+    statusHistory,
   })
 }

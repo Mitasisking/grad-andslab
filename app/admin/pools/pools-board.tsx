@@ -148,7 +148,7 @@ export function AdminPoolsBoard({ pools, submissionsByPool }: Props) {
                       style={{ borderColor: 'var(--line)' }}
                     >
                       <span style={{ color: 'var(--ink)' }}>
-                        {m.profiles?.full_name || m.profiles?.email || 'Unknown client'}
+                        {m.profiles?.full_name || 'Unknown client'}
                       </span>
                       <span className="flex items-center gap-2 shrink-0">
                         {m.needs_clean_and_polish && (
