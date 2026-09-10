@@ -72,28 +72,109 @@ function generateMarketingCopy(payload: PoolMilestonePayload): string {
   return `Our ${label} pool is ${payload.milestone_pct}% full (${payload.current_count}/${payload.capacity} cards)${feeLine} -- don't miss this batch's ship date. Join now before it locks in!`
 }
 
+interface ZernioPlatformEntry {
+  platform: string
+  accountId: string
+}
+
+interface ZernioSuccessResponse {
+  message: string
+  post: {
+    _id: string
+    status: string
+    scheduledFor: string
+    platforms: { platform: string; status: string }[]
+  }
+}
+
+interface ZernioErrorResponse {
+  error: string
+  details?: unknown
+}
+
 /**
- * STUB: plug in a unified social posting API here (e.g. Ayrshare, Zernio)
- * once the business has picked one and has an API key. Left unimplemented
- * on purpose -- inventing a real integration against a provider nobody has
- * an account with yet would just be code that can't actually be tested.
+ * Posts via Zernio (https://zernio.com) -- switched from Ayrshare per the
+ * business's own cost call at current volume. Endpoint/payload shape below
+ * is sourced directly from https://docs.zernio.com/ (POST /v1/posts) as of
+ * 2026-09 -- re-check that page if this ever starts erroring, since a
+ * third-party API can change its own contract without this codebase
+ * knowing.
+ *
+ * Zernio hosts the OAuth tokens for each connected social account itself --
+ * this call never touches a platform's own API directly, only Zernio's. It
+ * needs to know WHICH of your Zernio-connected accounts to post to, via
+ * each platform's real Zernio accountId (visible in your Zernio dashboard
+ * once an account is connected there) -- there is no way for this code to
+ * guess those ids, so they're read from ZERNIO_ACCOUNT_IDS as a JSON object,
+ * e.g. {"instagram":"acc_123","facebook":"acc_456"}. Posting is skipped
+ * with a clear reason (never thrown) if either env var is missing, or if
+ * ZERNIO_ACCOUNT_IDS is empty/malformed.
  */
 async function postToSocialChannels(copy: string): Promise<{ posted: boolean; reason: string }> {
-  // Example shape once a provider is chosen (Ayrshare's REST API, for instance):
-  //
-  // const res = await fetch('https://app.ayrshare.com/api/post', {
-  //   method: 'POST',
-  //   headers: {
-  //     Authorization: `Bearer ${process.env.AYRSHARE_API_KEY}`,
-  //     'Content-Type': 'application/json',
-  //   },
-  //   body: JSON.stringify({ post: copy, platforms: ['instagram', 'facebook', 'tiktok'] }),
-  // })
-  // if (!res.ok) return { posted: false, reason: `Posting API returned ${res.status}` }
-  // return { posted: true, reason: 'Posted' }
+  const apiKey = process.env.ZERNIO_API_KEY
+  if (!apiKey) {
+    return { posted: false, reason: 'ZERNIO_API_KEY is not set.' }
+  }
 
-  void copy
-  return { posted: false, reason: 'No social posting API configured yet (see stub in app/api/webhooks/pool-milestone/route.ts).' }
+  let accountsByPlatform: Record<string, string>
+  try {
+    accountsByPlatform = JSON.parse(process.env.ZERNIO_ACCOUNT_IDS ?? '{}')
+  } catch (err) {
+    console.error('[pool-milestone] ZERNIO_ACCOUNT_IDS is not valid JSON:', err)
+    return { posted: false, reason: 'ZERNIO_ACCOUNT_IDS is not valid JSON.' }
+  }
+
+  const platforms: ZernioPlatformEntry[] = Object.entries(accountsByPlatform).map(([platform, accountId]) => ({
+    platform,
+    accountId,
+  }))
+
+  if (platforms.length === 0) {
+    return { posted: false, reason: 'No Zernio accounts configured (ZERNIO_ACCOUNT_IDS is empty).' }
+  }
+
+  try {
+    const res = await fetch('https://zernio.com/api/v1/posts', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        content: copy,
+        publishNow: true,
+        // Zernio's schema lists scheduledFor/timezone as required regardless
+        // of publishNow -- 'now' in UTC satisfies that without actually
+        // delaying the post.
+        scheduledFor: new Date().toISOString(),
+        timezone: 'UTC',
+        platforms,
+      }),
+    })
+
+    const responseBody = await res.json().catch(() => null)
+
+    if (!res.ok) {
+      // Zernio-specific error envelope ({ error, details }) -- logged in
+      // full server-side (visible in Vercel's function logs) so a failed
+      // post is debuggable, never just a silent { posted: false }.
+      const errorBody = responseBody as ZernioErrorResponse | null
+      console.error(
+        `[pool-milestone] Zernio post failed (status ${res.status}): ${errorBody?.error ?? res.statusText}`,
+        errorBody?.details ?? '',
+      )
+      return { posted: false, reason: `Zernio API error ${res.status}: ${errorBody?.error ?? res.statusText}` }
+    }
+
+    const success = responseBody as ZernioSuccessResponse
+    return {
+      posted: true,
+      reason: `Zernio post ${success.post?.status ?? 'scheduled'} (id ${success.post?._id ?? 'unknown'})`,
+    }
+  } catch (err) {
+    console.error('[pool-milestone] Zernio request threw:', err)
+    return { posted: false, reason: `Zernio request failed: ${err instanceof Error ? err.message : String(err)}` }
+  }
 }
 
 export async function POST(request: NextRequest) {
