@@ -32,13 +32,13 @@ export default async function HomePage({ searchParams }: HomePageProps) {
       <section className="relative pt-32 pb-20 md:pt-48 md:pb-32 overflow-hidden">
         <div className="max-w-6xl mx-auto px-6 relative z-10 text-center">
           <div className="inline-block mb-4 px-3 py-1 rounded-full bg-slate-800 border border-slate-700 text-xs font-semibold text-emerald-400 tracking-wide uppercase">
-            Official PSA, ACE and PCG middleman
+            Official PCG and ACE Middleman
           </div>
           <h1 className="text-5xl md:text-7xl font-black text-[#D4AF37] mb-6 tracking-tight [-webkit-text-stroke:1.5px_black]">
             Cuppa Cards
           </h1>
           <p className="text-xl md:text-2xl text-slate-300 max-w-2xl mx-auto mb-10 leading-relaxed">
-            South Africa's premier middleman service. We make it easy to grade your cards.
+            South Africa's premier middleman service. Making it easy to grade your cards.
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
             <Link
