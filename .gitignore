@@ -49,6 +49,7 @@ export.csv
 # scripts/simulate-minor-test.js's own record of what it created, consumed
 # by scripts/teardown-minor-test.js -- not source, and disposable
 scripts/.minor-test-manifest.json
+scripts/.major-test-manifest.json
 
 .vercel
 
