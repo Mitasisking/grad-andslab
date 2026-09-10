@@ -2,6 +2,12 @@ import type Stripe from 'stripe'
 import { getSupabaseServerClient } from '@/lib/supabase-server'
 import { getStripeClient } from '@/lib/stripe-server'
 
+interface AuctionBidResult {
+  became_high_bid: boolean
+  previous_high_bidder_id: string | null
+  previous_high_bid_amount: number | null
+}
+
 /**
  * Finalizes a bid once its PaymentIntent hold is authorized
  * (status: 'requires_capture'). Called from two places:
@@ -38,14 +44,6 @@ export async function finalizeAuthorizedBid(intent: Stripe.PaymentIntent) {
 
   const amount = intent.amount / 100
 
-  const { data: auction } = await supabase
-    .from('auctions')
-    .select('id, current_high_bid, current_high_bidder_id')
-    .eq('id', auctionId)
-    .single()
-
-  if (!auction) return null
-
   // Save the payment method for future off-session bids, if not already saved.
   if (intent.payment_method) {
     await supabase
@@ -67,9 +65,24 @@ export async function finalizeAuthorizedBid(intent: Stripe.PaymentIntent) {
     .select('*')
     .single()
 
+  // Atomic under the hood (supabase/migrations/0044_fix_auction_bid_race_
+  // condition.sql locks the auctions row with `for update` before deciding)
+  // -- unlike a read-then-write from this function, two bids finalizing at
+  // close to the same instant can't both "win" the current_high_bid update,
+  // and the previous_high_bidder_id returned here is the value that was
+  // actually true under the lock, not one read before it was taken.
+  const { data: bidResultRow } = await supabase
+    .rpc('record_auction_bid_result', {
+      p_auction_id: auctionId,
+      p_bidder_id: bidderId,
+      p_amount: amount,
+    })
+    .single()
+  const bidResult = bidResultRow as AuctionBidResult | null
+
   // Release the previous highest bidder's hold now that they've been outbid.
-  const previousHighBidderId = auction.current_high_bidder_id
-  if (previousHighBidderId && previousHighBidderId !== bidderId) {
+  const previousHighBidderId = bidResult?.previous_high_bidder_id
+  if (bidResult?.became_high_bid && previousHighBidderId && previousHighBidderId !== bidderId) {
     const { data: previousBid } = await supabase
       .from('bids')
       .select('stripe_payment_intent_id')
@@ -94,13 +107,6 @@ export async function finalizeAuthorizedBid(intent: Stripe.PaymentIntent) {
         // Already canceled or captured on Stripe's side; nothing to release.
       }
     }
-  }
-
-  if (!auction.current_high_bid || amount > Number(auction.current_high_bid)) {
-    await supabase
-      .from('auctions')
-      .update({ current_high_bid: amount, current_high_bidder_id: bidderId })
-      .eq('id', auctionId)
   }
 
   return bid
