@@ -13,6 +13,7 @@ import type { CardEntry, CardType } from '@/lib/submission-types'
 interface PokemonSetCard {
   id: string
   name: string
+  localId?: string
   image?: string
 }
 
@@ -26,23 +27,70 @@ interface PokemonSetCard {
  */
 const UNSPECIFIED_SET = 'Not specified'
 
-const MIN_QUERY_LENGTH = 2
+const MIN_QUERY_LENGTH = 3
+const SEARCH_DEBOUNCE_MS = 500
+
+function hasDigit(value: string): boolean {
+  return /\d/.test(value)
+}
 
 /**
- * Global name search across TCGdex's entire card index, not scoped to any
- * one set -- replaces the old "load one selected set's card list, filter
+ * One TCGdex list request, with real error visibility: a non-2xx response
+ * is logged with its status and body (not just silently treated as "no
+ * results"), since a rate-limit or malformed-query response looks
+ * identical to a genuine empty result set unless you log it.
+ */
+async function fetchCards(url: string): Promise<PokemonSetCard[]> {
+  const res = await fetch(url)
+  if (!res.ok) {
+    const bodyText = await res.text().catch(() => '<could not read response body>')
+    console.error(`TCGdex request failed: ${res.status} ${res.statusText} — ${url} — ${bodyText}`)
+    return []
+  }
+  const data = await res.json()
+  return Array.isArray(data) ? (data as PokemonSetCard[]) : []
+}
+
+/**
+ * Global search across TCGdex's entire card index, not scoped to any one
+ * set -- replaces the old "load one selected set's card list, filter
  * client-side" approach now that there's no set picker to scope it with.
- * Same endpoint components/submit's sibling app/api/fetch-images/route.ts
- * already uses as its own last-resort global lookup.
+ * Same base endpoint components/submit's sibling app/api/fetch-images/
+ * route.ts already uses as its own last-resort global lookup.
+ *
+ * Searches by `name` always, and ALSO by card number (TCGdex's `localId`
+ * field) whenever the query contains a digit. This is the actual fix for
+ * "typing 120 shows Card not found": a `name=` search can never match a
+ * purely numeric query -- no card is literally named "120" -- so TCGdex was
+ * correctly returning a genuine empty array, not failing. There was no
+ * thrown error to catch because nothing was actually broken at the fetch
+ * level; the missing piece was a number-aware query at all.
+ *
+ * Verified directly against the live API rather than trusting the docs at
+ * face value: TCGdex's own filtering docs (https://tcgdex.dev/rest/
+ * filtering-sorting-pagination) document an `eq:` prefix for an exact-match
+ * filter (e.g. `localId=eq:120`), but that returned zero results in
+ * practice for every localId tested. The bare substring form already used
+ * for `name` -- `localId=120` -- is what actually returns real results (81
+ * cards for "120"), so that's what this uses; do not "fix" this to `eq:`
+ * without re-verifying against the live API first.
  */
 async function searchPokemonCards(query: string): Promise<PokemonSetCard[]> {
   try {
-    const res = await fetch(`https://api.tcgdex.net/v2/en/cards?name=${encodeURIComponent(query)}`)
-    if (!res.ok) return []
-    const data = await res.json()
-    return Array.isArray(data) ? (data as PokemonSetCard[]).slice(0, 30) : []
+    const requests = [fetchCards(`https://api.tcgdex.net/v2/en/cards?name=${encodeURIComponent(query)}`)]
+    if (hasDigit(query)) {
+      requests.push(fetchCards(`https://api.tcgdex.net/v2/en/cards?localId=${encodeURIComponent(query)}`))
+    }
+    const resultSets = await Promise.all(requests)
+    const merged = new Map<string, PokemonSetCard>()
+    for (const set of resultSets) {
+      for (const card of set) {
+        if (!merged.has(card.id)) merged.set(card.id, card)
+      }
+    }
+    return Array.from(merged.values()).slice(0, 30)
   } catch (err) {
-    console.error('Pokemon card search failed', err)
+    console.error(`Pokemon card search failed for query "${query}":`, err)
     return []
   }
 }
@@ -89,6 +137,11 @@ function ResultsDropdown({
           style={{ borderColor: 'var(--line)', color: 'var(--ink)' }}
         >
           {result.name}
+          {result.localId && (
+            <span className="ml-1.5" style={{ color: 'var(--ink-muted)' }}>
+              #{result.localId}
+            </span>
+          )}
         </button>
       ))}
     </div>
@@ -112,10 +165,12 @@ export function CardShipmentRow({ card, index, canRemove, onUpdateCard, onRemove
   useEffect(() => {
     if (card.cardType !== 'pokemon') return
     const query = card.cardName.trim()
-    if (query.length < MIN_QUERY_LENGTH) {
-      setPokemonResults([])
-      return
-    }
+    // No setState here for the too-short case (react-hooks/set-state-in-effect
+    // flags a synchronous setState directly in an effect body) -- it isn't
+    // actually needed: showPokemonDropdown below already gates on
+    // pokemonQueryLongEnough independently, so a stale pokemonResults array
+    // sitting unused in state while the query is too short never renders.
+    if (query.length < MIN_QUERY_LENGTH) return
     let cancelled = false
     const t = setTimeout(async () => {
       setIsSearchingPokemon(true)
@@ -124,7 +179,7 @@ export function CardShipmentRow({ card, index, canRemove, onUpdateCard, onRemove
         setPokemonResults(results)
         setIsSearchingPokemon(false)
       }
-    }, 350)
+    }, SEARCH_DEBOUNCE_MS)
     return () => {
       cancelled = true
       clearTimeout(t)
