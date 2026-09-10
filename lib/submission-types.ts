@@ -72,7 +72,7 @@ export interface ShippingAddress {
 export const GRADING_COMPANY_OPTIONS: { value: GradingCompany; label: string; url?: string }[] = [
   { value: 'PCG', label: 'Premier Card Grading (PCG)', url: 'https://premiercardgrading.co.uk/' },
   { value: 'PSA', label: 'PSA' },
-  { value: 'ACE', label: 'ACE Grading' },
+  { value: 'ACE', label: 'ACE Grading', url: 'https://acegrading.com' },
 ]
 
 export interface TierOption {
