@@ -38,7 +38,7 @@ export function PackagingGuidelines() {
     <section className="py-16 md:py-20">
       <div className="max-w-4xl mx-auto px-6">
         <div className="text-center mb-10">
-          <p className="text-[#D4AF37] text-xs font-bold uppercase tracking-widest mb-2">Quick Reference</p>
+          <p className="text-[#a67c00] text-xs font-bold uppercase tracking-widest mb-2">Quick Reference</p>
           <h2 className="text-3xl md:text-4xl font-black text-white tracking-tight">Do&apos;s and Don&apos;ts</h2>
         </div>
 
@@ -46,15 +46,15 @@ export function PackagingGuidelines() {
           {/* Do */}
           <div
             className="rounded-2xl bg-slate-900 border border-slate-800 border-t-4 p-6 md:p-8"
-            style={{ borderTopColor: '#D4AF37' }}
+            style={{ borderTopColor: '#a67c00' }}
           >
             <h3 className="text-xl font-bold text-white mb-5 flex items-center gap-2">
-              <span className="text-[#D4AF37]">Do</span>
+              <span className="text-[#a67c00]">Do</span>
             </h3>
             <ul className="space-y-3.5">
               {DO_ITEMS.map((item) => (
                 <li key={item} className="flex items-start gap-3">
-                  <span className="shrink-0 w-5 h-5 rounded-full bg-[#D4AF37]/10 text-[#D4AF37] flex items-center justify-center mt-0.5">
+                  <span className="shrink-0 w-5 h-5 rounded-full bg-[#a67c00]/10 text-[#a67c00] flex items-center justify-center mt-0.5">
                     <CheckIcon className="w-3 h-3" />
                   </span>
                   <span className="text-slate-200 leading-relaxed">{item}</span>

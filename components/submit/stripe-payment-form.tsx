@@ -68,7 +68,7 @@ export function StripePaymentForm({ clientSecret, onSuccess }: { clientSecret: s
           // directly since Stripe Elements takes real hex, not CSS vars).
           theme: 'night',
           variables: {
-            colorPrimary: '#D4A24C',
+            colorPrimary: '#a67c00',
             colorText: '#F3EFE4',
             colorBackground: '#1D1812',
             colorDanger: '#E2645A',

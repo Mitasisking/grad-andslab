@@ -131,7 +131,7 @@ export function FeaturedCarousel({ products }: { products: FeaturedProduct[] }) 
                 className="h-1.5 rounded-full transition-all duration-300"
                 style={{
                   width: i === index ? 20 : 6,
-                  background: i === index ? '#d4a24c' : '#3a3226',
+                  background: i === index ? '#a67c00' : '#3a3226',
                 }}
               />
             ))}

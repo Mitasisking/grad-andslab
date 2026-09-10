@@ -39,7 +39,7 @@ const COLORS = {
   panel: '#1d1812',
   ink: '#f3efe4',
   inkMuted: '#a99f8c',
-  gold: '#d4a24c',
+  gold: '#a67c00',
   goldInk: '#1c1408',
   line: '#332c22',
 }
