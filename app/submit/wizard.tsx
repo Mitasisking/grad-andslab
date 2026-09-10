@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { AnimatePresence, motion } from 'framer-motion'
 import { ManifestRail } from '@/components/submit/manifest-rail'
 import { PoolTracker } from '@/components/PoolTracker'
@@ -8,7 +9,14 @@ import { StepGraderTier } from '@/components/submit/step-grader-tier'
 import { StepAddOns } from '@/components/submit/step-addons'
 import { StepReviewPay } from '@/components/submit/step-review-pay'
 import { fetchAddresses } from '@/lib/addresses-client'
+import { TIER_OPTIONS_BY_COMPANY } from '@/lib/submission-types'
 import type { CardEntry, GradingCompany, ProductRegion, ShippingAddress, SubmissionTier } from '@/lib/submission-types'
+
+const VALID_COMPANIES = new Set<GradingCompany>(['PCG', 'PSA', 'ACE'])
+
+function isValidCompany(value: string | null): value is GradingCompany {
+  return value !== null && VALID_COMPANIES.has(value as GradingCompany)
+}
 
 const STEP_COUNT = 3
 
@@ -32,10 +40,23 @@ function createEmptyCard(): CardEntry {
 }
 
 export function SubmissionWizard() {
+  // Pre-selects grader + tier when arriving from a link that already knows
+  // which batch a customer wants to join -- e.g. the homepage's Live Batch
+  // Tracker (components/LivePools.tsx) links to /submit?company=PCG&tier=standard
+  // for a specific open pool's "Join Batch" button. Falls back to this
+  // wizard's own defaults for a plain /submit visit with no query string.
+  const searchParams = useSearchParams()
+  const initialCompany: GradingCompany = isValidCompany(searchParams.get('company')) ? (searchParams.get('company') as GradingCompany) : 'PCG'
+  const initialTierParam = searchParams.get('tier')
+  const initialTier: SubmissionTier | null =
+    initialTierParam && TIER_OPTIONS_BY_COMPANY[initialCompany].some((t) => t.value === initialTierParam)
+      ? (initialTierParam as SubmissionTier)
+      : null
+
   const [step, setStep] = useState(0)
   const [region, setRegion] = useState<ProductRegion>('sa')
-  const [company, setCompany] = useState<GradingCompany>('PCG')
-  const [tier, setTier] = useState<SubmissionTier | null>(null)
+  const [company, setCompany] = useState<GradingCompany>(initialCompany)
+  const [tier, setTier] = useState<SubmissionTier | null>(initialTier)
   const [cards, setCards] = useState<CardEntry[]>([createEmptyCard()])
   const [addresses, setAddresses] = useState<ShippingAddress[]>([])
   const [addressesLoaded, setAddressesLoaded] = useState(false)

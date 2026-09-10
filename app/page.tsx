@@ -3,8 +3,10 @@ import { SOCIAL_LINKS } from '../lib/social-links'
 import { FacebookIcon, InstagramIcon, TiktokIcon, WhatsappIcon } from '../components/SocialIcons'
 import { WhatnotBanner } from '../components/WhatnotBanner'
 import { FeaturedCarousel } from '../components/FeaturedCarousel'
+import { LivePools } from '../components/LivePools'
 import { getSupabaseRouteClient } from '../lib/supabase-route-client'
 import { getFeaturedProducts } from '../lib/shop/featured-products'
+import { getActiveLivePools } from '../lib/pools/active-pools'
 import { REGION_OPTIONS, type ProductRegion } from '../lib/shop/product-type'
 
 const VALID_REGIONS = new Set(REGION_OPTIONS.map((r) => r.value))
@@ -24,6 +26,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
 
   const supabase = await getSupabaseRouteClient()
   const featuredProducts = await getFeaturedProducts(supabase, activeRegion)
+  const activePools = await getActiveLivePools(supabase)
 
   return (
     <div className="min-h-screen bg-slate-900 text-white selection:bg-amber-500 selection:text-slate-900">
@@ -59,6 +62,8 @@ export default async function HomePage({ searchParams }: HomePageProps) {
         {/* Background decorative glow */}
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-amber-500/5 rounded-full blur-3xl -z-10 pointer-events-none"></div>
       </section>
+
+      <LivePools pools={activePools} />
 
       <WhatnotBanner />
 

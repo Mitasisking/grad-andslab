@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import { Suspense } from 'react'
 import { SubmissionWizard } from './wizard'
 
 export const metadata: Metadata = {
@@ -24,7 +25,9 @@ export default function SubmitPage() {
           with a scannable code the moment your package reaches intake.
         </p>
       </header>
-      <SubmissionWizard />
+      <Suspense fallback={null}>
+        <SubmissionWizard />
+      </Suspense>
     </main>
   )
 }
