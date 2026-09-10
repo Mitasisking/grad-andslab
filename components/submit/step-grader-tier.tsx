@@ -2,8 +2,8 @@
 
 import { Button } from '@/components/ui/button'
 import { CardShipmentRow } from '@/components/submit/card-shipment-row'
-import { formatByRegion } from '@/lib/currency'
-import { GRADING_COMPANY_OPTIONS, TIER_OPTIONS_BY_COMPANY, tierPriceForRegion } from '@/lib/submission-types'
+import { formatGBP, formatZAR } from '@/lib/currency'
+import { GRADING_COMPANY_OPTIONS, TIER_OPTIONS_BY_COMPANY } from '@/lib/submission-types'
 import type { CardEntry, GradingCompany, ProductRegion, SubmissionTier } from '@/lib/submission-types'
 
 const COUNTRY_OPTIONS: { value: ProductRegion; label: string }[] = [
@@ -218,12 +218,14 @@ export function StepGraderTier({
                     )}
                   </span>
                 </span>
-                <span
-                  className="text-[13px] shrink-0 text-right"
-                  style={{ fontVariantNumeric: 'tabular-nums', color: 'var(--ink-muted)' }}
-                >
-                  {t.turnaround ? `${t.turnaround} · ` : ''}
-                  {formatByRegion(tierPriceForRegion(t, region), region)}/card
+                <span className="shrink-0 text-right" style={{ fontVariantNumeric: 'tabular-nums' }}>
+                  <span className="text-[13px] block" style={{ color: 'var(--ink-muted)' }}>
+                    {t.turnaround ? `${t.turnaround} · ` : ''}
+                    {formatGBP(t.basePriceGBP)}/card
+                  </span>
+                  <span className="text-[11px] block mt-0.5" style={{ color: 'var(--ink-muted)', opacity: 0.7 }}>
+                    (Est. conversion: {formatZAR(t.basePriceZAR)})
+                  </span>
                 </span>
               </button>
             )
