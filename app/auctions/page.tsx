@@ -2,6 +2,7 @@ import Link from 'next/link'
 import type { Metadata } from 'next'
 import { getSupabaseRouteClient } from '@/lib/supabase-route-client'
 import { formatZAR } from '@/lib/currency'
+import { CountdownTimer } from '@/components/auctions/countdown-timer'
 import type { AuctionRow } from '@/lib/auction-types'
 
 export const metadata: Metadata = {
@@ -62,40 +63,65 @@ export default async function AuctionsPage() {
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {auctions.map((auction) => (
-              <Link
-                key={auction.id}
-                href={`/auctions/${auction.id}`}
-                className="block border rounded-[3px] overflow-hidden transition hover:border-[var(--seal)]"
-                style={{ borderColor: 'var(--line)', background: 'var(--paper-raised)' }}
-              >
-                <div className="aspect-square overflow-hidden" style={{ background: 'var(--paper)' }}>
-                  {auction.images[0] && (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={auction.images[0]} alt={auction.title} className="w-full h-full object-cover" />
-                  )}
-                </div>
-                <div className="p-4">
-                  <p className="text-[12px] uppercase tracking-wide" style={{ color: 'var(--seal)' }}>
-                    {auction.status === 'extended' ? 'Extended — final bids coming in' : 'Live'}
-                  </p>
-                  <h3 className="text-[15px] mt-1 line-clamp-2" style={{ color: 'var(--ink)' }}>
-                    {auction.title}
-                  </h3>
-                  <div className="flex items-baseline justify-between mt-3">
-                    <span className="text-[12px]" style={{ color: 'var(--ink-muted)' }}>
-                      Current bid
-                    </span>
-                    <span
-                      className="text-[18px]"
-                      style={{ fontVariantNumeric: 'tabular-nums', color: 'var(--ink)' }}
-                    >
-                      {formatZAR(auction.current_high_bid ?? auction.starting_price)}
-                    </span>
+            {/* Already ordered by ends_at ascending, so index 0 is always the
+                one ending soonest -- highlighted rather than recomputed. */}
+            {auctions.map((auction, index) => {
+              const endingSoonest = index === 0
+              return (
+                <Link
+                  key={auction.id}
+                  href={`/auctions/${auction.id}`}
+                  className="block border rounded-[3px] overflow-hidden transition hover:border-[var(--seal)]"
+                  style={{
+                    borderColor: endingSoonest ? 'var(--seal)' : 'var(--line)',
+                    borderWidth: endingSoonest ? 2 : 1,
+                    background: 'var(--paper-raised)',
+                  }}
+                >
+                  <div className="aspect-square overflow-hidden relative" style={{ background: 'var(--paper)' }}>
+                    {auction.images[0] && (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={auction.images[0]} alt={auction.title} className="w-full h-full object-cover" />
+                    )}
+                    {endingSoonest && (
+                      <span
+                        className="absolute top-2 left-2 px-2 py-1 text-[11px] uppercase tracking-wide rounded-[3px]"
+                        style={{ background: 'var(--seal)', color: 'var(--seal-ink)' }}
+                      >
+                        Ending soonest
+                      </span>
+                    )}
                   </div>
-                </div>
-              </Link>
-            ))}
+                  <div className="p-4">
+                    <p className="text-[12px] uppercase tracking-wide" style={{ color: 'var(--seal)' }}>
+                      {auction.status === 'extended' ? 'Extended — final bids coming in' : 'Live'}
+                    </p>
+                    <h3 className="text-[15px] mt-1 line-clamp-2" style={{ color: 'var(--ink)' }}>
+                      {auction.title}
+                    </h3>
+                    <div className="flex items-baseline justify-between mt-3">
+                      <span className="text-[12px]" style={{ color: 'var(--ink-muted)' }}>
+                        Current bid
+                      </span>
+                      <span
+                        className="text-[18px]"
+                        style={{ fontVariantNumeric: 'tabular-nums', color: 'var(--ink)' }}
+                      >
+                        {formatZAR(auction.current_high_bid ?? auction.starting_price)}
+                      </span>
+                    </div>
+                    {endingSoonest && (
+                      <div className="flex items-baseline justify-between mt-2 pt-2 border-t" style={{ borderColor: 'var(--line)' }}>
+                        <span className="text-[12px]" style={{ color: 'var(--ink-muted)' }}>
+                          Ends in
+                        </span>
+                        <CountdownTimer endsAt={auction.ends_at} />
+                      </div>
+                    )}
+                  </div>
+                </Link>
+              )
+            })}
           </div>
         )}
       </div>
