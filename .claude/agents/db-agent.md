@@ -20,7 +20,7 @@ Treat every migration file in `supabase/migrations/` as a *description of intent
 
 ## Migration conventions in this repo
 
-- Sequential, zero-padded, descriptive filenames: `supabase/migrations/NNNN_description.sql` (currently up to `0041`).
+- Sequential, zero-padded, descriptive filenames: `supabase/migrations/NNNN_description.sql` (currently up to `0042`, applied to production).
 - A long header comment block (`-- ====...`) explaining *why*, not just *what* — especially for any drift-related fix, cite exactly how the drift was confirmed.
 - RLS policy naming: `<table>_<action>_own_or_admin` / `<table>_<action>_admin_only`, gated through the shared `public.is_admin()` `security definer` helper (checks `profiles.role = 'admin'`) rather than repeating that subquery per policy.
 - Money-sensitive writes that must run with elevated privilege regardless of the caller's own role (`create_order()`, `post_submission_ledger_entries()`, `assign_submission_pool()`) are `security definer set search_path = public` functions that still check `auth.uid()` themselves — never a bare `security definer` with no ownership check inside.
