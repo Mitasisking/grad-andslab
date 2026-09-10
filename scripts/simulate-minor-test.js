@@ -43,8 +43,11 @@
  * Companion teardown script:
  *   node scripts/teardown-minor-test.js
  * Run it when you're done — it restores any shop stock this script
- * decremented and deletes every [TEST-MINOR] user (which cascades to their
- * submissions/orders/addresses at the database level).
+ * decremented and explicitly deletes every [TEST-MINOR] user's orders,
+ * submissions, and addresses before deleting the user itself (production's
+ * profiles table is missing the on-delete-cascade FKs the migration files
+ * declare, so deleting the user alone silently leaves those rows behind —
+ * see teardown-minor-test.js's header for how this was found).
  */
 
 const fs = require('fs')

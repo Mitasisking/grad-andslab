@@ -13,20 +13,27 @@
  * partially completed), and looks up their orders/submissions live to
  * compute the same stock/ledger cleanup for them too.
  *
- * Deleting a [TEST-MINOR] auth user cascades at the database level to their
- * profile, submissions, submission_items, addresses, orders, and
- * order_items (all `on delete cascade` back to profiles/auth.users — see
- * supabase/migrations/0001_init_schema.sql, 0002_addresses.sql,
- * 0005_marketplace.sql). ledger_entries.submission_id is `on delete set
- * null` instead (0034_accounting_foundations.sql), so those rows are
- * deleted explicitly here before the cascade, using the ids captured above.
+ * Every child row (orders, order_items, submissions, submission_items,
+ * addresses, ledger_entries) is deleted here explicitly, by user_id or by
+ * id, rather than relying on deleting the auth user to cascade them --
+ * despite every migration file back to 0001_init_schema.sql declaring
+ * `on delete cascade` from these tables' user_id back to profiles/
+ * auth.users, a first real run of this teardown against production found
+ * public.profiles has none of those FK constraints actually applied (same
+ * drift class as 0dded19's "public.profiles has zero FKs pointing at it in
+ * production" and 0041's grading_company type drift) -- orders and
+ * submissions belonging to a deleted test user were silently left behind,
+ * only caught by manually auditing afterwards. submission_items and
+ * order_items DO still cascade correctly from their own parent (confirmed
+ * the same way), but are deleted explicitly anyway now, cheaply, rather
+ * than trust any cascade here again.
  *
- * Shop-order stock is restored (stock + quantity) before the cascade
- * removes the order/order_items — otherwise the real product's stock count
- * would stay permanently short by whatever this test bought. Every other
- * delete below is scoped strictly to rows carrying the [TEST-MINOR] marker
- * or belonging to a matched test user; nothing here touches an unrelated
- * table wholesale.
+ * Shop-order stock is restored (stock + quantity) before its order/
+ * order_items are deleted — otherwise the real product's stock count would
+ * stay permanently short by whatever this test bought. Every delete below
+ * is scoped strictly to rows carrying the [TEST-MINOR] marker or belonging
+ * to a matched test user; nothing here touches an unrelated table
+ * wholesale.
  *
  * Usage:
  *   node scripts/teardown-minor-test.js
@@ -57,26 +64,43 @@ function loadEnv(envPath) {
   )
 }
 
-async function collectStockDeltasForUser(admin, userId) {
+async function collectOrdersForUser(admin, userId) {
   const { data: orders, error } = await admin.from('orders').select('id, order_items(product_id, quantity)').eq('user_id', userId)
   if (error) throw new Error(`could not read orders for ${userId}: ${error.message}`)
-  const deltas = []
+  const orderIds = (orders ?? []).map((o) => o.id)
+  const stockDeltas = []
   for (const order of orders ?? []) {
     for (const item of order.order_items ?? []) {
-      if (item.product_id) deltas.push({ productId: item.product_id, quantity: item.quantity })
+      if (item.product_id) stockDeltas.push({ productId: item.product_id, quantity: item.quantity })
     }
   }
-  return deltas
+  return { orderIds, stockDeltas }
 }
 
-async function collectLedgerEntryIdsForUser(admin, userId) {
+async function deleteOrdersForUser(admin, userId, orderIds) {
+  if (orderIds.length === 0) return
+  const { error: itemsError } = await admin.from('order_items').delete().in('order_id', orderIds)
+  if (itemsError) throw new Error(`could not delete order_items for ${userId}: ${itemsError.message}`)
+  const { error: ordersError } = await admin.from('orders').delete().in('id', orderIds)
+  if (ordersError) throw new Error(`could not delete orders for ${userId}: ${ordersError.message}`)
+}
+
+async function deleteSubmissionsForUser(admin, userId, submissionIds) {
+  if (submissionIds.length === 0) return
+  const { error: itemsError } = await admin.from('submission_items').delete().in('submission_id', submissionIds)
+  if (itemsError) throw new Error(`could not delete submission_items for ${userId}: ${itemsError.message}`)
+  const { error: subsError } = await admin.from('submissions').delete().in('id', submissionIds)
+  if (subsError) throw new Error(`could not delete submissions for ${userId}: ${subsError.message}`)
+}
+
+async function collectSubmissionsForUser(admin, userId) {
   const { data: subs, error } = await admin.from('submissions').select('id').eq('user_id', userId)
   if (error) throw new Error(`could not read submissions for ${userId}: ${error.message}`)
   const submissionIds = (subs ?? []).map((s) => s.id)
-  if (submissionIds.length === 0) return []
+  if (submissionIds.length === 0) return { submissionIds, ledgerEntryIds: [] }
   const { data: entries, error: ledgerError } = await admin.from('ledger_entries').select('id').in('submission_id', submissionIds)
   if (ledgerError) throw new Error(`could not read ledger_entries: ${ledgerError.message}`)
-  return (entries ?? []).map((e) => e.id)
+  return { submissionIds, ledgerEntryIds: (entries ?? []).map((e) => e.id) }
 }
 
 async function main() {
@@ -98,11 +122,14 @@ async function main() {
     console.log('No manifest file found — falling back to a live sweep for [TEST-MINOR] users only.')
   }
 
-  // userId -> { email, stockDeltas, ledgerEntryIds, fromManifest }
+  // userId -> { email, fromManifest }. Everything else (orders,
+  // submissions, ledger entries, stock deltas) is looked up live below for
+  // every target regardless of source -- see the header comment on why the
+  // manifest's own stored ids are no longer trusted as the sole source.
   const targets = new Map()
   for (const u of manifest?.users ?? []) {
     if (!u.id) continue // this profile failed before the auth user was created
-    targets.set(u.id, { email: u.email, stockDeltas: u.stockDeltas ?? [], ledgerEntryIds: u.ledgerEntryIds ?? [], fromManifest: true })
+    targets.set(u.id, { email: u.email, fromManifest: true })
   }
 
   // Safety-net sweep: page through every auth user, add anyone matching our
@@ -113,7 +140,7 @@ async function main() {
     if (error) throw new Error(`listUsers failed: ${error.message}`)
     for (const u of data.users) {
       if (u.email && u.email.endsWith(`@${EMAIL_DOMAIN}`) && !targets.has(u.id)) {
-        targets.set(u.id, { email: u.email, stockDeltas: null, ledgerEntryIds: null, fromManifest: false })
+        targets.set(u.id, { email: u.email, fromManifest: false })
       }
     }
     if (data.users.length < 200) break
@@ -126,6 +153,8 @@ async function main() {
 
   const stockRestored = new Map()
   let ledgerDeleted = 0
+  let ordersDeleted = 0
+  let submissionsDeleted = 0
   let usersDeleted = 0
   let usersFailed = 0
 
@@ -133,8 +162,8 @@ async function main() {
     console.log(`\nTearing down ${info.email ?? userId}${info.fromManifest ? '' : ' [safety-net match]'}...`)
 
     try {
-      const stockDeltas = info.stockDeltas ?? (await collectStockDeltasForUser(admin, userId))
-      const ledgerEntryIds = info.ledgerEntryIds ?? (await collectLedgerEntryIdsForUser(admin, userId))
+      const { orderIds, stockDeltas } = await collectOrdersForUser(admin, userId)
+      const { submissionIds, ledgerEntryIds } = await collectSubmissionsForUser(admin, userId)
 
       for (const { productId, quantity } of stockDeltas) {
         const { data: product, error: fetchError } = await admin.from('products').select('stock').eq('id', productId).single()
@@ -161,9 +190,24 @@ async function main() {
         }
       }
 
+      await deleteOrdersForUser(admin, userId, orderIds)
+      if (orderIds.length > 0) {
+        ordersDeleted += orderIds.length
+        console.log(`  deleted ${orderIds.length} order(s) and their order_items`)
+      }
+
+      await deleteSubmissionsForUser(admin, userId, submissionIds)
+      if (submissionIds.length > 0) {
+        submissionsDeleted += submissionIds.length
+        console.log(`  deleted ${submissionIds.length} submission(s) and their submission_items`)
+      }
+
+      const { error: addressError } = await admin.from('addresses').delete().eq('user_id', userId)
+      if (addressError) console.warn(`  [warn] could not delete addresses: ${addressError.message}`)
+
       const { error: deleteError } = await admin.auth.admin.deleteUser(userId)
       if (deleteError) throw new Error(`deleteUser failed: ${deleteError.message}`)
-      console.log('  deleted auth user (cascades profile/submissions/orders/addresses)')
+      console.log('  deleted auth user + profile')
       usersDeleted += 1
     } catch (err) {
       console.error(`  [FAILED] ${err.message}`)
@@ -177,7 +221,10 @@ async function main() {
   // Never a bare wildcard delete of a whole table.
   const { data: orphanSubs } = await admin.from('submissions').select('id').ilike('notes', `${PREFIX}%`)
   if (orphanSubs?.length) {
-    await admin.from('submissions').delete().in('id', orphanSubs.map((s) => s.id))
+    const orphanIds = orphanSubs.map((s) => s.id)
+    await admin.from('submission_items').delete().in('submission_id', orphanIds)
+    await admin.from('submissions').delete().in('id', orphanIds)
+    submissionsDeleted += orphanSubs.length
     console.log(`\nRemoved ${orphanSubs.length} orphaned [TEST-MINOR] submission(s).`)
   }
   const { data: orphanAddresses } = await admin.from('addresses').select('id').ilike('full_name', `${PREFIX}%`)
@@ -191,6 +238,8 @@ async function main() {
   console.log('\n=== Teardown complete ===')
   console.log(`  Users deleted: ${usersDeleted}`)
   if (usersFailed > 0) console.log(`  Users FAILED to delete: ${usersFailed} — check the [FAILED] lines above`)
+  console.log(`  Orders deleted: ${ordersDeleted}`)
+  console.log(`  Submissions deleted: ${submissionsDeleted}`)
   console.log(`  Ledger entries removed: ${ledgerDeleted}`)
   if (stockRestored.size > 0) {
     console.log('  Stock restored:')
