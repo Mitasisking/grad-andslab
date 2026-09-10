@@ -153,9 +153,9 @@ export const TIER_OPTIONS_BY_COMPANY: Record<GradingCompany, TierOption[]> = {
     { value: 'psa_express', label: 'Express', basePriceUSD: 149, basePriceGBP: 118, basePriceZAR: 2755 },
   ],
   ACE: [
-    { value: 'ace_value', label: 'Value', basePriceUSD: 20, basePriceGBP: 16, basePriceZAR: 370 },
-    { value: 'ace_basic', label: 'Basic', basePriceUSD: 24, basePriceGBP: 19, basePriceZAR: 445 },
-    { value: 'ace_standard', label: 'Standard', basePriceUSD: 34, basePriceGBP: 27, basePriceZAR: 630 },
+    { value: 'ace_value', label: 'Value', turnaround: '60 days', basePriceUSD: 20, basePriceGBP: 16, basePriceZAR: 370 },
+    { value: 'ace_basic', label: 'Basic', turnaround: '30 days', basePriceUSD: 24, basePriceGBP: 19, basePriceZAR: 445 },
+    { value: 'ace_standard', label: 'Standard', turnaround: '15 days', basePriceUSD: 34, basePriceGBP: 27, basePriceZAR: 630 },
   ],
 }
 
