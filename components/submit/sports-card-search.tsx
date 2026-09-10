@@ -32,13 +32,15 @@ interface Props {
   value: string
   onChange: (value: string) => void
   onSelect: (result: SportsCardResult) => void
-  /** Scopes the search to one brand (app/api/sports-cards/brands) -- required, per the "filter first" flow. */
-  brand: string
+  /** Optionally scopes the search to one brand (app/api/sports-cards/brands) -- omitted by card-shipment-row.tsx since removing the Brand/Set picker made every search global; kept for any caller that still wants to narrow it. */
+  brand?: string
   disabled?: boolean
   placeholder?: string
+  /** Fires when the input blurs, whether or not a result was picked -- card-shipment-row.tsx uses this to finalize a free-typed (no result selected) card. */
+  onBlur?: () => void
 }
 
-export function SportsCardSearch({ value, onChange, onSelect, brand, disabled, placeholder }: Props) {
+export function SportsCardSearch({ value, onChange, onSelect, brand, disabled, placeholder, onBlur }: Props) {
   const [results, setResults] = useState<SportsCardResult[]>([])
   const [isSearching, setIsSearching] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -52,7 +54,8 @@ export function SportsCardSearch({ value, onChange, onSelect, brand, disabled, p
     const t = setTimeout(async () => {
       setIsSearching(true)
       try {
-        const params = new URLSearchParams({ q: trimmedValue, brand })
+        const params = new URLSearchParams({ q: trimmedValue })
+        if (brand) params.set('brand', brand)
         const res = await fetch(`/api/sports-cards/search?${params}`)
         const data = await res.json()
         if (!res.ok) {
@@ -88,7 +91,10 @@ export function SportsCardSearch({ value, onChange, onSelect, brand, disabled, p
         value={value}
         onChange={(e) => onChange(e.target.value)}
         onFocus={() => setFocused(true)}
-        onBlur={() => setTimeout(() => setFocused(false), 150)}
+        onBlur={() => {
+          setTimeout(() => setFocused(false), 150)
+          onBlur?.()
+        }}
         disabled={disabled}
         placeholder={placeholder ?? 'Search player, e.g. Messi'}
         className={noResults ? 'pr-9' : undefined}

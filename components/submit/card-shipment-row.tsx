@@ -10,11 +10,6 @@ import { SportsCardSearch, type SportsCardResult } from '@/components/submit/spo
 import { SPORT_OPTIONS } from '@/lib/submission-types'
 import type { CardEntry, CardType } from '@/lib/submission-types'
 
-interface PokemonSet {
-  id: string
-  name: string
-}
-
 interface PokemonSetCard {
   id: string
   name: string
@@ -22,54 +17,47 @@ interface PokemonSetCard {
 }
 
 /**
- * Set list and brand list are the same regardless of which row in the
- * shipment asks -- module-level caches (shared across every
- * CardShipmentRow instance, not per-row state) so a shipment with many
- * cards fetches each exactly once instead of once per row.
+ * submission_items.set_name is a NOT NULL column, but there's no longer any
+ * UI to type or pick a set/brand directly (the Brand/Set dropdown this
+ * replaced was the only source for it). Used whenever a card is finalized
+ * (blurred, or matched from search) without one -- either the search
+ * result itself didn't resolve a set name, or the customer typed a card
+ * name that matched nothing and moved on. Admin can correct it at intake.
  */
-let pokemonSetsPromise: Promise<PokemonSet[]> | null = null
-function loadPokemonSets(): Promise<PokemonSet[]> {
-  if (!pokemonSetsPromise) {
-    pokemonSetsPromise = fetch('https://api.tcgdex.net/v2/en/sets')
-      .then((res) => (res.ok ? res.json() : []))
-      .then((data: { id: string; name: string }[]) => (Array.isArray(data) ? data.map((s) => ({ id: s.id, name: s.name })) : []))
-      .catch((err) => {
-        console.error('Could not load Pokemon set list', err)
-        return []
-      })
+const UNSPECIFIED_SET = 'Not specified'
+
+const MIN_QUERY_LENGTH = 2
+
+/**
+ * Global name search across TCGdex's entire card index, not scoped to any
+ * one set -- replaces the old "load one selected set's card list, filter
+ * client-side" approach now that there's no set picker to scope it with.
+ * Same endpoint components/submit's sibling app/api/fetch-images/route.ts
+ * already uses as its own last-resort global lookup.
+ */
+async function searchPokemonCards(query: string): Promise<PokemonSetCard[]> {
+  try {
+    const res = await fetch(`https://api.tcgdex.net/v2/en/cards?name=${encodeURIComponent(query)}`)
+    if (!res.ok) return []
+    const data = await res.json()
+    return Array.isArray(data) ? (data as PokemonSetCard[]).slice(0, 30) : []
+  } catch (err) {
+    console.error('Pokemon card search failed', err)
+    return []
   }
-  return pokemonSetsPromise
 }
 
-let sportsBrandsPromise: Promise<string[]> | null = null
-function loadSportsBrands(): Promise<string[]> {
-  if (!sportsBrandsPromise) {
-    sportsBrandsPromise = fetch('/api/sports-cards/brands')
-      .then((res) => (res.ok ? res.json() : { brands: [] }))
-      .then((data) => (Array.isArray(data.brands) ? data.brands : []))
-      .catch((err) => {
-        console.error('Could not load sports card brands', err)
-        return []
-      })
+/** Full card detail (not returned by the search-list endpoint above) is where TCGdex's real set name lives. */
+async function fetchPokemonSetName(cardId: string): Promise<string> {
+  try {
+    const res = await fetch(`https://api.tcgdex.net/v2/en/cards/${cardId}`)
+    if (!res.ok) return UNSPECIFIED_SET
+    const detail = (await res.json()) as { set?: { name?: string } }
+    return detail.set?.name?.trim() || UNSPECIFIED_SET
+  } catch (err) {
+    console.error('Could not resolve set name for', cardId, err)
+    return UNSPECIFIED_SET
   }
-  return sportsBrandsPromise
-}
-
-const setCardsCache = new Map<string, Promise<PokemonSetCard[]>>()
-function loadSetCards(setId: string): Promise<PokemonSetCard[]> {
-  if (!setCardsCache.has(setId)) {
-    setCardsCache.set(
-      setId,
-      fetch(`https://api.tcgdex.net/v2/en/sets/${setId}`)
-        .then((res) => (res.ok ? res.json() : null))
-        .then((data: { cards?: PokemonSetCard[] } | null) => data?.cards ?? [])
-        .catch((err) => {
-          console.error('Could not load set card list', setId, err)
-          return []
-        }),
-    )
-  }
-  return setCardsCache.get(setId)!
 }
 
 function ResultsDropdown({
@@ -116,78 +104,68 @@ interface Props {
 }
 
 export function CardShipmentRow({ card, index, canRemove, onUpdateCard, onRemoveCard }: Props) {
-  const [pokemonSets, setPokemonSets] = useState<PokemonSet[]>([])
-  const [sportsBrands, setSportsBrands] = useState<string[]>([])
-  const [selectedSetId, setSelectedSetId] = useState<string | null>(null)
-  const [setCards, setSetCards] = useState<PokemonSetCard[]>([])
-  const [isLoadingSetCards, setIsLoadingSetCards] = useState(false)
+  const [pokemonResults, setPokemonResults] = useState<PokemonSetCard[]>([])
+  const [isSearchingPokemon, setIsSearchingPokemon] = useState(false)
   const [focused, setFocused] = useState(false)
   const [selectedCardImage, setSelectedCardImage] = useState<string | null>(null)
 
   useEffect(() => {
-    loadPokemonSets().then(setPokemonSets)
-    loadSportsBrands().then(setSportsBrands)
-  }, [])
-
-  useEffect(() => {
-    if (!selectedSetId) return
+    if (card.cardType !== 'pokemon') return
+    const query = card.cardName.trim()
+    if (query.length < MIN_QUERY_LENGTH) {
+      setPokemonResults([])
+      return
+    }
     let cancelled = false
-    Promise.resolve().then(() => {
-      if (!cancelled) setIsLoadingSetCards(true)
-    })
-    loadSetCards(selectedSetId).then((cards) => {
-      if (cancelled) return
-      setSetCards(cards)
-      setIsLoadingSetCards(false)
-    })
+    const t = setTimeout(async () => {
+      setIsSearchingPokemon(true)
+      const results = await searchPokemonCards(query)
+      if (!cancelled) {
+        setPokemonResults(results)
+        setIsSearchingPokemon(false)
+      }
+    }, 350)
     return () => {
       cancelled = true
+      clearTimeout(t)
     }
-  }, [selectedSetId])
+  }, [card.cardType, card.cardName])
 
-  const effectiveSetCards = selectedSetId ? setCards : []
-
-  const pokemonResults =
-    card.cardType === 'pokemon' && card.cardName.trim()
-      ? effectiveSetCards.filter((c) => c.name.toLowerCase().includes(card.cardName.trim().toLowerCase())).slice(0, 30)
-      : []
-  // Genuinely searched this set, came back empty -- expected and
-  // fine-to-proceed, not a broken search (components/submit/sports-card-search.tsx
-  // has the identical treatment for the sports-card side).
+  const pokemonQueryLongEnough = card.cardName.trim().length >= MIN_QUERY_LENGTH
+  // Genuinely searched, came back empty -- expected and fine-to-proceed, not
+  // a broken search (components/submit/sports-card-search.tsx has the
+  // identical treatment for the sports-card side).
   const pokemonNoResults =
-    card.cardType === 'pokemon' && Boolean(card.setName) && Boolean(card.cardName.trim()) && !isLoadingSetCards && pokemonResults.length === 0
+    card.cardType === 'pokemon' && pokemonQueryLongEnough && !isSearchingPokemon && pokemonResults.length === 0
 
-  function selectBrandSet(name: string) {
-    if (card.cardType === 'pokemon') {
-      const set = pokemonSets.find((s) => s.name === name) ?? null
-      setSelectedSetId(set?.id ?? null)
-    }
-    setSelectedCardImage(null)
-    onUpdateCard(card.id, {
-      setName: name,
-      cardName: '',
-      externalCardId: null,
-      externalSource: null,
-      marketValueEstimate: null,
-      marketValueSource: null,
-    })
-  }
-
-  function selectPokemonCard(result: PokemonSetCard) {
+  async function selectPokemonCard(result: PokemonSetCard) {
     setFocused(false)
+    setSelectedCardImage(result.image ? `${result.image}/high.png` : null)
     onUpdateCard(card.id, {
       cardName: result.name,
       externalCardId: result.id,
       externalSource: 'tcgdex',
+      isFetchingValue: true,
     })
-    setSelectedCardImage(result.image ? `${result.image}/high.png` : null)
-    lookupValue()
+    const setName = await fetchPokemonSetName(result.id)
+    onUpdateCard(card.id, { setName })
+    const marketResult = await fetchMarketValue(result.name, setName)
+    onUpdateCard(card.id, {
+      isFetchingValue: false,
+      marketValueEstimate: marketResult?.estimate ?? null,
+      marketValueSource: marketResult?.source ?? null,
+      declaredValue: card.declaredValue || marketResult?.estimate || 0,
+    })
   }
 
+  // Backstop for a card that's blurred without ever matching/selecting a
+  // search result -- there's no field left to type a set/brand into, so
+  // this is also where UNSPECIFIED_SET gets stamped for that path.
   async function lookupValue() {
-    if (!card.cardName.trim() || !card.setName.trim()) return
-    onUpdateCard(card.id, { isFetchingValue: true })
-    const result = await fetchMarketValue(card.cardName, card.setName)
+    if (!card.cardName.trim()) return
+    const setName = card.setName.trim() || UNSPECIFIED_SET
+    onUpdateCard(card.id, { isFetchingValue: true, ...(card.setName.trim() ? {} : { setName }) })
+    const result = await fetchMarketValue(card.cardName, setName)
     onUpdateCard(card.id, {
       isFetchingValue: false,
       marketValueEstimate: result?.estimate ?? null,
@@ -202,7 +180,7 @@ export function CardShipmentRow({ card, index, canRemove, onUpdateCard, onRemove
     // switching flows starts the row's card fields clean rather than mixing
     // half-Pokemon, half-sports-card state.
     setSelectedCardImage(null)
-    setSelectedSetId(null)
+    setPokemonResults([])
     onUpdateCard(card.id, {
       cardType,
       sport: null,
@@ -216,27 +194,26 @@ export function CardShipmentRow({ card, index, canRemove, onUpdateCard, onRemove
   }
 
   function selectSportsCard(result: SportsCardResult) {
+    const setName = result.brandSet?.trim() || UNSPECIFIED_SET
     onUpdateCard(card.id, {
       sport: result.sport,
       cardName: result.playerName,
+      setName,
       externalCardId: result.id,
       externalSource: 'catalog',
+      isFetchingValue: true,
     })
-    if (result.playerName && card.setName) {
-      onUpdateCard(card.id, { isFetchingValue: true })
-      fetchMarketValue(result.playerName, card.setName).then((estimate) => {
-        onUpdateCard(card.id, {
-          isFetchingValue: false,
-          marketValueEstimate: estimate?.estimate ?? null,
-          marketValueSource: estimate?.source ?? null,
-          declaredValue: card.declaredValue || estimate?.estimate || 0,
-        })
+    fetchMarketValue(result.playerName, setName).then((estimate) => {
+      onUpdateCard(card.id, {
+        isFetchingValue: false,
+        marketValueEstimate: estimate?.estimate ?? null,
+        marketValueSource: estimate?.source ?? null,
+        declaredValue: card.declaredValue || estimate?.estimate || 0,
       })
-    }
+    })
   }
 
-  const brandSetOptions = card.cardType === 'pokemon' ? pokemonSets.map((s) => s.name) : sportsBrands
-  const showPokemonDropdown = card.cardType === 'pokemon' && focused && card.setName && (isLoadingSetCards || pokemonResults.length > 0)
+  const showPokemonDropdown = card.cardType === 'pokemon' && focused && pokemonQueryLongEnough && (isSearchingPokemon || pokemonResults.length > 0)
 
   return (
     <div className="border rounded-[3px] p-4" style={{ borderColor: 'var(--line)' }}>
@@ -272,27 +249,6 @@ export function CardShipmentRow({ card, index, canRemove, onUpdateCard, onRemove
             {type === 'pokemon' ? 'Pokémon' : 'Sports Cards'}
           </button>
         ))}
-      </div>
-
-      <div className="mb-4">
-        <Label className="text-[12.5px]" style={{ color: 'var(--ink-muted)' }}>
-          Brand/Set
-        </Label>
-        <select
-          value={card.setName}
-          onChange={(e) => selectBrandSet(e.target.value)}
-          className="w-full border rounded-[3px] px-3 py-2 text-[14px] bg-transparent"
-          style={{ borderColor: 'var(--line)', color: 'var(--ink)' }}
-        >
-          <option value="" disabled>
-            {card.cardType === 'pokemon' ? 'Choose a set…' : 'Choose a brand…'}
-          </option>
-          {brandSetOptions.map((name) => (
-            <option key={name} value={name}>
-              {name}
-            </option>
-          ))}
-        </select>
       </div>
 
       {card.cardType === 'sports_card' && (
@@ -344,8 +300,7 @@ export function CardShipmentRow({ card, index, canRemove, onUpdateCard, onRemove
                 setTimeout(() => setFocused(false), 150)
                 lookupValue()
               }}
-              disabled={!card.setName}
-              placeholder={card.setName ? 'Charizard — or type the card name directly' : 'Choose a set first'}
+              placeholder="Search by card name or number..."
               className={pokemonNoResults ? 'pr-9' : undefined}
             />
             {pokemonNoResults && (
@@ -356,7 +311,7 @@ export function CardShipmentRow({ card, index, canRemove, onUpdateCard, onRemove
               />
             )}
             {showPokemonDropdown && (
-              <ResultsDropdown results={pokemonResults} isSearching={isLoadingSetCards} onSelect={selectPokemonCard} />
+              <ResultsDropdown results={pokemonResults} isSearching={isSearchingPokemon} onSelect={selectPokemonCard} />
             )}
           </div>
           {pokemonNoResults && (
@@ -374,9 +329,8 @@ export function CardShipmentRow({ card, index, canRemove, onUpdateCard, onRemove
             value={card.cardName}
             onChange={(value) => onUpdateCard(card.id, { cardName: value })}
             onSelect={selectSportsCard}
-            brand={card.setName}
-            disabled={!card.setName}
-            placeholder={card.setName ? 'Search player, e.g. Messi — or type the name directly' : 'Choose a brand first'}
+            onBlur={lookupValue}
+            placeholder="Search by card name or number..."
           />
         </div>
       )}
