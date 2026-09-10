@@ -48,6 +48,26 @@ function money(amount: number, region: ProductRegion) {
   return formatByRegion(amount, region)
 }
 
+/**
+ * This template concatenates raw HTML strings (no JSX, no auto-escaping —
+ * see this file's own header comment on why: most email clients ignore
+ * <style>/CSS-in-JS approaches). Every value that ultimately comes from
+ * user-entered data (customer name, card/set names, product titles, add-on
+ * labels) MUST be passed through this before being interpolated below —
+ * confirmed exploitable stored-XSS-in-email otherwise (MAJOR SYSTEMS TEST 2
+ * finding: a submission's card_name/set_name round-trips verbatim from the
+ * manual sports-card/Pokémon text-entry fields straight into this file with
+ * no escaping upstream).
+ */
+function escapeHtml(value: string): string {
+  return String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+}
+
 function row(label: string, value: string, opts?: { muted?: boolean }) {
   return `
     <tr>
@@ -78,14 +98,14 @@ export function renderOrderConfirmationEmail(props: OrderConfirmationEmailProps)
   } = props
 
   const shopRows = shopLineItems
-    .map((item) => row(`${item.title} × ${item.quantity}`, money(item.unitPrice * item.quantity, region)))
+    .map((item) => row(`${escapeHtml(item.title)} × ${item.quantity}`, money(item.unitPrice * item.quantity, region)))
     .join('')
 
   const gradingRows = gradingLineItems
-    .map((item) => row(`${item.cardName} — ${item.setName}`, money(item.fee, region)))
+    .map((item) => row(`${escapeHtml(item.cardName)} — ${escapeHtml(item.setName)}`, money(item.fee, region)))
     .join('')
 
-  const addOnRows = addOnLineItems.map((item) => row(item.label, money(item.amount, region))).join('')
+  const addOnRows = addOnLineItems.map((item) => row(escapeHtml(item.label), money(item.amount, region))).join('')
 
   const sectionTitle = (title: string) => `
     <tr>
@@ -109,7 +129,7 @@ export function renderOrderConfirmationEmail(props: OrderConfirmationEmailProps)
     ? `
     <tr>
       <td colspan="2" align="center" style="padding-top:28px;">
-        <a href="${receiptUrl}" style="display:inline-block;background:${COLORS.gold};color:${COLORS.goldInk};font-family:Arial,Helvetica,sans-serif;font-size:13px;font-weight:bold;letter-spacing:0.03em;text-decoration:none;padding:12px 28px;border-radius:3px;">
+        <a href="${escapeHtml(receiptUrl)}" style="display:inline-block;background:${COLORS.gold};color:${COLORS.goldInk};font-family:Arial,Helvetica,sans-serif;font-size:13px;font-weight:bold;letter-spacing:0.03em;text-decoration:none;padding:12px 28px;border-radius:3px;">
           VIEW RECEIPT
         </a>
       </td>
@@ -132,14 +152,14 @@ export function renderOrderConfirmationEmail(props: OrderConfirmationEmailProps)
                   Payment received
                 </h1>
                 <p style="margin:8px 0 0;font-family:Arial,Helvetica,sans-serif;font-size:13px;color:${COLORS.inkMuted};">
-                  Hi ${customerName}, thanks for your payment — here's your confirmation.
+                  Hi ${escapeHtml(customerName)}, thanks for your payment — here's your confirmation.
                 </p>
               </td>
             </tr>
             <tr>
               <td style="padding:28px 32px 0;">
                 <p style="margin:0;font-family:Arial,Helvetica,sans-serif;font-size:12px;color:${COLORS.inkMuted};">
-                  ${orderLabel}
+                  ${escapeHtml(orderLabel)}
                 </p>
               </td>
             </tr>

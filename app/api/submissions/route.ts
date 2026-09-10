@@ -120,10 +120,8 @@ export async function POST(request: NextRequest) {
     .single()
 
   if (submissionError || !submission) {
-    return NextResponse.json(
-      { error: submissionError?.message ?? 'Could not create submission' },
-      { status: 500 },
-    )
+    console.error('submissions insert failed:', submissionError?.message)
+    return NextResponse.json({ error: 'Could not create submission' }, { status: 500 })
   }
 
   const { error: itemsError } = await supabase.from('submission_items').insert(
@@ -148,7 +146,11 @@ export async function POST(request: NextRequest) {
     // Items failed after the parent row was created — surface it rather than
     // silently leaving an empty submission; the caller can retry or the
     // submission can be cleaned up by an admin/cron sweep of empty orders.
-    return NextResponse.json({ error: itemsError.message }, { status: 500 })
+    // The raw Postgres error is logged server-side only (MAJOR SYSTEMS TEST 2
+    // finding: it previously leaked schema/constraint details, e.g. "unsupported
+    // Unicode escape sequence", straight into the JSON response body).
+    console.error('submission_items insert failed:', itemsError.message)
+    return NextResponse.json({ error: 'Could not create submission items' }, { status: 500 })
   }
 
   // Revenue/liability/tax split (0034_accounting_foundations.sql's
