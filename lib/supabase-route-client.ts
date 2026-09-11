@@ -18,11 +18,32 @@ export async function getSupabaseRouteClient() {
         get(name: string) {
           return cookieStore.get(name)?.value
         },
+        // Both writes are wrapped: Next.js only allows mutating cookies from
+        // a Server Action or Route Handler, but this same client is also
+        // used from plain Server Components (e.g. app/admin/financials/
+        // page.tsx) -- there, an in-flight session nearing its expiry can
+        // trigger Supabase's own background token-refresh callback mid-render,
+        // which tries to persist the refreshed token via this exact set()
+        // and throws, taking the whole page down with an unhandled
+        // rejection. There's no middleware.ts refreshing the session on
+        // navigation either, so nothing else in this app can persist that
+        // write anyway -- silently dropping it here just means this one
+        // render reads with the token it started with, instead of crashing
+        // outright over a cookie write that was never going to succeed from
+        // a Server Component regardless of what this callback does.
         set(name: string, value: string, options) {
-          cookieStore.set({ name, value, ...options })
+          try {
+            cookieStore.set({ name, value, ...options })
+          } catch {
+            // See comment above -- expected when called from a Server Component.
+          }
         },
         remove(name: string, options) {
-          cookieStore.set({ name, value: '', ...options })
+          try {
+            cookieStore.set({ name, value: '', ...options })
+          } catch {
+            // See comment above -- expected when called from a Server Component.
+          }
         },
       },
     },
