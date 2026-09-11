@@ -133,7 +133,12 @@ function ImportRow({ row, onChange }: ImportRowProps) {
   const selectionRef = useRef(0)
 
   const isPokemon = row.franchise === 'pokemon'
-  const disabled = row.status === 'saved'
+  // Also disabled mid-save, not just once saved: handleCreateAll snapshots
+  // each row's fields into the POST body before the request fires, so
+  // editing a field while it's in flight never actually changes what gets
+  // inserted -- it would just leave the input showing a value the DB
+  // doesn't have once the row flips to "saved" and locks.
+  const disabled = row.status === 'saved' || row.status === 'saving'
 
   useEffect(() => {
     if (!isPokemon) return
@@ -333,7 +338,7 @@ export function BulkAceImport() {
     const certNumbers = parseCertNumbers(rawInput)
     setRows((prev) => {
       const existingByCert = new Map(prev.map((r) => [r.certNumber, r]))
-      return certNumbers.map(
+      const next = certNumbers.map(
         (certNumber) =>
           existingByCert.get(certNumber) ?? {
             certNumber,
@@ -346,6 +351,13 @@ export function BulkAceImport() {
             status: 'idle' as RowStatus,
           },
       )
+      // A cert number already saved to the database but removed from the
+      // raw text on a later parse would otherwise just vanish from this
+      // list -- the product it created is still real, so keep showing it
+      // ("Created") rather than silently hiding evidence it exists.
+      const nextCertNumbers = new Set(certNumbers)
+      const keptSaved = prev.filter((r) => r.status === 'saved' && !nextCertNumbers.has(r.certNumber))
+      return [...next, ...keptSaved]
     })
   }
 
@@ -402,26 +414,41 @@ export function BulkAceImport() {
     // One request for the whole batch -- app/api/admin/products/batch does a
     // single supabase.insert() across all rows rather than one round trip
     // per row, so a save of 6 cards is 1 INSERT statement, not 6.
-    const res = await fetch('/api/admin/products/batch', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ products }),
-    })
+    //
+    // Wrapped in try/catch/finally: fetch() itself can reject outright (the
+    // network drops, DNS fails, a deploy restarts mid-request) rather than
+    // resolving with a non-ok response -- without this, that rejection would
+    // propagate straight out of handleCreateAll and skip the cleanup below,
+    // leaving every row stuck on "Creating..." and the button stuck on
+    // "Saving..." forever with no error shown and no way to retry short of a
+    // full page reload.
+    try {
+      const res = await fetch('/api/admin/products/batch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ products }),
+      })
 
-    if (res.ok) {
-      for (const row of readyRows) {
-        updateRow(row.certNumber, { status: 'saved' })
+      if (res.ok) {
+        for (const row of readyRows) {
+          updateRow(row.certNumber, { status: 'saved' })
+        }
+      } else {
+        const data = await res.json().catch(() => ({}))
+        const message = data.error ?? 'Could not create products.'
+        for (const row of readyRows) {
+          updateRow(row.certNumber, { status: 'error', error: message })
+        }
       }
-    } else {
-      const data = await res.json().catch(() => ({}))
-      const message = data.error ?? 'Could not create products.'
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Network error — could not reach the server.'
       for (const row of readyRows) {
         updateRow(row.certNumber, { status: 'error', error: message })
       }
+    } finally {
+      setCreating(false)
+      submittingRef.current = false
     }
-
-    setCreating(false)
-    submittingRef.current = false
   }
 
   const readyCount = rows.filter((r) => r.title.trim() && r.status !== 'saved').length

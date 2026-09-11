@@ -48,7 +48,7 @@ export async function POST(request: NextRequest) {
   // widens/narrows the markup by hand shouldn't have it silently reset back
   // to the 3.5% default on the next scheduled run) -- falls back to the
   // default only when no row has ever been written yet.
-  const { data: previous } = await supabase
+  const { data: previous, error: previousError } = await supabase
     .from('exchange_rates')
     .select('buffer_percent')
     .eq('from_currency', FROM_CURRENCY)
@@ -56,6 +56,15 @@ export async function POST(request: NextRequest) {
     .order('updated_at', { ascending: false })
     .limit(1)
     .maybeSingle()
+
+  // A failed lookup here must not fall through to DEFAULT_BUFFER_PERCENT --
+  // this table is append-only, so a silently-defaulted row becomes the
+  // "previous" row every sync reads from next, permanently discarding an
+  // admin's custom buffer_percent instead of just skipping one sync.
+  if (previousError) {
+    console.error('[update-exchange-rate] could not read previous buffer_percent', previousError.message)
+    return NextResponse.json({ error: previousError.message }, { status: 500 })
+  }
 
   const bufferPercent = previous ? Number(previous.buffer_percent) : DEFAULT_BUFFER_PERCENT
   const effectiveRate = spotRate * (1 + bufferPercent / 100)
