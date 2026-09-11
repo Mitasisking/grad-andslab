@@ -38,16 +38,33 @@ const PILL_BASE = 'px-2.5 py-1 text-[12px] rounded-full transition-colors durati
  */
 export function SubcategoryPills({ activeCategory, filters, onChange }: Props) {
   if (activeCategory === 'graded') {
-    const activeGrader = filters.graders[0] ?? null
     return (
       <div className="flex flex-wrap justify-center gap-1.5 mb-2">
         {GRADER_OPTIONS.map((opt) => {
-          const selected = opt.value === null ? filters.graders.length === 0 : activeGrader === opt.value
+          // filters.graders is a real multi-select array (the sidebar's Grader
+          // checkboxes can have both PCG and ACE checked at once) -- reading
+          // only graders[0] here used to make "PCG" show selected and "ACE"
+          // show unselected even when both were actually active, which lied
+          // about what the grid was really filtered to. Each pill now mirrors
+          // (and toggles) its own grader's membership in that same array, so
+          // it can never show a state the sidebar doesn't also show.
+          const selected = opt.value === null ? filters.graders.length === 0 : filters.graders.includes(opt.value)
           return (
             <button
               key={opt.label}
               type="button"
-              onClick={() => onChange({ ...filters, graders: opt.value ? [opt.value] : [] })}
+              aria-pressed={selected}
+              onClick={() =>
+                onChange({
+                  ...filters,
+                  graders:
+                    opt.value === null
+                      ? []
+                      : filters.graders.includes(opt.value)
+                        ? filters.graders.filter((g) => g !== opt.value)
+                        : [...filters.graders, opt.value],
+                })
+              }
               className={PILL_BASE}
               style={{
                 background: selected ? 'var(--seal)' : 'transparent',
@@ -72,6 +89,7 @@ export function SubcategoryPills({ activeCategory, filters, onChange }: Props) {
             <button
               key={opt.value}
               type="button"
+              aria-pressed={selected}
               onClick={() => onChange({ ...filters, printStatus: opt.value })}
               className={PILL_BASE}
               style={{

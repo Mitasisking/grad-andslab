@@ -28,6 +28,7 @@ export function CategoryTabs({ active, current }: Props) {
           <Link
             key={c.label}
             href={buildShopUrl(current, { category: c.value })}
+            aria-current={selected ? 'page' : undefined}
             className="px-3.5 py-1.5 text-[13.5px] rounded-full transition-colors duration-200"
             style={{
               background: selected ? 'var(--seal)' : 'transparent',

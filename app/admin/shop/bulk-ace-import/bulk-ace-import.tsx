@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { CertLink } from '@/components/dashboard/cert-link'
 import { searchTcgdexCards, fetchTcgdexSetName, type TcgdexCard } from '@/lib/tcgdex'
@@ -125,6 +125,12 @@ function ImportRow({ row, onChange }: ImportRowProps) {
   const [results, setResults] = useState<TcgdexCard[]>([])
   const [isSearching, setIsSearching] = useState(false)
   const [focused, setFocused] = useState(false)
+  // Bumped on every selectCard call so a slower, earlier fetchTcgdexSetName
+  // can tell it's been superseded and skip applying its (now stale) result --
+  // without this, selecting card A then quickly re-selecting card B could
+  // have A's set-name fetch resolve last and silently overwrite B's correct
+  // set name while the title still shows "B".
+  const selectionRef = useRef(0)
 
   const isPokemon = row.franchise === 'pokemon'
   const disabled = row.status === 'saved'
@@ -152,13 +158,14 @@ function ImportRow({ row, onChange }: ImportRowProps) {
   const noResults = isPokemon && focused && queryLongEnough && !isSearching && results.length === 0
 
   async function selectCard(result: TcgdexCard) {
+    const selectionId = ++selectionRef.current
     setFocused(false)
     onChange({
       title: result.name,
       imageUrl: result.image ? `${result.image}/high.png` : '',
     })
     const setName = await fetchTcgdexSetName(result.id)
-    onChange({ setName })
+    if (selectionRef.current === selectionId) onChange({ setName })
   }
 
   return (
@@ -313,6 +320,14 @@ export function BulkAceImport() {
   const [rawInput, setRawInput] = useState('')
   const [rows, setRows] = useState<DraftRow[]>([])
   const [creating, setCreating] = useState(false)
+  // The `creating` state disables the Save button, but setCreating(true)
+  // doesn't take effect until the next render -- two click/tap events fired
+  // back-to-back (fast double-click, or a double-firing touch tap) can both
+  // pass the disabled check before either re-render happens, both snapshot
+  // the same ready rows, and both POST, creating every row twice. This ref
+  // is checked and set synchronously, before any await, so the second call
+  // always sees it already true and bails immediately.
+  const submittingRef = useRef(false)
 
   function handleParse() {
     const certNumbers = parseCertNumbers(rawInput)
@@ -339,8 +354,14 @@ export function BulkAceImport() {
   }
 
   async function handleCreateAll() {
+    if (submittingRef.current) return
+    submittingRef.current = true
+
     const readyRows = rows.filter((r) => r.title.trim() && r.status !== 'saved')
-    if (readyRows.length === 0) return
+    if (readyRows.length === 0) {
+      submittingRef.current = false
+      return
+    }
 
     setCreating(true)
     for (const row of readyRows) {
@@ -400,6 +421,7 @@ export function BulkAceImport() {
     }
 
     setCreating(false)
+    submittingRef.current = false
   }
 
   const readyCount = rows.filter((r) => r.title.trim() && r.status !== 'saved').length
