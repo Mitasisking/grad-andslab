@@ -6,20 +6,17 @@ import { useCart } from '@/lib/cart/cart-context'
 import { formatByRegion } from '@/lib/currency'
 import { fetchAddresses } from '@/lib/addresses-client'
 import { AddAddressForm } from '@/components/submit/add-address-form'
-import { StripePaymentForm } from '@/components/submit/stripe-payment-form'
 import type { ShippingAddress } from '@/lib/submission-types'
 
 const SHIPPING_FLAT_RATE = 6.5
 
 export default function ShopCheckoutPage() {
-  const { items, subtotal, clear } = useCart()
+  const { items, subtotal } = useCart()
   const [addresses, setAddresses] = useState<ShippingAddress[]>([])
   const [addressId, setAddressId] = useState<string | null>(null)
   const [showAddAddress, setShowAddAddress] = useState(false)
-  const [clientSecret, setClientSecret] = useState<string | null>(null)
   const [creatingOrder, setCreatingOrder] = useState(false)
   const [checkoutError, setCheckoutError] = useState<string | null>(null)
-  const [orderComplete, setOrderComplete] = useState(false)
 
   useEffect(() => {
     fetchAddresses().then((list) => {
@@ -57,8 +54,8 @@ export default function ShopCheckoutPage() {
       return
     }
 
-    // Step B: create the PaymentIntent against that real order id — the
-    // charge amount comes from orders.total server-side, not this request.
+    // Step B: get the Payfast redirect for that real order id — the charge
+    // amount comes from orders.total server-side, not this request.
     const checkoutRes = await fetch('/api/shop/checkout', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -66,38 +63,13 @@ export default function ShopCheckoutPage() {
     })
     const checkoutData = await checkoutRes.json()
 
-    // SA orders route through Payfast (app/api/shop/checkout/route.ts),
-    // which hands back a redirect URL instead of a Stripe client secret —
-    // the browser goes straight there instead of mounting StripePaymentForm.
-    if (checkoutRes.ok && checkoutData.redirectUrl) {
-      window.location.href = checkoutData.redirectUrl
-      return
-    }
-
-    setCreatingOrder(false)
-
-    if (!checkoutRes.ok || !checkoutData.clientSecret) {
+    if (!checkoutRes.ok || !checkoutData.redirectUrl) {
+      setCreatingOrder(false)
       setCheckoutError(checkoutData.error ?? 'Could not start payment')
       return
     }
 
-    setClientSecret(checkoutData.clientSecret)
-  }
-
-  if (orderComplete) {
-    return (
-      <main className="max-w-xl mx-auto text-center py-16">
-        <p className="text-[13px]" style={{ color: 'var(--seal)' }}>
-          Order confirmed
-        </p>
-        <h1 className="text-[26px] mt-2" style={{ fontFamily: 'var(--font-display)', color: 'var(--ink)' }}>
-          Thanks — it&apos;s on its way to packing.
-        </h1>
-        <Link href="/shop" className="mt-6 inline-block text-[13.5px] underline underline-offset-2" style={{ color: 'var(--ink)' }}>
-          Continue shopping
-        </Link>
-      </main>
-    )
+    window.location.href = checkoutData.redirectUrl
   }
 
   if (items.length === 0) {
@@ -206,27 +178,15 @@ export default function ShopCheckoutPage() {
         </p>
       )}
 
-      {!clientSecret ? (
-        <button
-          type="button"
-          onClick={beginCheckout}
-          disabled={!addressId || creatingOrder}
-          className="mt-8 w-full px-4 py-3 text-[14px] rounded-[3px]"
-          style={{ background: 'var(--vault)', color: 'var(--vault-ink)' }}
-        >
-          {creatingOrder ? 'Preparing order…' : `Pay ${formatByRegion(total, region)}`}
-        </button>
-      ) : (
-        <div className="mt-8">
-          <StripePaymentForm
-            clientSecret={clientSecret}
-            onSuccess={() => {
-              clear()
-              setOrderComplete(true)
-            }}
-          />
-        </div>
-      )}
+      <button
+        type="button"
+        onClick={beginCheckout}
+        disabled={!addressId || creatingOrder}
+        className="mt-8 w-full px-4 py-3 text-[14px] rounded-[3px]"
+        style={{ background: 'var(--vault)', color: 'var(--vault-ink)' }}
+      >
+        {creatingOrder ? 'Redirecting to Payfast…' : `Pay ${formatByRegion(total, region)}`}
+      </button>
     </main>
   )
 }

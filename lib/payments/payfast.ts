@@ -1,11 +1,12 @@
 import crypto from 'crypto'
 
 /**
- * Payfast integration -- our processor for the SA storefront only (Payfast
- * settles in ZAR exclusively, which lines up exactly with
- * REGION_CURRENCY.sa === 'zar' in lib/shop/product-type.ts; UK/USA keep
- * using Stripe, see the region branch in app/api/shop/checkout/route.ts and
- * app/api/submissions/checkout/route.ts).
+ * Payfast integration -- this app's only payment processor (Stripe was
+ * fully removed; see app/api/shop/checkout/route.ts,
+ * app/api/submissions/checkout/route.ts, and app/api/auctions/[id]/pay/
+ * route.ts, all of which now route exclusively through here). Payfast
+ * settles in ZAR exclusively, which lines up with the storefront being
+ * SA-only end to end (app/shop/page.tsx, components/submit/step-grader-tier.tsx).
  *
  * IMPORTANT — verify before going live: this was written against Payfast's
  * long-standing, widely-documented "Onsite/redirect" checkout flow (the
@@ -88,12 +89,14 @@ export interface PayfastCheckoutParams {
   cancelUrl: string
   notifyUrl: string
   /**
-   * custom_str1 -- carries which flow this is ('grading_submission' |
-   * 'marketplace_order'), the same job Stripe's metadata.flow does
-   * (app/api/webhooks/stripe/route.ts), since the ITN handler needs to know
-   * which table to update.
+   * custom_str1 -- carries which flow this is, since the ITN handler
+   * (app/api/webhooks/payfast/route.ts) needs to know which table to
+   * update: 'grading_submission' | 'marketplace_order' write to their own
+   * tables directly by id; 'auction_invoice' writes to a `bids` row by id
+   * (the winning bid itself IS the invoice — see
+   * app/api/auctions/[id]/pay/route.ts).
    */
-  flow: 'grading_submission' | 'marketplace_order'
+  flow: 'grading_submission' | 'marketplace_order' | 'auction_invoice'
 }
 
 /**

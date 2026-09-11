@@ -18,10 +18,10 @@ const LISTING_COLUMNS = 'id, title, description, images, starting_price, current
  * production (confirmed live -- see supabase/migrations/
  * 0044_reconcile_auctions_schema.sql's header for the full drift this
  * closed), and placed "bids" via a raw client-side .update() straight to
- * the table -- no payment, no Stripe hold, and (before that same migration)
- * exploiting a live RLS hole that let any authenticated user rewrite any
- * column on any auction. Real bidding already exists and works correctly
- * at app/auctions/[id] (BidForm, Stripe pre-auth holds, anti-sniping) --
+ * the table -- no payment, and (before that same migration) exploiting a
+ * live RLS hole that let any authenticated user rewrite any column on any
+ * auction. Real bidding already exists and works correctly at
+ * app/auctions/[id] (BidForm, anti-sniping, Payfast invoice on close) --
  * this page's only job now is to list what's active and link there.
  */
 export default async function AuctionsPage() {
@@ -52,8 +52,8 @@ export default async function AuctionsPage() {
             Cuppa Cards Auctions
           </h1>
           <p className="text-[15px] mt-4 leading-relaxed" style={{ color: 'var(--ink-muted)' }}>
-            Bid on graded slabs and high-end collector pieces. Every bid places a real, Stripe-backed hold —
-            outbid bidders are released automatically.
+            Bid on graded slabs and high-end collector pieces. Bidding is free — only the winner pays, via
+            Payfast, once the auction closes.
           </p>
         </header>
 

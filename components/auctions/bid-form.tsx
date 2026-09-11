@@ -1,16 +1,16 @@
 'use client'
 
 import { useState } from 'react'
-import { StripePaymentForm } from '@/components/submit/stripe-payment-form'
 import type { AuctionRow } from '@/lib/auction-types'
 import { formatZAR } from '@/lib/currency'
 
 interface Props {
   auction: AuctionRow
+  currentUserId: string | null
   onPlaced: () => void
 }
 
-export function BidForm({ auction, onPlaced }: Props) {
+export function BidForm({ auction, currentUserId, onPlaced }: Props) {
   const floor = auction.current_high_bid
     ? Number(auction.current_high_bid) + Number(auction.bid_increment)
     : Number(auction.starting_price)
@@ -18,7 +18,7 @@ export function BidForm({ auction, onPlaced }: Props) {
   const [amount, setAmount] = useState(floor.toFixed(2))
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [clientSecret, setClientSecret] = useState<string | null>(null)
+  const [payingInvoice, setPayingInvoice] = useState(false)
 
   const isEnded = auction.status === 'closed' || new Date(auction.ends_at) <= new Date()
 
@@ -38,36 +38,58 @@ export function BidForm({ auction, onPlaced }: Props) {
       return
     }
 
-    if (data.requiresAction && data.clientSecret) {
-      setClientSecret(data.clientSecret)
-      return
-    }
-
     onPlaced()
   }
 
+  async function payInvoice() {
+    setPayingInvoice(true)
+    setError(null)
+    const res = await fetch(`/api/auctions/${auction.id}/pay`, { method: 'POST' })
+    const data = await res.json()
+
+    if (!res.ok) {
+      setPayingInvoice(false)
+      setError(data.error ?? 'Could not start payment')
+      return
+    }
+
+    window.location.href = data.redirectUrl
+  }
+
   if (isEnded) {
+    const reserveMet =
+      auction.reserve_price === null ||
+      (auction.current_high_bid !== null && auction.current_high_bid >= auction.reserve_price)
+    const isWinner = auction.status === 'closed' && currentUserId && currentUserId === auction.current_high_bidder_id
+
+    if (isWinner && reserveMet) {
+      return (
+        <div>
+          <p className="text-[14px] mb-3" style={{ color: 'var(--seal)' }}>
+            You won this auction — {formatZAR(auction.current_high_bid ?? 0)} due.
+          </p>
+          <button
+            type="button"
+            onClick={payInvoice}
+            disabled={payingInvoice}
+            className="px-4 py-2 text-[13.5px] rounded-[3px]"
+            style={{ background: 'var(--seal)', color: 'var(--seal-ink)' }}
+          >
+            {payingInvoice ? 'Redirecting…' : 'Pay now'}
+          </button>
+          {error && (
+            <p className="text-[13px] mt-2" style={{ color: 'var(--danger)' }}>
+              {error}
+            </p>
+          )}
+        </div>
+      )
+    }
+
     return (
       <p className="text-[14px]" style={{ color: 'var(--ink-muted)' }}>
         This auction has ended.
       </p>
-    )
-  }
-
-  if (clientSecret) {
-    return (
-      <div>
-        <p className="text-[13px] mb-3" style={{ color: 'var(--ink-muted)' }}>
-          Confirm your card to place a hold for this bid — you&apos;re only charged if you win.
-        </p>
-        <StripePaymentForm
-          clientSecret={clientSecret}
-          onSuccess={() => {
-            setClientSecret(null)
-            onPlaced()
-          }}
-        />
-      </div>
     )
   }
 
@@ -97,7 +119,7 @@ export function BidForm({ auction, onPlaced }: Props) {
         </button>
       </div>
       <p className="text-[12.5px] mt-2" style={{ color: 'var(--ink-muted)' }}>
-        Minimum bid: {formatZAR(floor)}. Your card is only charged if you win — this places a hold.
+        Minimum bid: {formatZAR(floor)}. Bidding is free — only the winner pays, once the auction closes.
       </p>
       {error && (
         <p className="text-[13px] mt-2" style={{ color: 'var(--danger)' }}>

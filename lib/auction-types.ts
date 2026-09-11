@@ -30,12 +30,6 @@ export interface AuctionRow {
   updated_at: string
 }
 
-// stripe_payment_intent_id deliberately excluded: it's a payment
-// infrastructure identifier with no legitimate public-facing use, and as of
-// supabase/migrations/0010_rls_hardening_low.sql, anon/authenticated no
-// longer have SELECT on that column at all — this type mirrors what the
-// public bid-history/realtime path can actually fetch, not the full row
-// service-role code (finalize-bid.ts, auctions/close) works with directly.
 export interface BidRow {
   id: string
   auction_id: string

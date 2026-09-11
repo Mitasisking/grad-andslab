@@ -7,9 +7,9 @@ const RESERVATION_MINUTES = 30
  * Releases stock reserved by create_order() for carts that never got paid —
  * the marketplace counterpart to app/api/auctions/close/route.ts (something
  * was held against an outcome that never happened). A failed/declined
- * payment already gets released by the Stripe webhook the moment it fires;
- * this covers the case where no payment attempt ever happens at all — the
- * customer just abandons checkout, so no Stripe event exists to react to.
+ * payment already gets released by the Payfast ITN webhook the moment it
+ * fires; this covers the case where no payment attempt ever happens at
+ * all — the customer just abandons checkout, so no ITN ever arrives.
  *
  * Orders still 'pending' more than RESERVATION_MINUTES after creation are
  * treated as abandoned: their stock is released and they're marked

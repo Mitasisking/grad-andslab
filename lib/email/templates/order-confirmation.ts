@@ -30,11 +30,11 @@ export interface OrderConfirmationEmailProps {
   shippingCost?: number
   taxCollected?: number
   total: number
-  /** Stripe charge.receipt_url, when available — links straight to Stripe's hosted receipt. */
+  /** Not populated by any current flow — Payfast has no hosted-receipt-page equivalent (see app/api/webhooks/payfast/route.ts) — but the button still renders if a future flow starts passing one. */
   receiptUrl?: string | null
 }
 
-const COLORS = {
+export const COLORS = {
   bg: '#120f0b',
   panel: '#1d1812',
   ink: '#f3efe4',
@@ -59,7 +59,7 @@ function money(amount: number, region: ProductRegion) {
  * manual sports-card/Pokémon text-entry fields straight into this file with
  * no escaping upstream).
  */
-function escapeHtml(value: string): string {
+export function escapeHtml(value: string): string {
   return String(value)
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')

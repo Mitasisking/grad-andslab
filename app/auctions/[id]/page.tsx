@@ -7,13 +7,12 @@ export default async function AuctionPage({ params }: { params: Promise<{ id: st
   const { id } = await params
   const supabase = await getSupabaseRouteClient()
 
-  const { data: auction } = await supabase.from('auctions').select('*').eq('id', id).single()
+  const [{ data: auction }, { data: userData }] = await Promise.all([
+    supabase.from('auctions').select('*').eq('id', id).single(),
+    supabase.auth.getUser(),
+  ])
   if (!auction) notFound()
 
-  // Explicit column list, not select('*') — anon/authenticated no longer
-  // have SELECT on stripe_payment_intent_id as of
-  // supabase/migrations/0010_rls_hardening_low.sql, so select('*') would
-  // error for this session-scoped client.
   const { data: bids } = await supabase
     .from('bids')
     .select('id, auction_id, bidder_id, amount, payment_status, created_at')
@@ -21,5 +20,11 @@ export default async function AuctionPage({ params }: { params: Promise<{ id: st
     .order('created_at', { ascending: false })
     .limit(50)
 
-  return <AuctionDetail initialAuction={auction as AuctionRow} initialBids={(bids ?? []) as BidRow[]} />
+  return (
+    <AuctionDetail
+      initialAuction={auction as AuctionRow}
+      initialBids={(bids ?? []) as BidRow[]}
+      currentUserId={userData.user?.id ?? null}
+    />
+  )
 }

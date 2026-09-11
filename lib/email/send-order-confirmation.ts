@@ -1,6 +1,7 @@
 import { getSupabaseServerClient } from '@/lib/supabase-server'
 import { getResendClient, getEmailFrom } from '@/lib/email/resend-client'
-import { renderOrderConfirmationEmail } from '@/lib/email/templates/order-confirmation'
+import { renderOrderConfirmationEmail, COLORS, escapeHtml } from '@/lib/email/templates/order-confirmation'
+import { formatZAR } from '@/lib/currency'
 import {
   TIER_OPTIONS_BY_COMPANY,
   cleanAndPolishFeeForRegion,
@@ -48,16 +49,16 @@ async function getContact(
 }
 
 /**
- * Fired from the Stripe webhook (app/api/webhooks/stripe/route.ts) once a
- * grading submission's PaymentIntent succeeds. Re-derives the same per-card
- * grading fee / inspection fee / Clean and Polish add-on pricing the submit
- * wizard showed at checkout (components/submit/step-review-pay.tsx) from the
- * now-persisted submission row, rather than trusting a client-supplied
- * total — the DB row is the source of truth by the time this runs.
+ * Fired from the Payfast ITN webhook (app/api/webhooks/payfast/route.ts)
+ * once a grading submission's payment completes. Re-derives the same
+ * per-card grading fee / inspection fee / Clean and Polish add-on pricing
+ * the submit wizard showed at checkout (components/submit/step-review-pay.tsx)
+ * from the now-persisted submission row, rather than trusting a
+ * client-supplied total — the DB row is the source of truth by the time
+ * this runs.
  *
- * Best-effort: a failure here must never fail the webhook response Stripe
- * is waiting on (Stripe retries the whole event if the endpoint 500s), so
- * every call site wraps this and only logs on failure.
+ * Best-effort: a failure here must never fail the webhook response Payfast
+ * is waiting on, so every call site wraps this and only logs on failure.
  */
 export async function sendSubmissionConfirmationEmail(submissionId: string, receiptUrl: string | null) {
   const supabase = getSupabaseServerClient()
@@ -123,8 +124,8 @@ export async function sendSubmissionConfirmationEmail(submissionId: string, rece
 }
 
 /**
- * Fired from the Stripe webhook once a marketplace order's PaymentIntent
- * succeeds. Same best-effort contract as sendSubmissionConfirmationEmail
+ * Fired from the Payfast ITN webhook once a marketplace order's payment
+ * completes. Same best-effort contract as sendSubmissionConfirmationEmail
  * above.
  */
 export async function sendShopOrderConfirmationEmail(orderId: string, receiptUrl: string | null) {
@@ -169,4 +170,94 @@ export async function sendShopOrderConfirmationEmail(orderId: string, receiptUrl
   })
 
   await getResendClient().emails.send({ from: getEmailFrom(), to: email, subject, html })
+}
+
+/**
+ * Fired from app/api/auctions/close/route.ts once an auction closes with
+ * its reserve met — the "pending invoice" step the cron produces in place
+ * of the old Stripe hold-capture. There's no payment yet at this point
+ * (Payfast has no pre-auth to capture); this just tells the winner what
+ * they owe and links back to the auction page, where BidForm shows a
+ * "Pay now" button that calls app/api/auctions/[id]/pay/route.ts to get an
+ * actual Payfast redirect. Best-effort, same contract as the two functions
+ * above — never allowed to fail the cron response.
+ */
+export async function sendAuctionWonEmail(auctionId: string) {
+  const supabase = getSupabaseServerClient()
+
+  const { data: auction } = await supabase
+    .from('auctions')
+    .select('id, title, current_high_bid, current_high_bidder_id')
+    .eq('id', auctionId)
+    .single()
+
+  if (!auction || !auction.current_high_bidder_id || auction.current_high_bid === null) {
+    console.error('sendAuctionWonEmail: auction not found or has no winner', auctionId)
+    return
+  }
+
+  const { fullName, email } = await getContact(supabase, auction.current_high_bidder_id)
+  if (!email) {
+    console.error('sendAuctionWonEmail: no contact email for winning bidder', auctionId)
+    return
+  }
+
+  const appBaseUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://website-three-iota-83.vercel.app'
+  const payUrl = `${appBaseUrl}/auctions/${auction.id}`
+  const amount = formatZAR(Number(auction.current_high_bid))
+  const customerName = fullName || email
+
+  const html = `<!doctype html>
+<html>
+  <body style="margin:0;padding:0;background:${COLORS.bg};">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${COLORS.bg};padding:32px 16px;">
+      <tr>
+        <td align="center">
+          <table role="presentation" width="560" cellpadding="0" cellspacing="0" style="max-width:560px;width:100%;background:${COLORS.panel};border:1px solid ${COLORS.line};border-radius:4px;">
+            <tr>
+              <td style="padding:32px 32px 0;text-align:center;">
+                <p style="margin:0;font-family:Arial,Helvetica,sans-serif;font-size:11px;letter-spacing:0.18em;color:${COLORS.gold};text-transform:uppercase;">
+                  Cuppa Cards
+                </p>
+                <h1 style="margin:12px 0 0;font-family:Georgia,'Times New Roman',serif;font-size:24px;color:${COLORS.ink};font-weight:normal;">
+                  You won the auction
+                </h1>
+                <p style="margin:8px 0 0;font-family:Arial,Helvetica,sans-serif;font-size:13px;color:${COLORS.inkMuted};">
+                  Hi ${escapeHtml(customerName)}, your bid was the highest when bidding closed on:
+                </p>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:24px 32px 0;text-align:center;">
+                <p style="margin:0;font-family:Georgia,'Times New Roman',serif;font-size:17px;color:${COLORS.ink};">
+                  ${escapeHtml(auction.title)}
+                </p>
+                <p style="margin:10px 0 0;font-family:Georgia,'Times New Roman',serif;font-size:22px;color:${COLORS.gold};">
+                  ${amount}
+                </p>
+              </td>
+            </tr>
+            <tr>
+              <td align="center" style="padding:28px 32px 32px;">
+                <a href="${escapeHtml(payUrl)}" style="display:inline-block;background:${COLORS.gold};color:${COLORS.goldInk};font-family:Arial,Helvetica,sans-serif;font-size:13px;font-weight:bold;letter-spacing:0.03em;text-decoration:none;padding:12px 28px;border-radius:3px;">
+                  PAY NOW
+                </a>
+                <p style="margin:14px 0 0;font-family:Arial,Helvetica,sans-serif;font-size:11px;color:${COLORS.inkMuted};">
+                  This invoice hasn't been paid yet — follow the link above to settle it via Payfast.
+                </p>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>`
+
+  await getResendClient().emails.send({
+    from: getEmailFrom(),
+    to: email,
+    subject: `Cuppa Cards — you won "${auction.title}"`,
+    html,
+  })
 }

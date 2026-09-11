@@ -3,10 +3,7 @@
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { AddAddressForm } from '@/components/submit/add-address-form'
-import { StripePaymentForm } from '@/components/submit/stripe-payment-form'
-import { PackingSlip } from '@/components/submit/packing-slip'
 import { formatByRegion } from '@/lib/currency'
-import { REGION_CURRENCY } from '@/lib/shop/product-type'
 import {
   TIER_OPTIONS_BY_COMPANY,
   cleanAndPolishFeeForRegion,
@@ -68,20 +65,16 @@ export function StepReviewPay({
   onBack,
 }: Props) {
   const [showAddAddress, setShowAddAddress] = useState(false)
-  const [clientSecret, setClientSecret] = useState<string | null>(null)
-  const [qrCodeToken, setQrCodeToken] = useState<string | null>(null)
-  const [submissionComplete, setSubmissionComplete] = useState(false)
   const [creatingOrder, setCreatingOrder] = useState(false)
   const [checkoutError, setCheckoutError] = useState<string | null>(null)
 
   const tierMeta = TIER_OPTIONS_BY_COMPANY[gradingCompany].find((t) => t.value === tier)!
   const courierMeta = COURIERS.find((c) => c.value === courier)
-  const selectedAddress = addresses.find((a) => a.id === addressId) ?? null
 
   // Everything here is priced in the country-of-origin's currency (region,
   // chosen in step 1 -- components/submit/step-grader-tier.tsx), and
-  // api/submissions/checkout charges the Stripe PaymentIntent in the
-  // matching currency to stay consistent with what's shown here.
+  // api/submissions/checkout charges Payfast the matching ZAR amount to
+  // stay consistent with what's shown here.
   const perCardFee = tierPriceForRegion(tierMeta, region)
   const gradingSubtotal = perCardFee * cards.length
   const inspectionSubtotal = cards.filter((c) => c.preCheckOptIn).length * inspectionFeeForRegion(region)
@@ -136,7 +129,7 @@ export function StepReviewPay({
       return
     }
 
-    // Step B: create the PaymentIntent against that real submission id.
+    // Step B: get the Payfast redirect for that real submission id.
     // Deliberately not /api/checkout — that path is still the legacy shop
     // cart's mock endpoint (see app/shop/page.tsx); this flow gets its own
     // path so the two don't collide.
@@ -146,43 +139,17 @@ export function StepReviewPay({
       body: JSON.stringify({
         amountCents: Math.round(total * 100),
         submissionId: submissionData.submissionId,
-        currency: REGION_CURRENCY[region],
       }),
     })
     const checkoutData = await checkoutRes.json()
 
-    // SA submissions route through Payfast (app/api/submissions/checkout/route.ts),
-    // which hands back a redirect URL instead of a Stripe client secret —
-    // the browser goes straight there instead of mounting StripePaymentForm.
-    if (checkoutRes.ok && checkoutData.redirectUrl) {
-      window.location.href = checkoutData.redirectUrl
-      return
-    }
-
-    setCreatingOrder(false)
-
-    if (!checkoutRes.ok || !checkoutData.clientSecret) {
+    if (!checkoutRes.ok || !checkoutData.redirectUrl) {
+      setCreatingOrder(false)
       setCheckoutError(checkoutData.error ?? 'Could not start payment. Please try again.')
       return
     }
 
-    setQrCodeToken(submissionData.qrCodeToken)
-    setClientSecret(checkoutData.clientSecret)
-  }
-
-  if (submissionComplete && qrCodeToken) {
-    return (
-      <PackingSlip
-        qrToken={qrCodeToken}
-        gradingCompany={gradingCompany}
-        tier={tierMeta.label}
-        cards={cards}
-        address={selectedAddress}
-        courier={courierMeta?.label ?? ''}
-        total={total}
-        region={region}
-      />
-    )
+    window.location.href = checkoutData.redirectUrl
   }
 
   return (
@@ -310,27 +277,19 @@ export function StepReviewPay({
         </p>
       )}
 
-      {!clientSecret && (
-        <div className="flex justify-between pt-2">
-          <Button variant="ghost" onClick={onBack} className="rounded-[3px]">
-            Back
-          </Button>
-          <Button
-            onClick={beginCheckout}
-            disabled={!addressId || !courier || creatingOrder}
-            className="rounded-[3px]"
-            style={{ background: 'var(--vault)', color: 'var(--vault-ink)' }}
-          >
-            {creatingOrder ? 'Preparing order…' : `Pay ${formatByRegion(total, region)}`}
-          </Button>
-        </div>
-      )}
-
-      {clientSecret && (
-        <div className="max-w-sm">
-          <StripePaymentForm clientSecret={clientSecret} onSuccess={() => setSubmissionComplete(true)} />
-        </div>
-      )}
+      <div className="flex justify-between pt-2">
+        <Button variant="ghost" onClick={onBack} className="rounded-[3px]">
+          Back
+        </Button>
+        <Button
+          onClick={beginCheckout}
+          disabled={!addressId || !courier || creatingOrder}
+          className="rounded-[3px]"
+          style={{ background: 'var(--vault)', color: 'var(--vault-ink)' }}
+        >
+          {creatingOrder ? 'Redirecting to Payfast…' : `Pay ${formatByRegion(total, region)}`}
+        </Button>
+      </div>
     </section>
   )
 }

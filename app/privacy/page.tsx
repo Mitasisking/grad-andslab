@@ -31,7 +31,7 @@ export default function PrivacyPage() {
               Products purchased, submissions made, and auction bids placed through your account.
             </Item>
             <Item label="Payment information">
-              Payments are processed by Stripe. We do not collect or store your full card number — see Section 3.
+              Payments are processed by Payfast. We do not collect or store your full card number — see Section 3.
             </Item>
             <Item label="Contact and vendor form submissions">
               Name, email, and message content you submit through our Contact Us or Vendor booking forms.
@@ -57,8 +57,8 @@ export default function PrivacyPage() {
 
           <Section number="3" title="Third-Party Service Providers">
             <P>We share information with the following third parties only as needed to provide our services:</P>
-            <Item label="Stripe">
-              Processes all payments. Stripe receives your payment details directly and in accordance with its own
+            <Item label="Payfast">
+              Processes all payments. Payfast receives your payment details directly and in accordance with its own
               privacy policy — we never see or store your full card number.
             </Item>
             <Item label="Grading partners (PCG, PSA, ACE)">
@@ -86,7 +86,7 @@ export default function PrivacyPage() {
 
           <Section number="5" title="Data Security">
             <P>
-              Payment data is handled entirely by Stripe under its own PCI-compliant infrastructure. Account and
+              Payment data is handled entirely by Payfast under its own PCI-compliant infrastructure. Account and
               submission data is stored with Supabase, encrypted in transit and at rest. No method of transmission
               or storage is 100% secure, but we take reasonable steps to protect your information.
             </P>

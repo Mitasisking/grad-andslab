@@ -117,5 +117,16 @@ export async function POST(request: NextRequest) {
     }
   }
 
+  // The auction itself already moved to 'closed' when app/api/auctions/close/
+  // route.ts settled it — mPaymentId here is the winning `bids` row's id
+  // (app/api/auctions/[id]/pay/route.ts), not the auction id, so this is
+  // just recording whether that specific invoice got paid.
+  if (flow === 'auction_invoice') {
+    await supabase
+      .from('bids')
+      .update({ payment_status: succeeded ? 'captured' : 'failed' })
+      .eq('id', mPaymentId)
+  }
+
   return NextResponse.json({ received: true })
 }

@@ -1,18 +1,37 @@
 import { NextRequest, NextResponse } from 'next/server'
-import type Stripe from 'stripe'
 import { getSupabaseRouteClient } from '@/lib/supabase-route-client'
 import { getSupabaseServerClient } from '@/lib/supabase-server'
-import { getStripeClient } from '@/lib/stripe-server'
-import { finalizeAuthorizedBid } from '@/lib/auctions/finalize-bid'
 import { formatZAR } from '@/lib/currency'
 
 interface Body {
   amount: number
 }
 
+interface AuctionBidResult {
+  became_high_bid: boolean
+  previous_high_bidder_id: string | null
+  previous_high_bid_amount: number | null
+}
+
+/**
+ * Places a bid directly — no payment hold. Auctions moved off Stripe (which
+ * used a manual-capture PaymentIntent as a pre-authorization hold per bid,
+ * released on the fly whenever someone was outbid) to Payfast, which has no
+ * equivalent hold/pre-auth primitive; only the eventual *winner* pays,
+ * via the invoice generated once the auction closes
+ * (app/api/auctions/close/route.ts, app/api/auctions/[id]/pay/route.ts).
+ * So placing a bid is now just a validated, race-safe database write.
+ *
+ * Bidders still can't INSERT into public.bids directly (no bids_insert_own
+ * policy exists — see supabase/migrations/0007_rls_hardening.sql's own
+ * removal of that exact policy as a fix for an insecure direct-insert path):
+ * the floor/ended/self-bid checks below only run once, here, so a client
+ * writing straight to the table could skip them. This route uses the
+ * service-role client to perform the actual write after re-validating
+ * everything itself.
+ */
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
-  const stripe = getStripeClient()
   const supabase = await getSupabaseRouteClient()
   const {
     data: { user },
@@ -26,7 +45,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
   const { data: auction, error: auctionError } = await supabase
     .from('auctions')
-    .select('*')
+    .select('id, seller_id, status, ends_at, current_high_bid, bid_increment, starting_price')
     .eq('id', id)
     .single()
 
@@ -48,76 +67,31 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     return NextResponse.json({ error: `Bid must be at least ${formatZAR(floor)}` }, { status: 400 })
   }
 
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('stripe_customer_id, default_payment_method_id, email, full_name')
-    .eq('id', user.id)
+  const serviceClient = getSupabaseServerClient()
+
+  const { data: bid, error: insertError } = await serviceClient
+    .from('bids')
+    .insert({ auction_id: auction.id, bidder_id: user.id, amount: body.amount })
+    .select('id, auction_id, bidder_id, amount, payment_status, created_at')
     .single()
 
-  let customerId = profile?.stripe_customer_id ?? null
-  if (!customerId) {
-    const customer = await stripe.customers.create({
-      email: profile?.email ?? user.email ?? undefined,
-      name: profile?.full_name ?? undefined,
-      metadata: { userId: user.id },
+  if (insertError || !bid) {
+    console.error('Could not record bid', auction.id, insertError?.message)
+    return NextResponse.json({ error: 'Could not place bid' }, { status: 500 })
+  }
+
+  // Atomic under the hood (supabase/migrations/0045_fix_auction_bid_race_
+  // condition.sql locks the auctions row with `for update` before deciding)
+  // -- two bids landing close to the same instant can't both "win" the
+  // current_high_bid update.
+  const { data: bidResultRow } = await serviceClient
+    .rpc('record_auction_bid_result', {
+      p_auction_id: auction.id,
+      p_bidder_id: user.id,
+      p_amount: body.amount,
     })
-    customerId = customer.id
-    // stripe_customer_id is system-controlled as of
-    // supabase/migrations/0010_rls_hardening_low.sql — the bidder's own
-    // session client can no longer write it, even though this value is
-    // legitimately theirs, so this one write uses the service-role client
-    // instead (same trust category as finalizeAuthorizedBid's writes).
-    await getSupabaseServerClient().from('profiles').update({ stripe_customer_id: customerId }).eq('id', user.id)
-  }
+    .single()
+  const bidResult = bidResultRow as AuctionBidResult | null
 
-  const amountCents = Math.round(body.amount * 100)
-
-  // Returning bidder with a saved card: place the hold off-session — no
-  // client confirmation needed for a routine bid.
-  if (profile?.default_payment_method_id) {
-    try {
-      const intent = await stripe.paymentIntents.create({
-        amount: amountCents,
-        currency: 'zar',
-        customer: customerId,
-        payment_method: profile.default_payment_method_id,
-        capture_method: 'manual',
-        off_session: true,
-        confirm: true,
-        metadata: { flow: 'auction_bid', auctionId: auction.id, bidderId: user.id },
-      })
-
-      if (intent.status === 'requires_capture') {
-        const bid = await finalizeAuthorizedBid(intent)
-        return NextResponse.json({ requiresAction: false, bid })
-      }
-      // Any other resulting status (e.g. requires_action for 3DS) falls
-      // through to the same client-confirmation response as a first-time
-      // bidder, using this same intent's client_secret.
-      return NextResponse.json({ requiresAction: true, clientSecret: intent.client_secret })
-    } catch (err) {
-      // The saved card may have declined off-session (common when the
-      // issuer wants interactive 3DS) — fall back to on-session confirmation
-      // instead of failing the bid outright.
-      const stripeErr = err as Stripe.errors.StripeError
-      if (stripeErr.payment_intent?.client_secret) {
-        return NextResponse.json({ requiresAction: true, clientSecret: stripeErr.payment_intent.client_secret })
-      }
-      return NextResponse.json({ error: stripeErr.message ?? 'Could not place bid' }, { status: 402 })
-    }
-  }
-
-  // First-time bidder (or no saved method yet): create the hold and ask the
-  // client to confirm it, saving the payment method for next time.
-  const intent = await stripe.paymentIntents.create({
-    amount: amountCents,
-    currency: 'zar',
-    customer: customerId,
-    capture_method: 'manual',
-    setup_future_usage: 'off_session',
-    automatic_payment_methods: { enabled: true },
-    metadata: { flow: 'auction_bid', auctionId: auction.id, bidderId: user.id },
-  })
-
-  return NextResponse.json({ requiresAction: true, clientSecret: intent.client_secret })
+  return NextResponse.json({ bid, becameHighBid: bidResult?.became_high_bid ?? false })
 }

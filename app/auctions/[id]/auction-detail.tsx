@@ -10,9 +10,10 @@ import { formatZAR } from '@/lib/currency'
 interface Props {
   initialAuction: AuctionRow
   initialBids: BidRow[]
+  currentUserId: string | null
 }
 
-export function AuctionDetail({ initialAuction, initialBids }: Props) {
+export function AuctionDetail({ initialAuction, initialBids, currentUserId }: Props) {
   const { auction, bids } = useRealtimeAuction(initialAuction, initialBids)
 
   const reserveMet =
@@ -64,7 +65,7 @@ export function AuctionDetail({ initialAuction, initialBids }: Props) {
           )}
 
           <div className="mt-6">
-            <BidForm auction={auction} onPlaced={() => {}} />
+            <BidForm auction={auction} currentUserId={currentUserId} onPlaced={() => {}} />
           </div>
         </div>
       </div>

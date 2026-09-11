@@ -5,9 +5,10 @@ let client: SupabaseClient | null = null
 /**
  * Server-only Supabase client using the service role key. This bypasses RLS,
  * so it must only be used from trusted server contexts that don't take a
- * user_id from client input — e.g. the Stripe webhook handler, which
- * identifies the submission via the PaymentIntent metadata Stripe itself set.
- * Never import this from a route that trusts a client-supplied identity.
+ * user_id from client input — e.g. the Payfast ITN webhook handler, which
+ * identifies the order/submission/bid via the m_payment_id Payfast itself
+ * echoes back. Never import this from a route that trusts a client-supplied
+ * identity.
  */
 export function getSupabaseServerClient(): SupabaseClient {
   if (!client) {

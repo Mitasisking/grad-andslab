@@ -196,7 +196,6 @@ export interface SubmissionRow {
   total_declared_value: number
   service_fee: number
   payment_status: PaymentStatus
-  stripe_payment_intent_id: string | null
   qr_code_token: string
   notes: string | null
   region: ProductRegion

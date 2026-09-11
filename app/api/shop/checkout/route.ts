@@ -1,17 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseRouteClient } from '@/lib/supabase-route-client'
-import { getStripeClient } from '@/lib/stripe-server'
 import { createPayfastCheckoutUrl } from '@/lib/payments/payfast'
-import { REGION_CURRENCY } from '@/lib/shop/product-type'
 
 interface Body {
   orderId: string
 }
 
 /**
- * Creates the PaymentIntent for a marketplace order — automatic capture,
- * like grading fees (app/api/submissions/checkout/route.ts), unlike auction
- * bids' manual-capture holds. The charge amount comes from orders.total,
+ * Creates the Payfast redirect for a marketplace order. Payfast is now the
+ * only processor this app talks to (see lib/payments/payfast.ts) — the
+ * former Stripe/Payfast region split (SA -> Payfast, UK/USA -> Stripe) is
+ * gone along with Stripe itself, since the storefront only ever sells in SA
+ * now (app/shop/page.tsx). The charge amount comes from orders.total,
  * looked up here — the client only ever supplies which order to pay for,
  * never an amount.
  */
@@ -29,7 +29,7 @@ export async function POST(request: NextRequest) {
 
   const { data: order, error } = await supabase
     .from('orders')
-    .select('id, total, payment_status, region')
+    .select('id, total, payment_status')
     .eq('id', body.orderId)
     .eq('user_id', user.id)
     .single()
@@ -41,34 +41,16 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'This order has already been paid or is no longer payable' }, { status: 400 })
   }
 
-  // SA storefront routes through Payfast (ZAR-only, the same currency
-  // REGION_CURRENCY.sa already resolves to) instead of Stripe -- everything
-  // else (UK/USA) is unchanged below.
-  if (order.region === 'sa') {
-    const origin = request.headers.get('origin') ?? new URL(request.url).origin
-    const redirectUrl = createPayfastCheckoutUrl({
-      mPaymentId: order.id,
-      amount: Number(order.total),
-      itemName: `Cuppa Cards order #${order.id.slice(0, 8).toUpperCase()}`,
-      emailAddress: user.email,
-      returnUrl: `${origin}/shop?success=true&orderId=${order.id}`,
-      cancelUrl: `${origin}/shop?canceled=true`,
-      notifyUrl: `${origin}/api/webhooks/payfast`,
-      flow: 'marketplace_order',
-    })
-    return NextResponse.json({ redirectUrl })
-  }
-
-  const intent = await getStripeClient().paymentIntents.create({
-    amount: Math.round(Number(order.total) * 100),
-    currency: REGION_CURRENCY[order.region as keyof typeof REGION_CURRENCY],
-    capture_method: 'automatic',
-    automatic_payment_methods: { enabled: true },
-    metadata: {
-      orderId: order.id,
-      flow: 'marketplace_order',
-    },
+  const origin = request.headers.get('origin') ?? new URL(request.url).origin
+  const redirectUrl = createPayfastCheckoutUrl({
+    mPaymentId: order.id,
+    amount: Number(order.total),
+    itemName: `Cuppa Cards order #${order.id.slice(0, 8).toUpperCase()}`,
+    emailAddress: user.email,
+    returnUrl: `${origin}/shop?success=true&orderId=${order.id}`,
+    cancelUrl: `${origin}/shop?canceled=true`,
+    notifyUrl: `${origin}/api/webhooks/payfast`,
+    flow: 'marketplace_order',
   })
-
-  return NextResponse.json({ clientSecret: intent.client_secret })
+  return NextResponse.json({ redirectUrl })
 }
