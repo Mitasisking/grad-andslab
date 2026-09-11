@@ -1,8 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { CertLink } from '@/components/dashboard/cert-link'
+import { searchTcgdexCards, fetchTcgdexSetName, type TcgdexCard } from '@/lib/tcgdex'
 
 type Franchise = 'pokemon' | 'sports' | 'general'
 type RowStatus = 'idle' | 'saving' | 'saved' | 'error'
@@ -20,8 +21,30 @@ interface DraftRow {
   error?: string
 }
 
+/**
+ * No verified ACE grading-scale documentation was available, so this list
+ * fills in the standard 10-point terminology around the three examples the
+ * request itself gave ("10 Gem Mint", "9 Mint", "8 NM-Mint") rather than
+ * inventing half-point grades (9.5, 8.5, etc.) ACE may or may not actually
+ * issue. Adjust this list directly if ACE's real scale turns out to differ.
+ */
+const GRADE_OPTIONS = [
+  '10 Gem Mint',
+  '9 Mint',
+  '8 NM-Mint',
+  '7 Near Mint',
+  '6 Excellent-Mint',
+  '5 Excellent',
+  '4 Very Good-Excellent',
+  '3 Very Good',
+  '2 Good',
+  '1 Poor',
+]
+
 const INPUT_CLASS = 'w-full border rounded-[3px] px-2.5 py-1.5 text-[13px] bg-transparent'
 const INPUT_STYLE = { borderColor: 'var(--line)', color: 'var(--ink)' }
+const MIN_QUERY_LENGTH = 3
+const SEARCH_DEBOUNCE_MS = 500
 
 function parseCertNumbers(raw: string): string[] {
   const seen = new Set<string>()
@@ -32,6 +55,231 @@ function parseCertNumbers(raw: string): string[] {
   return Array.from(seen)
 }
 
+function ResultsDropdown({
+  results,
+  isSearching,
+  onSelect,
+}: {
+  results: TcgdexCard[]
+  isSearching: boolean
+  onSelect: (result: TcgdexCard) => void
+}) {
+  return (
+    <div
+      className="absolute left-0 right-0 top-full mt-1 border rounded-[3px] max-h-60 overflow-y-auto z-20"
+      style={{ borderColor: 'var(--line)', background: 'var(--paper-raised)' }}
+    >
+      {isSearching && (
+        <p className="text-[12px] px-3 py-2" style={{ color: 'var(--ink-muted)' }}>
+          Searching…
+        </p>
+      )}
+      {results.map((result) => (
+        <button
+          key={result.id}
+          type="button"
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={() => onSelect(result)}
+          className="w-full text-left px-3 py-2 text-[13px]"
+          style={{ borderColor: 'var(--line)', color: 'var(--ink)' }}
+        >
+          {result.name}
+          {result.localId && (
+            <span className="ml-1.5" style={{ color: 'var(--ink-muted)' }}>
+              #{result.localId}
+            </span>
+          )}
+        </button>
+      ))}
+    </div>
+  )
+}
+
+interface ImportRowProps {
+  row: DraftRow
+  onChange: (patch: Partial<DraftRow>) => void
+}
+
+/**
+ * Split out as its own component (rather than inline in the .map below) so
+ * each row can own its own search/focus state independently -- same reason
+ * components/submit/card-shipment-row.tsx is one row per component rather
+ * than a single shared search state for the whole list.
+ *
+ * TCGdex only indexes Pokémon cards, so the search bar only replaces the
+ * Title/Set name/Image URL inputs for franchise === 'pokemon' rows; Sports
+ * and General rows keep the original manual text inputs, since forcing them
+ * through a Pokémon-only search would make it impossible to import anything
+ * but Pokémon cards through this tool.
+ */
+function ImportRow({ row, onChange }: ImportRowProps) {
+  const [results, setResults] = useState<TcgdexCard[]>([])
+  const [isSearching, setIsSearching] = useState(false)
+  const [focused, setFocused] = useState(false)
+
+  const isPokemon = row.franchise === 'pokemon'
+  const disabled = row.status === 'saved'
+
+  useEffect(() => {
+    if (!isPokemon) return
+    const query = row.title.trim()
+    if (query.length < MIN_QUERY_LENGTH) return
+    let cancelled = false
+    const t = setTimeout(async () => {
+      setIsSearching(true)
+      const found = await searchTcgdexCards(query)
+      if (!cancelled) {
+        setResults(found)
+        setIsSearching(false)
+      }
+    }, SEARCH_DEBOUNCE_MS)
+    return () => {
+      cancelled = true
+      clearTimeout(t)
+    }
+  }, [isPokemon, row.title])
+
+  const queryLongEnough = row.title.trim().length >= MIN_QUERY_LENGTH
+  const noResults = isPokemon && focused && queryLongEnough && !isSearching && results.length === 0
+
+  async function selectCard(result: TcgdexCard) {
+    setFocused(false)
+    onChange({
+      title: result.name,
+      imageUrl: result.image ? `${result.image}/high.png` : '',
+    })
+    const setName = await fetchTcgdexSetName(result.id)
+    onChange({ setName })
+  }
+
+  return (
+    <div className="grid sm:grid-cols-2 gap-3 mt-3">
+      {isPokemon ? (
+        <div className="relative sm:col-span-2">
+          <label className="text-[12px] block mb-1" style={{ color: 'var(--ink-muted)' }}>
+            Card search (required)
+          </label>
+          <input
+            value={row.title}
+            onChange={(e) => onChange({ title: e.target.value, setName: '', imageUrl: '' })}
+            onFocus={() => setFocused(true)}
+            onBlur={() => setFocused(false)}
+            disabled={disabled}
+            placeholder="Search TCGdex by card name or number…"
+            className={INPUT_CLASS}
+            style={INPUT_STYLE}
+          />
+          {focused && queryLongEnough && (isSearching || results.length > 0) && (
+            <ResultsDropdown results={results} isSearching={isSearching} onSelect={selectCard} />
+          )}
+          {noResults && (
+            <p className="text-[12px] mt-1" style={{ color: 'var(--ink-muted)' }}>
+              No TCGdex matches — you can still save with this title typed as-is.
+            </p>
+          )}
+          {row.setName && (
+            <p className="text-[12px] mt-1" style={{ color: 'var(--ink-muted)' }}>
+              Set: {row.setName}
+              {row.imageUrl && ' · image found'}
+            </p>
+          )}
+        </div>
+      ) : (
+        <>
+          <div>
+            <label className="text-[12px] block mb-1" style={{ color: 'var(--ink-muted)' }}>
+              Title (required)
+            </label>
+            <input
+              value={row.title}
+              onChange={(e) => onChange({ title: e.target.value })}
+              disabled={disabled}
+              className={INPUT_CLASS}
+              style={INPUT_STYLE}
+            />
+          </div>
+          <div>
+            <label className="text-[12px] block mb-1" style={{ color: 'var(--ink-muted)' }}>
+              Set name
+            </label>
+            <input
+              value={row.setName}
+              onChange={(e) => onChange({ setName: e.target.value })}
+              disabled={disabled}
+              className={INPUT_CLASS}
+              style={INPUT_STYLE}
+            />
+          </div>
+          <div>
+            <label className="text-[12px] block mb-1" style={{ color: 'var(--ink-muted)' }}>
+              Image URL
+            </label>
+            <input
+              value={row.imageUrl}
+              onChange={(e) => onChange({ imageUrl: e.target.value })}
+              disabled={disabled}
+              className={INPUT_CLASS}
+              style={INPUT_STYLE}
+            />
+          </div>
+        </>
+      )}
+
+      <div>
+        <label className="text-[12px] block mb-1" style={{ color: 'var(--ink-muted)' }}>
+          Grade
+        </label>
+        <select
+          value={row.grade}
+          onChange={(e) => onChange({ grade: e.target.value })}
+          disabled={disabled}
+          className={INPUT_CLASS}
+          style={INPUT_STYLE}
+        >
+          <option value="">Select grade…</option>
+          {GRADE_OPTIONS.map((grade) => (
+            <option key={grade} value={grade}>
+              {grade}
+            </option>
+          ))}
+        </select>
+      </div>
+      <div>
+        <label className="text-[12px] block mb-1" style={{ color: 'var(--ink-muted)' }}>
+          Franchise
+        </label>
+        <select
+          value={row.franchise}
+          onChange={(e) => onChange({ franchise: e.target.value as Franchise, title: '', setName: '', imageUrl: '' })}
+          disabled={disabled}
+          className={INPUT_CLASS}
+          style={INPUT_STYLE}
+        >
+          <option value="pokemon">Pokémon</option>
+          <option value="sports">Sports</option>
+          <option value="general">General</option>
+        </select>
+      </div>
+      <div>
+        <label className="text-[12px] block mb-1" style={{ color: 'var(--ink-muted)' }}>
+          Price (R) — leave blank to keep hidden
+        </label>
+        <input
+          type="number"
+          min={0}
+          step="0.01"
+          value={row.price}
+          onChange={(e) => onChange({ price: e.target.value })}
+          disabled={disabled}
+          placeholder="0.00"
+          className={INPUT_CLASS}
+          style={{ ...INPUT_STYLE, fontVariantNumeric: 'tabular-nums' }}
+        />
+      </div>
+    </div>
+  )
+}
+
 /**
  * Manual-entry batch tool, not an auto-fetch one -- there's no ACE scraper
  * to fetch from (a real one would mean copying ACE's own slab images/grade
@@ -40,7 +288,9 @@ function parseCertNumbers(raw: string): string[] {
  * ACE's own live record -- see components/dashboard/cert-link.tsx). This
  * just removes the one-by-one tedium of app/admin/shop's own "+ New
  * Product" flow for a batch of cert numbers you've already looked up on
- * ACE's real site.
+ * ACE's real site -- and, for Pokémon rows, the same TCGdex search used in
+ * the submission flow (lib/tcgdex.ts) fills in the official title/set/image
+ * for you once you find the right card.
  *
  * A row with a real price typed in is created is_active: true immediately;
  * a row left blank is created is_active: false, price 0 instead -- NOT
@@ -102,7 +352,7 @@ export function BulkAceImport() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           title: row.title.trim(),
-          description: `ACE Cert #${row.certNumber}`,
+          description: `ACE Cert #${row.certNumber}${row.grade ? ` — Grade ${row.grade}` : ''}`,
           category: 'graded',
           franchise: row.franchise,
           price,
@@ -148,9 +398,11 @@ export function BulkAceImport() {
         Bulk ACE Import
       </h1>
       <p className="text-[13.5px] mt-2 max-w-xl" style={{ color: 'var(--ink-muted)' }}>
-        Paste ACE cert numbers, then fill in each card&apos;s real details after looking it up on ACE&apos;s own
-        verification page (the link on each row opens it). Type a real price and the row goes live immediately;
-        leave it blank and it&apos;s created hidden instead — price and activate it later from{' '}
+        Paste ACE cert numbers, then for each row search for the card (Pokémon rows pull the official title, set, and
+        image straight from TCGdex — Sports/General rows still take manual details), pick a grade, and cross-check
+        against ACE&apos;s own verification page (the link on each row opens it) before saving. Type a real price and
+        the row goes live immediately; leave it blank and it&apos;s created hidden instead — price and activate it
+        later from{' '}
         <Link href="/admin/shop" className="underline underline-offset-2" style={{ color: 'var(--ink)' }}>
           Shop inventory
         </Link>
@@ -199,89 +451,7 @@ export function BulkAceImport() {
                   )}
                 </div>
 
-                <div className="grid sm:grid-cols-2 gap-3 mt-3">
-                  <div>
-                    <label className="text-[12px] block mb-1" style={{ color: 'var(--ink-muted)' }}>
-                      Title (required)
-                    </label>
-                    <input
-                      value={row.title}
-                      onChange={(e) => updateRow(row.certNumber, { title: e.target.value })}
-                      disabled={row.status === 'saved'}
-                      className={INPUT_CLASS}
-                      style={INPUT_STYLE}
-                    />
-                  </div>
-                  <div>
-                    <label className="text-[12px] block mb-1" style={{ color: 'var(--ink-muted)' }}>
-                      Set name
-                    </label>
-                    <input
-                      value={row.setName}
-                      onChange={(e) => updateRow(row.certNumber, { setName: e.target.value })}
-                      disabled={row.status === 'saved'}
-                      className={INPUT_CLASS}
-                      style={INPUT_STYLE}
-                    />
-                  </div>
-                  <div>
-                    <label className="text-[12px] block mb-1" style={{ color: 'var(--ink-muted)' }}>
-                      Grade
-                    </label>
-                    <input
-                      value={row.grade}
-                      onChange={(e) => updateRow(row.certNumber, { grade: e.target.value })}
-                      disabled={row.status === 'saved'}
-                      placeholder="10 Gem Mint"
-                      className={INPUT_CLASS}
-                      style={INPUT_STYLE}
-                    />
-                  </div>
-                  <div>
-                    <label className="text-[12px] block mb-1" style={{ color: 'var(--ink-muted)' }}>
-                      Image URL
-                    </label>
-                    <input
-                      value={row.imageUrl}
-                      onChange={(e) => updateRow(row.certNumber, { imageUrl: e.target.value })}
-                      disabled={row.status === 'saved'}
-                      className={INPUT_CLASS}
-                      style={INPUT_STYLE}
-                    />
-                  </div>
-                  <div>
-                    <label className="text-[12px] block mb-1" style={{ color: 'var(--ink-muted)' }}>
-                      Franchise
-                    </label>
-                    <select
-                      value={row.franchise}
-                      onChange={(e) => updateRow(row.certNumber, { franchise: e.target.value as Franchise })}
-                      disabled={row.status === 'saved'}
-                      className={INPUT_CLASS}
-                      style={INPUT_STYLE}
-                    >
-                      <option value="pokemon">Pokémon</option>
-                      <option value="sports">Sports</option>
-                      <option value="general">General</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="text-[12px] block mb-1" style={{ color: 'var(--ink-muted)' }}>
-                      Price (R) — leave blank to keep hidden
-                    </label>
-                    <input
-                      type="number"
-                      min={0}
-                      step="0.01"
-                      value={row.price}
-                      onChange={(e) => updateRow(row.certNumber, { price: e.target.value })}
-                      disabled={row.status === 'saved'}
-                      placeholder="0.00"
-                      className={INPUT_CLASS}
-                      style={{ ...INPUT_STYLE, fontVariantNumeric: 'tabular-nums' }}
-                    />
-                  </div>
-                </div>
+                <ImportRow row={row} onChange={(patch) => updateRow(row.certNumber, patch)} />
 
                 {row.error && (
                   <p className="text-[12.5px] mt-2" style={{ color: 'var(--danger)' }}>
