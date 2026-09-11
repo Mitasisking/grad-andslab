@@ -74,12 +74,21 @@ async function fetchCards(url: string): Promise<PokemonSetCard[]> {
  * for `name` -- `localId=120` -- is what actually returns real results (81
  * cards for "120"), so that's what this uses; do not "fix" this to `eq:`
  * without re-verifying against the live API first.
+ *
+ * `localId` only ever holds the card's own number, never the "/set-size"
+ * suffix printed on the card ("240" not "240/193") -- confirmed live:
+ * `?localId=240` returns real matches, `?localId=240%2F193` returns `[]`
+ * every time, encoded or not. So a query like "240/193" is split on the
+ * first `/` for the localId lookup only; the `name=` search still gets the
+ * untouched original query, since a card's actual name is never expected to
+ * contain that suffix and there's no reason to touch it.
  */
 async function searchPokemonCards(query: string): Promise<PokemonSetCard[]> {
   try {
+    const localId = query.split('/')[0].trim()
     const requests = [fetchCards(`https://api.tcgdex.net/v2/en/cards?name=${encodeURIComponent(query)}`)]
-    if (hasDigit(query)) {
-      requests.push(fetchCards(`https://api.tcgdex.net/v2/en/cards?localId=${encodeURIComponent(query)}`))
+    if (hasDigit(localId)) {
+      requests.push(fetchCards(`https://api.tcgdex.net/v2/en/cards?localId=${encodeURIComponent(localId)}`))
     }
     const resultSets = await Promise.all(requests)
     const merged = new Map<string, PokemonSetCard>()
