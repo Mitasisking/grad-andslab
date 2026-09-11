@@ -47,7 +47,10 @@ export function SportsCardSearch({ value, onChange, onSelect, brand, disabled, p
   const [focused, setFocused] = useState(false)
 
   const trimmedValue = value.trim()
-  const active = Boolean(trimmedValue) && !disabled
+  // Matches the Pokemon search's own floor (components/submit/card-shipment-row.tsx)
+  // -- below 3 characters the catalog match is too broad to be useful and
+  // just churns requests on every keystroke.
+  const active = trimmedValue.length >= 3 && !disabled
 
   useEffect(() => {
     if (!active) return
@@ -71,7 +74,7 @@ export function SportsCardSearch({ value, onChange, onSelect, brand, disabled, p
       } finally {
         setIsSearching(false)
       }
-    }, 350)
+    }, 500)
     return () => clearTimeout(t)
   }, [active, trimmedValue, brand])
 

@@ -47,8 +47,8 @@ export async function GET(request: NextRequest) {
   const query = searchParams.get('q')?.trim()
   const brand = searchParams.get('brand')?.trim()
 
-  if (!query || query.length < 2) {
-    return NextResponse.json({ error: 'A search query of at least 2 characters is required.' }, { status: 400 })
+  if (!query || query.length < 3) {
+    return NextResponse.json({ error: 'A search query of at least 3 characters is required.' }, { status: 400 })
   }
 
   const supabase = await getSupabaseRouteClient()
