@@ -56,3 +56,15 @@ export async function convertGbpToZar(amountGbp: number): Promise<number | null>
   if (!rate) return null
   return Math.round(amountGbp * rate.effectiveRate * 100) / 100
 }
+
+/**
+ * Inverse of convertGbpToZar, for display contexts that show a ZAR-primary
+ * figure with its GBP equivalent alongside (e.g. app/admin/financials/page.tsx)
+ * rather than converting a real charge. Takes an already-fetched rate
+ * instead of looking one up itself, since a page rendering several
+ * ZAR->GBP figures at once should fetch the rate exactly once, not once
+ * per figure.
+ */
+export function zarToGbp(amountZar: number, rate: ExchangeRate): number {
+  return Math.round((amountZar / rate.effectiveRate) * 100) / 100
+}
