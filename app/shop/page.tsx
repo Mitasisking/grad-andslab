@@ -1,7 +1,6 @@
 import { getSupabaseRouteClient } from '@/lib/supabase-route-client'
 import { CategoryTabs } from '@/components/shop/category-tabs'
 import { ProductTypeToggle } from '@/components/shop/product-type-toggle'
-import { RegionToggle } from '@/components/shop/region-toggle'
 import { SportsCardFilters } from '@/components/shop/sports-card-filters'
 import { ShopBrowser } from '@/components/shop/shop-browser'
 import { ProductGrid } from '@/components/shop/product-grid'
@@ -121,8 +120,14 @@ export default async function ShopPage({ searchParams }: { searchParams: Promise
 
   return (
     <div>
+      {/* RegionToggle intentionally not rendered: this storefront is
+          SA-only for now (see app/page.tsx's hero copy) -- USA/UK are still
+          real, working region values (0031_add_product_region.sql) and
+          ?region= still works directly, this just stops surfacing the
+          switcher UI itself. REGION_OPTIONS itself is untouched since
+          app/admin/shop/product-form-modal.tsx still needs all three
+          regions to categorize a new product. */}
       <div className="flex flex-col items-center w-full gap-5 pb-8 mb-8 border-b" style={{ borderColor: 'var(--line)' }}>
-        <RegionToggle active={activeRegion} current={currentParams} />
         <ProductTypeToggle active={activeType} current={currentParams} />
         <CategoryTabs active={category ?? null} current={currentParams} />
       </div>
@@ -135,7 +140,7 @@ export default async function ShopPage({ searchParams }: { searchParams: Promise
           </div>
         </div>
       ) : (
-        <ShopBrowser products={products} />
+        <ShopBrowser products={products} activeCategory={category ?? null} />
       )}
     </div>
   )

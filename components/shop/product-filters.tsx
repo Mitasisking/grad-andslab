@@ -4,19 +4,37 @@ import { REGION_SYMBOL } from '@/lib/shop/product-type'
 import type { Product } from './product-grid'
 
 export type Language = 'en' | 'jp'
+export type Grader = 'PCG' | 'ACE'
 
 export interface ShopFilterState {
   languages: Language[]
   setNames: string[]
+  graders: Grader[]
   minPrice: string
   maxPrice: string
 }
 
-export const EMPTY_FILTERS: ShopFilterState = { languages: [], setNames: [], minPrice: '', maxPrice: '' }
+export const EMPTY_FILTERS: ShopFilterState = { languages: [], setNames: [], graders: [], minPrice: '', maxPrice: '' }
 
 /** Collectr tags every Japanese listing's title with this suffix — the one signal available, per app/api/fetch-images/route.ts's own JP-detection logic. */
 export function isJapanese(title: string): boolean {
   return title.includes('(JP)')
+}
+
+/**
+ * products has no dedicated grading-company column -- graded listings are
+ * distinguished from raw ones only by category = 'graded' (app/shop/
+ * page.tsx's CATEGORIES), and nothing records which of our two active
+ * partners (PCG/ACE — see app/page.tsx's hero copy) actually graded a given
+ * slab. Same situation isJapanese above already accepts for language: a
+ * text match against the title is the only signal there is, not a real
+ * structured field. Sellers/admin should include the grader's name in the
+ * listing title (e.g. "PCG 10 Charizard...") for this to actually match —
+ * if that stops being reliable, a real products.grading_company column is
+ * the fix, not a better regex here.
+ */
+export function matchesGrader(title: string, grader: Grader): boolean {
+  return title.toUpperCase().includes(grader)
 }
 
 export function applyShopFilters(products: Product[], filters: ShopFilterState): Product[] {
@@ -29,6 +47,7 @@ export function applyShopFilters(products: Product[], filters: ShopFilterState):
       if (!filters.languages.includes(lang)) return false
     }
     if (filters.setNames.length > 0 && !(p.set_name && filters.setNames.includes(p.set_name))) return false
+    if (filters.graders.length > 0 && !filters.graders.some((g) => matchesGrader(p.title, g))) return false
     if (min !== null && !Number.isNaN(min) && p.price < min) return false
     if (max !== null && !Number.isNaN(max) && p.price > max) return false
     return true
@@ -43,12 +62,15 @@ interface Props {
   products: Product[]
   filters: ShopFilterState
   onChange: (filters: ShopFilterState) => void
+  /** Only the 'graded' category tab (app/shop/page.tsx's CATEGORIES) has a grading company to filter by at all — raw cards/sealed/accessories never do. */
+  showGraderFilter?: boolean
 }
 
 const CHECKBOX_LABEL = 'flex items-center gap-2 text-[13.5px] py-1 cursor-pointer'
+const GRADERS: Grader[] = ['PCG', 'ACE']
 
 /** Sidebar filters for the shop grid — set/language facets are derived from whatever products the current category tab loaded, so they never offer a set or language that has zero matches. */
-export function ProductFilters({ products, filters, onChange }: Props) {
+export function ProductFilters({ products, filters, onChange, showGraderFilter = false }: Props) {
   const setNames = Array.from(new Set(products.map((p) => p.set_name).filter((s): s is string => !!s))).sort((a, b) =>
     a.localeCompare(b),
   )
@@ -58,7 +80,11 @@ export function ProductFilters({ products, filters, onChange }: Props) {
   const currencySymbol = products[0] ? REGION_SYMBOL[products[0].region] : null
 
   const hasActiveFilters =
-    filters.languages.length > 0 || filters.setNames.length > 0 || filters.minPrice !== '' || filters.maxPrice !== ''
+    filters.languages.length > 0 ||
+    filters.setNames.length > 0 ||
+    filters.graders.length > 0 ||
+    filters.minPrice !== '' ||
+    filters.maxPrice !== ''
 
   return (
     <div className="w-full lg:w-56 shrink-0">
@@ -111,6 +137,24 @@ export function ProductFilters({ products, filters, onChange }: Props) {
               </label>
             ))}
           </div>
+        </div>
+      )}
+
+      {showGraderFilter && (
+        <div className="mt-4 pt-4 border-t" style={{ borderColor: 'var(--line)' }}>
+          <p className="text-[12.5px] mb-1.5" style={{ color: 'var(--ink)' }}>
+            Grader
+          </p>
+          {GRADERS.map((grader) => (
+            <label key={grader} className={CHECKBOX_LABEL} style={{ color: 'var(--ink)' }}>
+              <input
+                type="checkbox"
+                checked={filters.graders.includes(grader)}
+                onChange={() => onChange({ ...filters, graders: toggle(filters.graders, grader) })}
+              />
+              {grader}
+            </label>
+          ))}
         </div>
       )}
 
