@@ -5,6 +5,7 @@ import { useRealtimeSubmission } from '@/lib/hooks/use-realtime-submission'
 import { PipelineProgress } from '@/components/dashboard/pipeline-progress'
 import { PhotoModal } from '@/components/dashboard/photo-modal'
 import { PoolTracker } from '@/components/PoolTracker'
+import { CertLink, hasCertLookup } from '@/components/dashboard/cert-link'
 import type { SubmissionRow, SubmissionItemRow } from '@/lib/submission-types'
 
 interface Props {
@@ -69,7 +70,16 @@ export function SubmissionDetail({ initialSubmission, initialItems }: Props) {
                   {item.grade_result !== null ? (
                     <>
                       Graded <span style={{ color: 'var(--ink)' }}>{item.grade_result}</span>
-                      {item.grade_cert_number ? ` · Cert #${item.grade_cert_number}` : ''}
+                      {item.grade_cert_number && (
+                        <>
+                          {' · '}
+                          {hasCertLookup(submission.grading_company) ? (
+                            <CertLink grader={submission.grading_company} certNumber={item.grade_cert_number} />
+                          ) : (
+                            `Cert #${item.grade_cert_number}`
+                          )}
+                        </>
+                      )}
                     </>
                   ) : (
                     'Awaiting grade'
