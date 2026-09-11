@@ -22,6 +22,34 @@ export function isJapanese(title: string): boolean {
 }
 
 /**
+ * products has no dedicated set-language column either -- same situation as
+ * isJapanese/matchesGrader above. Each set_name is exclusively one language
+ * in practice (English and Japanese print runs never share a set name), so
+ * a set's language is derived from whichever language its own listings'
+ * titles carry, majority-vote in case a set is ever briefly mixed (e.g.
+ * mid-import). Sets with zero titled products can't be classified and are
+ * omitted from the map -- the caller treats an unmapped set as "always
+ * visible" rather than guessing.
+ */
+export function deriveSetLanguages(products: Product[]): Record<string, Language> {
+  const counts = new Map<string, { en: number; jp: number }>()
+
+  for (const p of products) {
+    if (!p.set_name) continue
+    const entry = counts.get(p.set_name) ?? { en: 0, jp: 0 }
+    if (isJapanese(p.title)) entry.jp += 1
+    else entry.en += 1
+    counts.set(p.set_name, entry)
+  }
+
+  const result: Record<string, Language> = {}
+  for (const [setName, { en, jp }] of counts) {
+    result[setName] = jp > en ? 'jp' : 'en'
+  }
+  return result
+}
+
+/**
  * products has no dedicated grading-company column -- graded listings are
  * distinguished from raw ones only by category = 'graded' (app/shop/
  * page.tsx's CATEGORIES), and nothing records which of our two active
@@ -69,11 +97,21 @@ interface Props {
 const CHECKBOX_LABEL = 'flex items-center gap-2 text-[13.5px] py-1 cursor-pointer'
 const GRADERS: Grader[] = ['PCG', 'ACE']
 
-/** Sidebar filters for the shop grid — set/language facets are derived from whatever products the current category tab loaded, so they never offer a set or language that has zero matches. */
+/** Sidebar filters for the shop grid — set/language facets are derived from whatever products the current category tab loaded, so they never offer a set or language that has zero matches. Checking exactly one language also narrows the Set list to that language's sets, so English/Japanese set names don't clutter each other. */
 export function ProductFilters({ products, filters, onChange, showGraderFilter = false }: Props) {
-  const setNames = Array.from(new Set(products.map((p) => p.set_name).filter((s): s is string => !!s))).sort((a, b) =>
-    a.localeCompare(b),
+  const allSetNames = Array.from(new Set(products.map((p) => p.set_name).filter((s): s is string => !!s))).sort(
+    (a, b) => a.localeCompare(b),
   )
+
+  // Only one language checked at a time narrows the Set list to that
+  // language's sets -- neither checked, or both, falls back to showing
+  // everything (requirement 3: an empty or "both" selection isn't a
+  // meaningful narrowing signal the way exactly one language is).
+  const setLanguages = deriveSetLanguages(products)
+  const onlyLanguage = filters.languages.length === 1 ? filters.languages[0] : null
+  const setNames = onlyLanguage
+    ? allSetNames.filter((s) => setLanguages[s] === undefined || setLanguages[s] === onlyLanguage)
+    : allSetNames
   // The shop page now scopes the whole grid to one region at a time, so
   // every product here shares one currency -- safe to label the range
   // filter with it instead of a currency-less "Price".
