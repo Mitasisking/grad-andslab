@@ -14,6 +14,8 @@ interface DraftRow {
   grade: string
   imageUrl: string
   franchise: Franchise
+  /** Kept as a string for a controlled input; parsed on save. Blank/0 still creates the row hidden, same as before -- typing a real price here is what makes it go live immediately instead of needing a second trip through Shop inventory's Edit modal. */
+  price: string
   status: RowStatus
   error?: string
 }
@@ -40,13 +42,14 @@ function parseCertNumbers(raw: string): string[] {
  * Product" flow for a batch of cert numbers you've already looked up on
  * ACE's real site.
  *
- * Creates every row as is_active: false, price: 0 -- NOT because a R0
- * price hides anything (it doesn't; the shop has no such rule and would
- * show a live "Add to cart" button on a free graded slab), but because
- * is_active is the real mechanism app/admin/shop/shop-admin-dashboard.tsx
- * already uses for "hidden until priced" (it even labels these rows
- * "Hidden from shop" with an Edit button). Price and activate each one
- * from that same dashboard once you've set a real price.
+ * A row with a real price typed in is created is_active: true immediately;
+ * a row left blank is created is_active: false, price 0 instead -- NOT
+ * because a R0 price hides anything on its own (it doesn't; the shop has
+ * no such rule and would show a live "Add to cart" button on a free graded
+ * slab), but because is_active is the real mechanism
+ * app/admin/shop/shop-admin-dashboard.tsx already uses for "hidden until
+ * priced" (it even labels these rows "Hidden from shop" with an Edit
+ * button) -- price and activate those ones later from that same dashboard.
  */
 export function BulkAceImport() {
   const [rawInput, setRawInput] = useState('')
@@ -66,6 +69,7 @@ export function BulkAceImport() {
             grade: '',
             imageUrl: '',
             franchise: 'pokemon' as Franchise,
+            price: '',
             status: 'idle' as RowStatus,
           },
       )
@@ -84,6 +88,15 @@ export function BulkAceImport() {
 
       updateRow(row.certNumber, { status: 'saving', error: undefined })
 
+      const parsedPrice = Number(row.price)
+      const price = Number.isFinite(parsedPrice) && parsedPrice > 0 ? parsedPrice : 0
+      // A real price typed in is what makes the row go live -- price alone
+      // never hides anything on its own (the shop has no such rule; a R0
+      // active row would show a live "Add to cart" on a free slab), so
+      // is_active is set explicitly here rather than inferred from price
+      // elsewhere.
+      const isActive = price > 0
+
       const res = await fetch('/api/admin/products', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -92,11 +105,11 @@ export function BulkAceImport() {
           description: `ACE Cert #${row.certNumber}`,
           category: 'graded',
           franchise: row.franchise,
-          price: 0,
+          price,
           costBasis: null,
           stock: 1,
           images: row.imageUrl.trim() ? [row.imageUrl.trim()] : [],
-          isActive: false,
+          isActive,
           cardType: row.franchise === 'sports' ? 'sports_card' : 'pokemon',
           setName: row.setName.trim() || null,
           cardNumber: null,
@@ -136,13 +149,13 @@ export function BulkAceImport() {
       </h1>
       <p className="text-[13.5px] mt-2 max-w-xl" style={{ color: 'var(--ink-muted)' }}>
         Paste ACE cert numbers, then fill in each card&apos;s real details after looking it up on ACE&apos;s own
-        verification page (the link on each row opens it). Every row is created hidden (price R0, not shown in the
-        shop) — price and activate each one from{' '}
+        verification page (the link on each row opens it). Type a real price and the row goes live immediately;
+        leave it blank and it&apos;s created hidden instead — price and activate it later from{' '}
         <Link href="/admin/shop" className="underline underline-offset-2" style={{ color: 'var(--ink)' }}>
           Shop inventory
-        </Link>{' '}
-        once you know the real price. Include &quot;ACE&quot; in the title so the shop&apos;s existing Grader filter
-        picks it up (e.g. &quot;Charizard ex — ACE 10 Gem Mint&quot;).
+        </Link>
+        . Include &quot;ACE&quot; in the title so the shop&apos;s existing Grader filter picks it up (e.g.
+        &quot;Charizard ex — ACE 10 Gem Mint&quot;).
       </p>
 
       <div className="mt-8">
@@ -252,6 +265,22 @@ export function BulkAceImport() {
                       <option value="general">General</option>
                     </select>
                   </div>
+                  <div>
+                    <label className="text-[12px] block mb-1" style={{ color: 'var(--ink-muted)' }}>
+                      Price (R) — leave blank to keep hidden
+                    </label>
+                    <input
+                      type="number"
+                      min={0}
+                      step="0.01"
+                      value={row.price}
+                      onChange={(e) => updateRow(row.certNumber, { price: e.target.value })}
+                      disabled={row.status === 'saved'}
+                      placeholder="0.00"
+                      className={INPUT_CLASS}
+                      style={{ ...INPUT_STYLE, fontVariantNumeric: 'tabular-nums' }}
+                    />
+                  </div>
                 </div>
 
                 {row.error && (
@@ -270,7 +299,7 @@ export function BulkAceImport() {
             className="mt-6 px-4 py-2 text-[13.5px] rounded-[3px] disabled:opacity-50"
             style={{ background: 'var(--vault)', color: 'var(--vault-ink)' }}
           >
-            {creating ? 'Creating…' : `Create ${readyCount} product${readyCount === 1 ? '' : 's'}`}
+            {creating ? 'Saving…' : `Save ${readyCount} to Database`}
           </button>
           {savedCount > 0 && (
             <span className="ml-3 text-[13px]" style={{ color: 'var(--ink-muted)' }}>
