@@ -23,23 +23,32 @@ interface DraftRow {
 
 /**
  * No verified ACE grading-scale documentation was available, so this list
- * fills in the standard 10-point terminology around the three examples the
- * request itself gave ("10 Gem Mint", "9 Mint", "8 NM-Mint") rather than
- * inventing half-point grades (9.5, 8.5, etc.) ACE may or may not actually
- * issue. Adjust this list directly if ACE's real scale turns out to differ.
+ * fills in the half-point scale around the examples actually given
+ * ("10 Pristine", "10 Gem Mint", "9 Mint", "8.5 NM-Mint+") rather than
+ * guessing at ACE's real cutoffs. Adjust directly if ACE's real scale turns
+ * out to differ. DEFAULT_GRADE seeds every new row so admins only need to
+ * change it for the (rare) card that isn't a straight Gem Mint.
  */
 const GRADE_OPTIONS = [
+  '10 Pristine',
   '10 Gem Mint',
+  '9.5 Mint+',
   '9 Mint',
+  '8.5 NM-Mint+',
   '8 NM-Mint',
+  '7.5 NM+',
   '7 Near Mint',
+  '6.5 EX-Mint+',
   '6 Excellent-Mint',
+  '5.5 EX+',
   '5 Excellent',
+  '4.5 VG-EX+',
   '4 Very Good-Excellent',
   '3 Very Good',
   '2 Good',
   '1 Poor',
 ]
+const DEFAULT_GRADE = '10 Gem Mint'
 
 const INPUT_CLASS = 'w-full border rounded-[3px] px-2.5 py-1.5 text-[13px] bg-transparent'
 const INPUT_STYLE = { borderColor: 'var(--line)', color: 'var(--ink)' }
@@ -236,7 +245,6 @@ function ImportRow({ row, onChange }: ImportRowProps) {
           className={INPUT_CLASS}
           style={INPUT_STYLE}
         >
-          <option value="">Select grade…</option>
           {GRADE_OPTIONS.map((grade) => (
             <option key={grade} value={grade}>
               {grade}
@@ -316,7 +324,7 @@ export function BulkAceImport() {
             certNumber,
             title: '',
             setName: '',
-            grade: '',
+            grade: DEFAULT_GRADE,
             imageUrl: '',
             franchise: 'pokemon' as Franchise,
             price: '',
@@ -331,13 +339,15 @@ export function BulkAceImport() {
   }
 
   async function handleCreateAll() {
+    const readyRows = rows.filter((r) => r.title.trim() && r.status !== 'saved')
+    if (readyRows.length === 0) return
+
     setCreating(true)
-
-    for (const row of rows) {
-      if (!row.title.trim() || row.status === 'saved') continue
-
+    for (const row of readyRows) {
       updateRow(row.certNumber, { status: 'saving', error: undefined })
+    }
 
+    const products = readyRows.map((row) => {
       const parsedPrice = Number(row.price)
       const price = Number.isFinite(parsedPrice) && parsedPrice > 0 ? parsedPrice : 0
       // A real price typed in is what makes the row go live -- price alone
@@ -347,35 +357,45 @@ export function BulkAceImport() {
       // elsewhere.
       const isActive = price > 0
 
-      const res = await fetch('/api/admin/products', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          title: row.title.trim(),
-          description: `ACE Cert #${row.certNumber}${row.grade ? ` — Grade ${row.grade}` : ''}`,
-          category: 'graded',
-          franchise: row.franchise,
-          price,
-          costBasis: null,
-          stock: 1,
-          images: row.imageUrl.trim() ? [row.imageUrl.trim()] : [],
-          isActive,
-          cardType: row.franchise === 'sports' ? 'sports_card' : 'pokemon',
-          setName: row.setName.trim() || null,
-          cardNumber: null,
-          sport: null,
-          brand: null,
-          cardVariant: null,
-          playerName: null,
-          region: 'sa',
-        }),
-      })
+      return {
+        title: row.title.trim(),
+        description: `ACE Cert #${row.certNumber}${row.grade ? ` — Grade ${row.grade}` : ''}`,
+        category: 'graded',
+        franchise: row.franchise,
+        price,
+        costBasis: null,
+        stock: 1,
+        images: row.imageUrl.trim() ? [row.imageUrl.trim()] : [],
+        isActive,
+        cardType: row.franchise === 'sports' ? 'sports_card' : 'pokemon',
+        setName: row.setName.trim() || null,
+        cardNumber: null,
+        sport: null,
+        brand: null,
+        cardVariant: null,
+        playerName: null,
+        region: 'sa',
+      }
+    })
 
-      if (res.ok) {
+    // One request for the whole batch -- app/api/admin/products/batch does a
+    // single supabase.insert() across all rows rather than one round trip
+    // per row, so a save of 6 cards is 1 INSERT statement, not 6.
+    const res = await fetch('/api/admin/products/batch', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ products }),
+    })
+
+    if (res.ok) {
+      for (const row of readyRows) {
         updateRow(row.certNumber, { status: 'saved' })
-      } else {
-        const data = await res.json().catch(() => ({}))
-        updateRow(row.certNumber, { status: 'error', error: data.error ?? 'Could not create product.' })
+      }
+    } else {
+      const data = await res.json().catch(() => ({}))
+      const message = data.error ?? 'Could not create products.'
+      for (const row of readyRows) {
+        updateRow(row.certNumber, { status: 'error', error: message })
       }
     }
 
@@ -469,7 +489,7 @@ export function BulkAceImport() {
             className="mt-6 px-4 py-2 text-[13.5px] rounded-[3px] disabled:opacity-50"
             style={{ background: 'var(--vault)', color: 'var(--vault-ink)' }}
           >
-            {creating ? 'Saving…' : `Save ${readyCount} to Database`}
+            {creating ? 'Saving…' : `Save ${readyCount} to Inventory`}
           </button>
           {savedCount > 0 && (
             <span className="ml-3 text-[13px]" style={{ color: 'var(--ink-muted)' }}>
