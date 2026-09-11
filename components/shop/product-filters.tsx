@@ -1,20 +1,31 @@
 'use client'
 
 import { REGION_SYMBOL } from '@/lib/shop/product-type'
+import { isOutOfPrint } from '@/lib/shop/availability'
 import type { Product } from './product-grid'
 
 export type Language = 'en' | 'jp'
 export type Grader = 'PCG' | 'ACE'
+/** 'all' means unfiltered -- matches EMPTY_FILTERS's convention for graders/languages ([] = unfiltered) but printStatus is single-select (the Sealed sub-pills), so 'all' fills that role instead of an empty array. */
+export type PrintStatus = 'all' | 'in-print' | 'out-of-print'
 
 export interface ShopFilterState {
   languages: Language[]
   setNames: string[]
   graders: Grader[]
+  printStatus: PrintStatus
   minPrice: string
   maxPrice: string
 }
 
-export const EMPTY_FILTERS: ShopFilterState = { languages: [], setNames: [], graders: [], minPrice: '', maxPrice: '' }
+export const EMPTY_FILTERS: ShopFilterState = {
+  languages: [],
+  setNames: [],
+  graders: [],
+  printStatus: 'all',
+  minPrice: '',
+  maxPrice: '',
+}
 
 /** Collectr tags every Japanese listing's title with this suffix — the one signal available, per app/api/fetch-images/route.ts's own JP-detection logic. */
 export function isJapanese(title: string): boolean {
@@ -76,6 +87,14 @@ export function applyShopFilters(products: Product[], filters: ShopFilterState):
     }
     if (filters.setNames.length > 0 && !(p.set_name && filters.setNames.includes(p.set_name))) return false
     if (filters.graders.length > 0 && !filters.graders.some((g) => matchesGrader(p.title, g))) return false
+    if (filters.printStatus !== 'all') {
+      const outOfPrint = isOutOfPrint(p.release_date)
+      // A product whose release_date isn't known yet (outOfPrint === null)
+      // matches neither specific bucket -- same "don't guess" stance
+      // lib/shop/availability.ts's own doc comment takes.
+      if (filters.printStatus === 'in-print' && outOfPrint !== false) return false
+      if (filters.printStatus === 'out-of-print' && outOfPrint !== true) return false
+    }
     if (min !== null && !Number.isNaN(min) && p.price < min) return false
     if (max !== null && !Number.isNaN(max) && p.price > max) return false
     return true
@@ -121,6 +140,7 @@ export function ProductFilters({ products, filters, onChange, showGraderFilter =
     filters.languages.length > 0 ||
     filters.setNames.length > 0 ||
     filters.graders.length > 0 ||
+    filters.printStatus !== 'all' ||
     filters.minPrice !== '' ||
     filters.maxPrice !== ''
 

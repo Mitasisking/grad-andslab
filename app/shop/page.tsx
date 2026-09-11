@@ -4,17 +4,10 @@ import { ProductTypeToggle } from '@/components/shop/product-type-toggle'
 import { SportsCardFilters } from '@/components/shop/sports-card-filters'
 import { ShopBrowser } from '@/components/shop/shop-browser'
 import { ProductGrid } from '@/components/shop/product-grid'
-import { isOutOfPrint } from '@/lib/shop/availability'
 import { REGION_OPTIONS, type ProductType, type ProductRegion } from '@/lib/shop/product-type'
 import type { ShopUrlParams } from '@/lib/shop/shop-url'
 
 const VALID_REGIONS = new Set(REGION_OPTIONS.map((r) => r.value))
-
-// 'sealed-in-print' / 'sealed-out-of-print' aren't real products.category
-// values -- both are still stored as 'sealed'. They're split here by
-// release_date age instead, so the Shop UI's two tabs don't need their own
-// database category.
-const SEALED_SPLITS = new Set(['sealed-in-print', 'sealed-out-of-print'])
 
 const PRODUCT_COLUMNS =
   'id, title, description, category, price, stock, images, set_name, release_date, card_type, sport, brand, card_variant, player_name, region'
@@ -35,7 +28,6 @@ interface ShopSearchParams {
 
 export default async function ShopPage({ searchParams }: { searchParams: Promise<ShopSearchParams> }) {
   const { category, productType, sport, brand, cardVariant, player, region } = await searchParams
-  const dbCategory = category && SEALED_SPLITS.has(category) ? 'sealed' : category
   const activeType: ProductType = productType === 'sports_card' ? 'sports_card' : 'pokemon'
   const activeRegion: ProductRegion = region && VALID_REGIONS.has(region as ProductRegion) ? (region as ProductRegion) : 'sa'
 
@@ -68,7 +60,7 @@ export default async function ShopPage({ searchParams }: { searchParams: Promise
     .eq('region', activeRegion)
     .order('created_at', { ascending: false })
 
-  if (dbCategory) baseQuery = baseQuery.eq('category', dbCategory)
+  if (category) baseQuery = baseQuery.eq('category', category)
 
   // Fetched with only card_type + category applied — this is what the
   // sports-card sidebar derives its Brand checkbox options from, so
@@ -95,7 +87,7 @@ export default async function ShopPage({ searchParams }: { searchParams: Promise
       .select(PRODUCT_COLUMNS)
       .eq('card_type', 'sports_card')
       .eq('region', activeRegion)
-    if (dbCategory) filteredQuery = filteredQuery.eq('category', dbCategory)
+    if (category) filteredQuery = filteredQuery.eq('category', category)
     if (sports.length > 0) filteredQuery = filteredQuery.in('sport', sports)
     if (brands.length > 0) filteredQuery = filteredQuery.in('brand', brands)
     if (cardVariants.length > 0) filteredQuery = filteredQuery.in('card_variant', cardVariants)
@@ -110,12 +102,6 @@ export default async function ShopPage({ searchParams }: { searchParams: Promise
       console.error('Shop sports-card filter query failed', filteredError.message)
     }
     products = filteredData ?? []
-  }
-
-  if (category === 'sealed-in-print') {
-    products = products.filter((p) => isOutOfPrint(p.release_date) === false)
-  } else if (category === 'sealed-out-of-print') {
-    products = products.filter((p) => isOutOfPrint(p.release_date) === true)
   }
 
   return (
@@ -140,7 +126,11 @@ export default async function ShopPage({ searchParams }: { searchParams: Promise
           </div>
         </div>
       ) : (
-        <ShopBrowser products={products} activeCategory={category ?? null} />
+        // key={category} remounts ShopBrowser on every category switch so its
+        // client-side filters (particularly graders/printStatus, driven by
+        // SubcategoryPills) reset instead of silently carrying over and
+        // hiding products in a category that never showed those controls.
+        <ShopBrowser key={category ?? 'all'} products={products} activeCategory={category ?? null} />
       )}
     </div>
   )
