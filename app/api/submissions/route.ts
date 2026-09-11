@@ -22,11 +22,29 @@ interface SubmissionItemInput {
 
 const VALID_SPORTS: Sport[] = ['soccer', 'rugby', 'f1', 'nhl', 'nba', 'mlb', 'nfl']
 
+// Postgres/PostgREST can never store a literal null byte (or other C0
+// control characters) in a text column at all -- not a validation choice,
+// a hard limit -- so an insert containing one always fails with a raw
+// "unsupported Unicode escape sequence" error (MAJOR SYSTEMS TEST 2's
+// injection-multi profile hits this directly). The browser's own card-entry
+// UI can't produce one, but this route accepts arbitrary JSON from any API
+// client, so a crafted request still could. Rejecting it here, before the
+// submission row is even created, avoids ever reaching that DB error and
+// avoids the orphaned-empty-submission scenario a mid-flight items-insert
+// failure would otherwise leave behind (see the itemsError handling below).
+const CONTROL_CHARACTERS = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/
+function hasControlCharacters(value: string): boolean {
+  return CONTROL_CHARACTERS.test(value)
+}
+
 function isValidItem(item: SubmissionItemInput): boolean {
   if (item.cardType !== 'pokemon' && item.cardType !== 'sports_card') return false
   if (item.cardType === 'sports_card' && (!item.sport || !VALID_SPORTS.includes(item.sport))) return false
   if (item.cardType === 'pokemon' && item.sport !== null) return false
-  return Boolean(item.cardName?.trim() && item.setName?.trim())
+  if (!item.cardName?.trim() || !item.setName?.trim()) return false
+  if (hasControlCharacters(item.cardName) || hasControlCharacters(item.setName)) return false
+  if (item.cardNumber && hasControlCharacters(item.cardNumber)) return false
+  return true
 }
 
 interface CreateSubmissionBody {
@@ -70,6 +88,9 @@ export async function POST(request: NextRequest) {
   // created for items that are about to be rejected anyway.
   if (!body.items.every(isValidItem)) {
     return NextResponse.json({ error: 'One or more cards are missing required fields' }, { status: 400 })
+  }
+  if (body.courier && hasControlCharacters(body.courier)) {
+    return NextResponse.json({ error: 'Invalid characters in courier' }, { status: 400 })
   }
 
   const { data: address, error: addressError } = await supabase
