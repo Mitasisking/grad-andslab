@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import Link from 'next/link'
 import { formatByRegion } from '@/lib/currency'
 import { ProductFormModal } from './product-form-modal'
 import { ProductThumbnail } from './product-thumbnail'
@@ -107,14 +108,23 @@ export function ShopAdminDashboard() {
             Shop inventory
           </h1>
         </div>
-        <button
-          type="button"
-          onClick={() => setModalProduct('new')}
-          className="px-4 py-2 text-[13.5px] rounded-[3px] shrink-0"
-          style={{ background: 'var(--vault)', color: 'var(--vault-ink)' }}
-        >
-          + New Product
-        </button>
+        <div className="flex gap-3 shrink-0">
+          <Link
+            href="/admin/shop/bulk-ace-import"
+            className="px-4 py-2 text-[13.5px] rounded-[3px] border"
+            style={{ borderColor: 'var(--line)', color: 'var(--ink)' }}
+          >
+            Bulk ACE Import
+          </Link>
+          <button
+            type="button"
+            onClick={() => setModalProduct('new')}
+            className="px-4 py-2 text-[13.5px] rounded-[3px]"
+            style={{ background: 'var(--vault)', color: 'var(--vault-ink)' }}
+          >
+            + New Product
+          </button>
+        </div>
       </div>
 
       {error && (
