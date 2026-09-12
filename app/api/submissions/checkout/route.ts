@@ -51,7 +51,7 @@ export async function POST(request: NextRequest) {
   const redirectUrl = createPayfastCheckoutUrl({
     mPaymentId: body.submissionId,
     amount: body.amountCents / 100,
-    itemName: `Cuppa Cards grading submission #${body.submissionId.slice(0, 8).toUpperCase()}`,
+    itemName: `Cuppa's Cards grading submission #${body.submissionId.slice(0, 8).toUpperCase()}`,
     nameFirst: nameFirst || undefined,
     nameLast: rest.join(' ') || undefined,
     emailAddress: user.email,

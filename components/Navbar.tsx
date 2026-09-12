@@ -89,7 +89,7 @@ export default function Navbar() {
         {/* Left Side: Logo & Main Links */}
         <div className="flex items-center gap-8">
           <Link href="/" className="shrink-0 opacity-100 hover:opacity-80 transition">
-            <Image src="/logo.png" alt="Cuppa Cards" width={48} height={48} className="h-11 w-11 sm:h-12 sm:w-12" priority />
+            <Image src="/logo.png" alt="Cuppa's Cards" width={48} height={48} className="h-11 w-11 sm:h-12 sm:w-12" priority />
           </Link>
           
           <div className="hidden md:flex gap-6 text-sm font-medium text-slate-300">
@@ -118,7 +118,7 @@ export default function Navbar() {
               href={SOCIAL_LINKS.facebook}
               target="_blank"
               rel="noopener noreferrer"
-              aria-label="Cuppa Cards on Facebook"
+              aria-label="Cuppa's Cards on Facebook"
               className="text-slate-500 hover:text-amber-400 transition"
             >
               <FacebookIcon className="w-4 h-4" />
@@ -127,7 +127,7 @@ export default function Navbar() {
               href={SOCIAL_LINKS.instagram}
               target="_blank"
               rel="noopener noreferrer"
-              aria-label="Cuppa Cards on Instagram"
+              aria-label="Cuppa's Cards on Instagram"
               className="text-slate-500 hover:text-amber-400 transition"
             >
               <InstagramIcon className="w-4 h-4" />
@@ -136,7 +136,7 @@ export default function Navbar() {
               href={SOCIAL_LINKS.tiktok}
               target="_blank"
               rel="noopener noreferrer"
-              aria-label="Cuppa Cards on TikTok"
+              aria-label="Cuppa's Cards on TikTok"
               className="text-slate-500 hover:text-amber-400 transition"
             >
               <TiktokIcon className="w-4 h-4" />

@@ -28,9 +28,9 @@ export async function POST(request: Request) {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        from: 'Cuppa Cards Updates <updates@cuppacards.com>',
+        from: "Cuppa's Cards Updates <updates@cuppacards.com>",
         to: [customerEmail],
-        subject: 'Cuppa Cards — submission update',
+        subject: "Cuppa's Cards — submission update",
         html: `<p>${message}</p>`,
       })
     });

@@ -79,7 +79,7 @@ export function FeaturedCarousel({ products }: { products: FeaturedProduct[] }) 
       <div className="max-w-6xl mx-auto px-6">
         <div className="text-center mb-10">
           <p className="text-amber-400 text-xs font-bold uppercase tracking-widest mb-2">Premium Grails</p>
-          <h2 className="text-3xl md:text-4xl font-black text-white tracking-tight">The Cuppa Cards Vault</h2>
+          <h2 className="text-3xl md:text-4xl font-black text-white tracking-tight">The Cuppa&apos;s Cards Vault</h2>
         </div>
 
         <div

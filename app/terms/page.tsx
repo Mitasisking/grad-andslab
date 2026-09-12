@@ -26,7 +26,7 @@ export default function TermsPage() {
 
           <Section number="2" title="Grading Middleman Services">
             <P>
-              Cuppa Cards acts strictly as an intermediary between you (the customer) and third-party grading
+              Cuppa&apos;s Cards acts strictly as an intermediary between you (the customer) and third-party grading
               companies (including, but not limited to, PSA, ACE, and PCG).
             </P>
             <Item label="Subjectivity of Grades">

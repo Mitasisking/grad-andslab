@@ -41,7 +41,7 @@ export default function ResetPasswordPage() {
     <div style={{ background: 'var(--paper)', color: 'var(--ink)', minHeight: '100vh' }}>
       <div className="mx-auto max-w-md px-6 py-16">
         <p className="text-[13px]" style={{ color: 'var(--ink-muted)' }}>
-          Cuppa Cards
+          Cuppa&apos;s Cards
         </p>
         <h1 className="text-[26px] mt-1" style={{ fontFamily: 'var(--font-display)', color: 'var(--ink)' }}>
           Set a new password

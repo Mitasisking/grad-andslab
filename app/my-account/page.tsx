@@ -239,7 +239,7 @@ export default function MyAccountPage() {
     <div style={{ background: 'var(--paper)', color: 'var(--ink)', minHeight: '100vh' }}>
       <div className="mx-auto max-w-4xl px-6 py-12 lg:py-16">
         <p className="text-[13px]" style={{ color: 'var(--ink-muted)' }}>
-          Cuppa Cards
+          Cuppa&apos;s Cards
         </p>
         <h1 className="text-[28px] mt-1" style={{ fontFamily: 'var(--font-display)', color: 'var(--ink)' }}>
           My Account

@@ -63,7 +63,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   const redirectUrl = createPayfastCheckoutUrl({
     mPaymentId: winningBid.id,
     amount: Number(winningBid.amount),
-    itemName: `Cuppa Cards auction win — ${auction.title}`,
+    itemName: `Cuppa's Cards auction win — ${auction.title}`,
     emailAddress: user.email,
     returnUrl: `${origin}/auctions/${auction.id}?paid=true`,
     cancelUrl: `${origin}/auctions/${auction.id}?canceled=true`,

@@ -10,7 +10,7 @@ export default function PrivacyPage() {
         <p className="text-sm text-slate-500 mb-12">Last Updated: {LAST_UPDATED}</p>
 
         <p className="text-slate-300 leading-relaxed mb-12">
-          This Privacy Policy explains what personal information Cuppa Cards, operated by Mitchy Moo (Pty) Ltd
+          This Privacy Policy explains what personal information Cuppa&apos;s Cards, operated by Mitchy Moo (Pty) Ltd
           (&quot;we,&quot; &quot;us,&quot; or &quot;our&quot;), collects through this website, our shop, our card
           grading submission service, and our contact and vendor forms, and how we use, share, and protect it.
         </p>

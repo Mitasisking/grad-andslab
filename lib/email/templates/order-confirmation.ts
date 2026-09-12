@@ -146,7 +146,7 @@ export function renderOrderConfirmationEmail(props: OrderConfirmationEmailProps)
             <tr>
               <td style="padding:32px 32px 0;text-align:center;">
                 <p style="margin:0;font-family:Arial,Helvetica,sans-serif;font-size:11px;letter-spacing:0.18em;color:${COLORS.gold};text-transform:uppercase;">
-                  Cuppa Cards
+                  Cuppa's Cards
                 </p>
                 <h1 style="margin:12px 0 0;font-family:Georgia,'Times New Roman',serif;font-size:24px;color:${COLORS.ink};font-weight:normal;">
                   Payment received
@@ -186,7 +186,7 @@ export function renderOrderConfirmationEmail(props: OrderConfirmationEmailProps)
             <tr>
               <td style="padding:32px;text-align:center;">
                 <p style="margin:0;font-family:Arial,Helvetica,sans-serif;font-size:11px;color:${COLORS.inkMuted};">
-                  Cuppa Cards · this is an automated receipt, no reply needed.
+                  Cuppa's Cards · this is an automated receipt, no reply needed.
                 </p>
               </td>
             </tr>
@@ -197,5 +197,5 @@ export function renderOrderConfirmationEmail(props: OrderConfirmationEmailProps)
   </body>
 </html>`
 
-  return { subject: `Cuppa Cards — payment confirmed (${orderLabel})`, html }
+  return { subject: `Cuppa's Cards — payment confirmed (${orderLabel})`, html }
 }

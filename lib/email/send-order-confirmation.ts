@@ -217,7 +217,7 @@ export async function sendAuctionWonEmail(auctionId: string) {
             <tr>
               <td style="padding:32px 32px 0;text-align:center;">
                 <p style="margin:0;font-family:Arial,Helvetica,sans-serif;font-size:11px;letter-spacing:0.18em;color:${COLORS.gold};text-transform:uppercase;">
-                  Cuppa Cards
+                  Cuppa's Cards
                 </p>
                 <h1 style="margin:12px 0 0;font-family:Georgia,'Times New Roman',serif;font-size:24px;color:${COLORS.ink};font-weight:normal;">
                   You won the auction
@@ -257,7 +257,7 @@ export async function sendAuctionWonEmail(auctionId: string) {
   await getResendClient().emails.send({
     from: getEmailFrom(),
     to: email,
-    subject: `Cuppa Cards — you won "${auction.title}"`,
+    subject: `Cuppa's Cards — you won "${auction.title}"`,
     html,
   })
 }

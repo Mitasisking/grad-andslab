@@ -23,5 +23,5 @@ export function getResendClient(): Resend {
  * will fail.
  */
 export function getEmailFrom(): string {
-  return process.env.EMAIL_FROM ?? 'Cuppa Cards <updates@cuppacards.com>'
+  return process.env.EMAIL_FROM ?? "Cuppa's Cards <updates@cuppacards.com>"
 }

@@ -45,7 +45,7 @@ export async function POST(request: NextRequest) {
   const redirectUrl = createPayfastCheckoutUrl({
     mPaymentId: order.id,
     amount: Number(order.total),
-    itemName: `Cuppa Cards order #${order.id.slice(0, 8).toUpperCase()}`,
+    itemName: `Cuppa's Cards order #${order.id.slice(0, 8).toUpperCase()}`,
     emailAddress: user.email,
     returnUrl: `${origin}/shop?success=true&orderId=${order.id}`,
     cancelUrl: `${origin}/shop?canceled=true`,
