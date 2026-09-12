@@ -108,7 +108,14 @@ export function ShopAdminDashboard() {
             Shop inventory
           </h1>
         </div>
-        <div className="flex gap-3 shrink-0">
+        <div className="flex flex-wrap gap-3 shrink-0">
+          <Link
+            href="/admin/trends"
+            className="px-4 py-2 text-[13.5px] rounded-[3px] border"
+            style={{ borderColor: 'var(--line)', color: 'var(--ink)' }}
+          >
+            Market Trends
+          </Link>
           <Link
             href="/admin/shop/bulk-ace-import"
             className="px-4 py-2 text-[13.5px] rounded-[3px] border"
