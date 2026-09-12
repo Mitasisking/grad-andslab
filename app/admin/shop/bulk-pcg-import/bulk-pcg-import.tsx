@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { CertLink } from '@/components/dashboard/cert-link'
 import { searchTcgdexCards, fetchTcgdexSetName, type TcgdexCard } from '@/lib/tcgdex'
+import { parseCertNumbers } from '@/lib/cert-validation'
 
 type Franchise = 'pokemon' | 'sports' | 'general'
 type RowStatus = 'idle' | 'saving' | 'saved' | 'error'
@@ -55,15 +56,6 @@ const INPUT_CLASS = 'w-full border rounded-[3px] px-2.5 py-1.5 text-[13px] bg-tr
 const INPUT_STYLE = { borderColor: 'var(--line)', color: 'var(--ink)' }
 const MIN_QUERY_LENGTH = 3
 const SEARCH_DEBOUNCE_MS = 500
-
-function parseCertNumbers(raw: string): string[] {
-  const seen = new Set<string>()
-  for (const piece of raw.split(',')) {
-    const trimmed = piece.trim()
-    if (trimmed) seen.add(trimmed)
-  }
-  return Array.from(seen)
-}
 
 function ResultsDropdown({
   results,
@@ -372,6 +364,7 @@ function ImportRow({ row, onChange }: ImportRowProps) {
 export function BulkPcgImport() {
   const [rawInput, setRawInput] = useState('')
   const [rows, setRows] = useState<DraftRow[]>([])
+  const [invalidCertNumbers, setInvalidCertNumbers] = useState<string[]>([])
   const [creating, setCreating] = useState(false)
   // The `creating` state disables the Save button, but setCreating(true)
   // doesn't take effect until the next render -- two click/tap events fired
@@ -383,7 +376,8 @@ export function BulkPcgImport() {
   const submittingRef = useRef(false)
 
   function handleParse() {
-    const certNumbers = parseCertNumbers(rawInput)
+    const { valid: certNumbers, invalid } = parseCertNumbers(rawInput)
+    setInvalidCertNumbers(invalid)
     setRows((prev) => {
       const existingByCert = new Map(prev.map((r) => [r.certNumber, r]))
       const next = certNumbers.map(
@@ -550,6 +544,12 @@ export function BulkPcgImport() {
         >
           Parse cert numbers
         </button>
+        {invalidCertNumbers.length > 0 && (
+          <p className="text-[12.5px] mt-2" style={{ color: 'var(--danger)' }}>
+            Invalid format — PCG cert numbers are numeric only:{' '}
+            {invalidCertNumbers.map((c) => `"${c}"`).join(', ')}. Not added below.
+          </p>
+        )}
       </div>
 
       {rows.length > 0 && (
