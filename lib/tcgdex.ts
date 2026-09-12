@@ -8,20 +8,25 @@ export interface TcgdexCard {
 }
 
 /**
- * Pulls the card-number token a customer would actually type at the end of
- * a search, whether that's the whole query ("038/165", "038") or a compound
- * "name number/total" query ("Ninetales 038/165") -- confirmed live: a
- * naive "everything before the first /" split (this function's predecessor)
- * turns "Ninetales 038/165" into the localId "Ninetales 038", which
- * TCGdex correctly returns zero matches for since that's not a real
- * card-number format. Anchoring the match to the end of the string and
- * requiring the number be preceded by either the start of the query or
- * whitespace (so it can't grab a name that happens to end in digits)
- * isolates just "038" in every one of those cases.
+ * Splits a query into its name portion and its trailing card-number token,
+ * e.g. "Ninetales 38" -> { name: "Ninetales", number: "38" }, "038/165" ->
+ * { name: "", number: "038" } (the "/set-size" suffix is dropped), and
+ * "Charizard" -> { name: "Charizard", number: null }. Confirmed live: TCGdex's
+ * `name` filter is a literal match against the card's actual name, so a
+ * compound query like "Ninetales 38" or "Ninetales 038/165" always returns
+ * zero results from `name=` alone -- the number has to be pulled out and
+ * matched separately (see searchTcgdexCards).
  */
-function extractTrailingCardNumber(query: string): string | null {
-  const match = query.trim().match(/(?:^|\s)(\d+)(?:\/\d+)?$/)
-  return match ? match[1] : null
+function splitNameAndNumber(query: string): { name: string; number: string | null } {
+  const trimmed = query.trim()
+  const match = trimmed.match(/^(.*?)\s*(\d+)(?:\/\d+)?$/)
+  if (!match) return { name: trimmed, number: null }
+  return { name: match[1].trim(), number: match[2] }
+}
+
+/** Strips a leading zero run so "038" and "38" compare equal ("0" itself is left alone). */
+function normalizeCardNumber(value: string): string {
+  return value.replace(/^0+(?=\d)/, '')
 }
 
 let setsIndexPromise: Promise<Map<string, string>> | null = null
@@ -80,46 +85,48 @@ async function fetchCards(url: string): Promise<TcgdexCard[]> {
 }
 
 /**
- * Global search across TCGdex's entire card index. Searches by `name`
- * always, and ALSO by card number (TCGdex's `localId` field) whenever the
- * query contains a digit -- the actual fix for a previously-reported "typing
- * 120 shows Card not found" bug: a `name=` search can never match a purely
- * numeric query, so TCGdex was correctly returning a genuine empty array,
- * not failing.
+ * Global search across TCGdex's entire card index, in three shapes depending
+ * on what the query contains:
  *
- * Verified directly against the live API rather than trusting the docs at
- * face value: TCGdex's own filtering docs (https://tcgdex.dev/rest/
- * filtering-sorting-pagination) document an `eq:` prefix for an exact-match
- * filter (e.g. `localId=eq:120`), but that returned zero results in
- * practice for every localId tested. The bare substring form already used
- * for `name` -- `localId=120` -- is what actually returns real results (81
- * cards for "120"), so that's what this uses; do not "fix" this to `eq:`
- * without re-verifying against the live API first.
- *
- * `localId` only ever holds the card's own number, never the "/set-size"
- * suffix printed on the card ("240" not "240/193") -- confirmed live:
- * `?localId=240` returns real matches, `?localId=240%2F193` returns `[]`
- * every time, encoded or not. So the trailing card-number token is
- * extracted (see extractTrailingCardNumber) for the localId lookup only;
- * the `name=` search still gets the untouched original query, since a
- * card's actual name is never expected to contain that suffix and there's
- * no reason to touch it.
+ * - Name + number ("Ninetales 38", "Mega Gengar ex 240/193"): TCGdex's
+ *   `name` filter is a literal match, so it can never match a compound
+ *   string like this (confirmed live: `name=Ninetales%2038` returns `[]`
+ *   even though 63 real Ninetales cards exist). Fetching by the name alone
+ *   and filtering the response to the requested number locally is what
+ *   actually finds the card -- and is also what correctly disambiguates
+ *   cards that share a collector number across sets (e.g. Mega Gengar ex
+ *   and Tinkaton ex are both 240/193).
+ * - Number only ("38", "038/165"): there's no name to search by, so this
+ *   asks TCGdex for that `localId` directly. Verified against the live API
+ *   rather than trusting the docs at face value: TCGdex's own filtering
+ *   docs (https://tcgdex.dev/rest/filtering-sorting-pagination) document an
+ *   `eq:` prefix for an exact-match filter (e.g. `localId=eq:120`), but that
+ *   returned zero results in practice for every localId tested -- the bare
+ *   substring form used here (`localId=120`) is what actually returns real
+ *   results (81 cards for "120"); do not "fix" this to `eq:` without
+ *   re-verifying against the live API first. `localId` also only ever holds
+ *   the card's own number, never the "/set-size" suffix printed on the card
+ *   ("240" not "240/193") -- confirmed live: `?localId=240` returns real
+ *   matches, `?localId=240%2F193` returns `[]` every time, encoded or not --
+ *   which is why splitNameAndNumber drops that suffix.
+ * - Name only ("Charizard"): a plain `name=` search, unchanged from before.
  */
 export async function searchTcgdexCards(query: string): Promise<TcgdexCard[]> {
   try {
-    const localId = extractTrailingCardNumber(query)
-    const requests = [fetchCards(`https://api.tcgdex.net/v2/en/cards?name=${encodeURIComponent(query)}`)]
-    if (localId) {
-      requests.push(fetchCards(`https://api.tcgdex.net/v2/en/cards?localId=${encodeURIComponent(localId)}`))
+    const { name, number } = splitNameAndNumber(query)
+    if (!name && !number) return []
+
+    let results: TcgdexCard[]
+    if (name && number) {
+      const nameMatches = await fetchCards(`https://api.tcgdex.net/v2/en/cards?name=${encodeURIComponent(name)}`)
+      const target = normalizeCardNumber(number)
+      results = nameMatches.filter((card) => card.localId && normalizeCardNumber(card.localId) === target)
+    } else if (number) {
+      results = await fetchCards(`https://api.tcgdex.net/v2/en/cards?localId=${encodeURIComponent(number)}`)
+    } else {
+      results = await fetchCards(`https://api.tcgdex.net/v2/en/cards?name=${encodeURIComponent(name)}`)
     }
-    const resultSets = await Promise.all(requests)
-    const merged = new Map<string, TcgdexCard>()
-    for (const set of resultSets) {
-      for (const card of set) {
-        if (!merged.has(card.id)) merged.set(card.id, card)
-      }
-    }
-    const results = Array.from(merged.values()).slice(0, 30)
+    results = results.slice(0, 30)
 
     const setsIndex = await getTcgdexSetsIndex()
     for (const card of results) {
