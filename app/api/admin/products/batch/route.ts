@@ -35,6 +35,9 @@ export async function POST(request: NextRequest) {
     .insert(inputs.map((input) => toProductRow(input as ProductInput)))
     .select('*')
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) {
+    console.error('batch product insert failed:', error.message)
+    return NextResponse.json({ error: 'Could not create products' }, { status: 500 })
+  }
   return NextResponse.json({ products: data }, { status: 201 })
 }

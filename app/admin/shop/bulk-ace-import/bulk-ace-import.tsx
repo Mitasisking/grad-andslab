@@ -184,7 +184,13 @@ function ImportRow({ row, onChange }: ImportRowProps) {
             value={row.title}
             onChange={(e) => onChange({ title: e.target.value, setName: '', imageUrl: '' })}
             onFocus={() => setFocused(true)}
-            onBlur={() => setFocused(false)}
+            // Delayed, like components/submit/card-shipment-row.tsx's identical
+            // search input -- an immediate setFocused(false) unmounts the
+            // dropdown before Tab can move focus into one of its result
+            // buttons, making the whole search unreachable by keyboard (the
+            // onMouseDown={preventDefault} on each result only guards against
+            // a mouse click stealing focus, not against Tab).
+            onBlur={() => setTimeout(() => setFocused(false), 150)}
             disabled={disabled}
             placeholder="Search TCGdex by card name or number…"
             className={INPUT_CLASS}

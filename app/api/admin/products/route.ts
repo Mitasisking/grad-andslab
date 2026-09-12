@@ -17,7 +17,10 @@ export async function GET() {
 
   const { data, error } = await supabase.from('products').select('*').order('created_at', { ascending: false })
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) {
+    console.error('products list failed:', error.message)
+    return NextResponse.json({ error: 'Could not load products' }, { status: 500 })
+  }
   return NextResponse.json({ products: data })
 }
 
@@ -36,6 +39,9 @@ export async function POST(request: NextRequest) {
     .select('*')
     .single()
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) {
+    console.error('product insert failed:', error.message)
+    return NextResponse.json({ error: 'Could not create product' }, { status: 500 })
+  }
   return NextResponse.json({ product: data }, { status: 201 })
 }

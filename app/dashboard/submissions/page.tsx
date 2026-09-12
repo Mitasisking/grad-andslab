@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { getSupabaseRouteClient } from '@/lib/supabase-route-client'
 import { STATUS_STAGES } from '@/lib/submission-types'
+import { formatUSD } from '@/lib/currency'
 
 export default async function SubmissionsListPage() {
   const supabase = await getSupabaseRouteClient()
@@ -52,8 +53,7 @@ export default async function SubmissionsListPage() {
                     {s.grading_company} — #{s.qr_code_token.slice(0, 8).toUpperCase()}
                   </p>
                   <p className="text-[12.5px] mt-0.5" style={{ color: 'var(--ink-muted)' }}>
-                    {new Date(s.created_at).toLocaleDateString()} · $
-                    {Number(s.total_declared_value).toFixed(2)} declared
+                    {new Date(s.created_at).toLocaleDateString()} · {formatUSD(Number(s.total_declared_value))} declared
                   </p>
                 </div>
                 <span className="text-[13px] shrink-0" style={{ color: 'var(--seal)' }}>

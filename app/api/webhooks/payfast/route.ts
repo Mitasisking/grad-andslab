@@ -82,13 +82,28 @@ export async function POST(request: NextRequest) {
   const supabase = getSupabaseServerClient()
   const succeeded = paymentStatus === 'COMPLETE'
 
+  // Payfast is documented to redeliver ITNs, and a captured raw POST (proxy
+  // log, browser history on a non-HTTPS notify_url, etc.) could be replayed
+  // byte-for-byte -- signature + the validate call-back above only prove a
+  // notification genuinely came from Payfast, not that it hasn't already
+  // been processed. Every branch below gates its update on the row still
+  // being 'pending' (an atomic UPDATE...WHERE, not a separate read-then-
+  // write) and only runs a side effect (email, stock release) when that
+  // update actually changed a row -- a replay of an already-settled
+  // notification matches zero rows and does nothing, instead of resending a
+  // customer email or double-releasing stock back onto the shelf for an
+  // order a webhook replay claims failed after it already really failed
+  // once.
   if (flow === 'grading_submission') {
-    await supabase
+    const { data: updated } = await supabase
       .from('submissions')
       .update({ payment_status: succeeded ? 'captured' : 'failed' })
       .eq('id', mPaymentId)
+      .eq('payment_status', 'pending')
+      .select('id')
+      .maybeSingle()
 
-    if (succeeded) {
+    if (succeeded && updated) {
       // No Payfast equivalent of Stripe's charge.receipt_url -- pf_payment_id
       // (params.get('pf_payment_id')) is the closest reference number, but
       // there's no hosted receipt page to link to, so the "View receipt"
@@ -100,20 +115,25 @@ export async function POST(request: NextRequest) {
   }
 
   if (flow === 'marketplace_order') {
-    await supabase
+    const { data: updated } = await supabase
       .from('orders')
       .update({
         status: succeeded ? 'paid' : 'cancelled',
         payment_status: succeeded ? 'captured' : 'failed',
       })
       .eq('id', mPaymentId)
+      .eq('payment_status', 'pending')
+      .select('id')
+      .maybeSingle()
 
-    if (!succeeded) {
-      await supabase.rpc('release_order_stock', { p_order_id: mPaymentId })
-    } else {
-      sendShopOrderConfirmationEmail(mPaymentId, null).catch((err) =>
-        console.error('Could not send order confirmation email', mPaymentId, err),
-      )
+    if (updated) {
+      if (!succeeded) {
+        await supabase.rpc('release_order_stock', { p_order_id: mPaymentId })
+      } else {
+        sendShopOrderConfirmationEmail(mPaymentId, null).catch((err) =>
+          console.error('Could not send order confirmation email', mPaymentId, err),
+        )
+      }
     }
   }
 
@@ -126,6 +146,7 @@ export async function POST(request: NextRequest) {
       .from('bids')
       .update({ payment_status: succeeded ? 'captured' : 'failed' })
       .eq('id', mPaymentId)
+      .eq('payment_status', 'pending')
   }
 
   return NextResponse.json({ received: true })
