@@ -221,7 +221,7 @@ function ImportRow({ row, onChange }: ImportRowProps) {
             // a mouse click stealing focus, not against Tab).
             onBlur={() => setTimeout(() => setFocused(false), 150)}
             disabled={disabled}
-            placeholder="Search TCGdex by card name or number…"
+            placeholder={`Search by card name or number (e.g. "Charizard 004")`}
             className={INPUT_CLASS}
             style={INPUT_STYLE}
           />

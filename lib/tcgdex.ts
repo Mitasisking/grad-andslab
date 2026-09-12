@@ -7,8 +7,21 @@ export interface TcgdexCard {
   setName?: string
 }
 
-function hasDigit(value: string): boolean {
-  return /\d/.test(value)
+/**
+ * Pulls the card-number token a customer would actually type at the end of
+ * a search, whether that's the whole query ("038/165", "038") or a compound
+ * "name number/total" query ("Ninetales 038/165") -- confirmed live: a
+ * naive "everything before the first /" split (this function's predecessor)
+ * turns "Ninetales 038/165" into the localId "Ninetales 038", which
+ * TCGdex correctly returns zero matches for since that's not a real
+ * card-number format. Anchoring the match to the end of the string and
+ * requiring the number be preceded by either the start of the query or
+ * whitespace (so it can't grab a name that happens to end in digits)
+ * isolates just "038" in every one of those cases.
+ */
+function extractTrailingCardNumber(query: string): string | null {
+  const match = query.trim().match(/(?:^|\s)(\d+)(?:\/\d+)?$/)
+  return match ? match[1] : null
 }
 
 let setsIndexPromise: Promise<Map<string, string>> | null = null
@@ -86,16 +99,17 @@ async function fetchCards(url: string): Promise<TcgdexCard[]> {
  * `localId` only ever holds the card's own number, never the "/set-size"
  * suffix printed on the card ("240" not "240/193") -- confirmed live:
  * `?localId=240` returns real matches, `?localId=240%2F193` returns `[]`
- * every time, encoded or not. So a query like "240/193" is split on the
- * first `/` for the localId lookup only; the `name=` search still gets the
- * untouched original query, since a card's actual name is never expected to
- * contain that suffix and there's no reason to touch it.
+ * every time, encoded or not. So the trailing card-number token is
+ * extracted (see extractTrailingCardNumber) for the localId lookup only;
+ * the `name=` search still gets the untouched original query, since a
+ * card's actual name is never expected to contain that suffix and there's
+ * no reason to touch it.
  */
 export async function searchTcgdexCards(query: string): Promise<TcgdexCard[]> {
   try {
-    const localId = query.split('/')[0].trim()
+    const localId = extractTrailingCardNumber(query)
     const requests = [fetchCards(`https://api.tcgdex.net/v2/en/cards?name=${encodeURIComponent(query)}`)]
-    if (hasDigit(localId)) {
+    if (localId) {
       requests.push(fetchCards(`https://api.tcgdex.net/v2/en/cards?localId=${encodeURIComponent(localId)}`))
     }
     const resultSets = await Promise.all(requests)

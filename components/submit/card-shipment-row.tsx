@@ -315,7 +315,7 @@ export function CardShipmentRow({ card, index, canRemove, onUpdateCard, onRemove
                 setTimeout(() => setFocused(false), 150)
                 lookupValue()
               }}
-              placeholder="Search by card name or number..."
+              placeholder={`Search by card name or number (e.g. "Charizard 004")`}
               className={pokemonNoResults ? 'pr-9' : undefined}
             />
             {pokemonNoResults && (
