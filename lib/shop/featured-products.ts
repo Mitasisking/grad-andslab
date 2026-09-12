@@ -38,6 +38,7 @@ export async function getFeaturedProducts(
     .select(FEATURED_COLUMNS)
     .eq('region', region)
     .eq('is_active', true)
+    .eq('is_auction', false)
     .gt('stock', 0)
     .order('price', { ascending: false })
     .limit(30)

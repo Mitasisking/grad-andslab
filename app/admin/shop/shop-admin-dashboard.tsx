@@ -53,6 +53,7 @@ export function ShopAdminDashboard() {
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [franchiseFilter, setFranchiseFilter] = useState<ProductFranchise | 'all'>('all')
   const [categoryFilter, setCategoryFilter] = useState<ProductCategory | 'all'>('all')
+  const [togglingAuctionId, setTogglingAuctionId] = useState<string | null>(null)
 
   const filteredProducts = products.filter(
     (p) =>
@@ -87,6 +88,24 @@ export function ShopAdminDashboard() {
       return
     }
     setProducts((prev) => prev.filter((p) => p.id !== product.id))
+  }
+
+  async function handleToggleAuction(product: AdminProduct) {
+    setTogglingAuctionId(product.id)
+    const nextValue = !product.is_auction
+    const res = await fetch(`/api/admin/products/${product.id}/auction`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ isAuction: nextValue }),
+    })
+    setTogglingAuctionId(null)
+
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}))
+      setError(data.error ?? 'Could not update auction status.')
+      return
+    }
+    setProducts((prev) => prev.map((p) => (p.id === product.id ? { ...p, is_auction: nextValue } : p)))
   }
 
   function handleSaved(saved: AdminProduct) {
@@ -216,8 +235,13 @@ export function ShopAdminDashboard() {
                       {product.title}
                     </p>
                     {!product.is_active && (
-                      <span className="text-[11px]" style={{ color: 'var(--danger)' }}>
+                      <span className="text-[11px] block" style={{ color: 'var(--danger)' }}>
                         Hidden from shop
+                      </span>
+                    )}
+                    {product.is_auction && (
+                      <span className="text-[11px] block" style={{ color: 'var(--seal)' }}>
+                        Sent to auction
                       </span>
                     )}
                   </div>
@@ -252,6 +276,19 @@ export function ShopAdminDashboard() {
                     </span>
                   </span>
                   <div className="flex gap-3 justify-end shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => handleToggleAuction(product)}
+                      disabled={togglingAuctionId === product.id}
+                      className="text-[12.5px] underline underline-offset-2 disabled:opacity-50"
+                      style={{ color: product.is_auction ? 'var(--seal)' : 'var(--ink-muted)' }}
+                    >
+                      {togglingAuctionId === product.id
+                        ? '…'
+                        : product.is_auction
+                          ? 'Remove from auction'
+                          : 'Send to auction'}
+                    </button>
                     <button
                       type="button"
                       onClick={() => setModalProduct(product)}

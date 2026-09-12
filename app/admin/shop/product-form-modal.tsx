@@ -40,6 +40,7 @@ interface Draft {
   stock: string
   imageUrl: string
   isActive: boolean
+  isAuction: boolean
   cardType: CardType
   setName: string
   cardNumber: string
@@ -61,6 +62,7 @@ function draftFromProduct(product: AdminProduct | null): Draft {
     stock: product ? String(product.stock) : '0',
     imageUrl: product?.images?.[0] ?? '',
     isActive: product?.is_active ?? true,
+    isAuction: product?.is_auction ?? false,
     cardType: product?.card_type ?? 'pokemon',
     setName: product?.set_name ?? '',
     cardNumber: product?.card_number ?? '',
@@ -136,6 +138,7 @@ export function ProductFormModal({ product, onClose, onSaved }: Props) {
       stock,
       images: draft.imageUrl.trim() ? [draft.imageUrl.trim()] : [],
       isActive: draft.isActive,
+      isAuction: draft.isAuction,
       cardType: draft.cardType,
       setName: draft.setName.trim() || null,
       cardNumber: draft.cardNumber.trim() || null,
@@ -305,7 +308,7 @@ export function ProductFormModal({ product, onClose, onSaved }: Props) {
             />
           </div>
 
-          <div>
+          <div className="flex flex-wrap gap-x-6 gap-y-2">
             <label className="flex items-center gap-2 text-[13.5px]" style={{ color: 'var(--ink)' }}>
               <input
                 type="checkbox"
@@ -314,7 +317,21 @@ export function ProductFormModal({ product, onClose, onSaved }: Props) {
               />
               Visible in shop
             </label>
+            <label className="flex items-center gap-2 text-[13.5px]" style={{ color: 'var(--ink)' }}>
+              <input
+                type="checkbox"
+                checked={draft.isAuction}
+                onChange={(e) => update('isAuction', e.target.checked)}
+              />
+              Send to Auction
+            </label>
           </div>
+          {draft.isAuction && (
+            <p className="text-[11.5px] -mt-2" style={{ color: 'var(--ink-muted)' }}>
+              Shows on the Live Auctions &quot;Coming Soon&quot; grid instead of the regular shop, regardless of the setting
+              above.
+            </p>
+          )}
 
           <div>
             <label className={labelClass} style={labelStyle}>

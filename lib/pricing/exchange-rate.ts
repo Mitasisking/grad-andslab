@@ -68,3 +68,12 @@ export async function convertGbpToZar(amountGbp: number): Promise<number | null>
 export function zarToGbp(amountZar: number, rate: ExchangeRate): number {
   return Math.round((amountZar / rate.effectiveRate) * 100) / 100
 }
+
+/**
+ * Inverse of zarToGbp -- same "already have a rate, just do the display
+ * math" shape, for a GBP-native figure that needs a ZAR-primary display
+ * alongside it (e.g. a `region: 'uk'` product on the Live Auctions page).
+ */
+export function gbpToZar(amountGbp: number, rate: ExchangeRate): number {
+  return Math.round(amountGbp * rate.effectiveRate * 100) / 100
+}

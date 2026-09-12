@@ -53,11 +53,16 @@ export default async function ShopPage({ searchParams }: { searchParams: Promise
   // product on the page shares one currency (see components/shop/
   // region-toggle.tsx) -- products.price is never converted between
   // regions, so mixing them in one grid/price-filter would be meaningless.
+  // is_auction products are strictly shop-excluded (0054_add_product_
+  // is_auction.sql) -- they surface only on the Live Auctions "Coming Soon"
+  // grid (app/auctions/page.tsx), never here, so a card can't be purchasable
+  // in both places at once.
   let baseQuery = supabase
     .from('products')
     .select(PRODUCT_COLUMNS)
     .eq('card_type', activeType)
     .eq('region', activeRegion)
+    .eq('is_auction', false)
     .order('created_at', { ascending: false })
 
   if (category) baseQuery = baseQuery.eq('category', category)
@@ -87,6 +92,7 @@ export default async function ShopPage({ searchParams }: { searchParams: Promise
       .select(PRODUCT_COLUMNS)
       .eq('card_type', 'sports_card')
       .eq('region', activeRegion)
+      .eq('is_auction', false)
     if (category) filteredQuery = filteredQuery.eq('category', category)
     if (sports.length > 0) filteredQuery = filteredQuery.in('sport', sports)
     if (brands.length > 0) filteredQuery = filteredQuery.in('brand', brands)

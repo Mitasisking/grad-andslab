@@ -24,6 +24,7 @@ export interface ProductInput {
   stock: number
   images: string[]
   isActive: boolean
+  isAuction: boolean
   cardType: CardType
   setName: string | null
   cardNumber: string | null
@@ -79,6 +80,7 @@ export function toProductRow(body: ProductInput) {
     stock: body.stock,
     images: body.images ?? [],
     is_active: body.isActive ?? true,
+    is_auction: body.isAuction ?? false,
     card_type: cardType,
     set_name: body.setName?.trim() || null,
     card_number: body.cardNumber?.trim() || null,

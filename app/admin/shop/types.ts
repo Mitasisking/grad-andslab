@@ -16,6 +16,8 @@ export interface AdminProduct {
   sku: string | null
   images: string[]
   is_active: boolean
+  /** Staged for the Live Auctions "Coming Soon" grid instead of the regular shop -- see 0054_add_product_is_auction.sql. */
+  is_auction: boolean
   linked_submission_item_id: string | null
   set_name: string | null
   card_number: string | null
