@@ -3,10 +3,50 @@ export interface TcgdexCard {
   name: string
   localId?: string
   image?: string
+  /** Resolved from the cached sets index below, not returned by the list endpoint itself. */
+  setName?: string
 }
 
 function hasDigit(value: string): boolean {
   return /\d/.test(value)
+}
+
+let setsIndexPromise: Promise<Map<string, string>> | null = null
+
+/**
+ * Lazily fetches and caches TCGdex's full sets list once per page load
+ * (~35KB, one request -- https://api.tcgdex.net/v2/en/sets) mapping set
+ * code to real set name. Exists so search results can be labeled with
+ * their actual set ("Paradox Rift") instead of TCGdex's internal code
+ * ("sv04") or nothing at all, without a per-card detail fetch for every
+ * row in a dropdown of up to 30 results -- the list/search endpoint
+ * itself returns no set information, confirmed live (a card result is
+ * only ever `{id, localId, name, image}`).
+ */
+function getTcgdexSetsIndex(): Promise<Map<string, string>> {
+  if (!setsIndexPromise) {
+    setsIndexPromise = fetch('https://api.tcgdex.net/v2/en/sets')
+      .then((res) => (res.ok ? res.json() : []))
+      .then((sets: { id: string; name: string }[]) => new Map(sets.map((s) => [s.id, s.name])))
+      .catch((err) => {
+        console.error('Could not load TCGdex sets index', err)
+        return new Map<string, string>()
+      })
+  }
+  return setsIndexPromise
+}
+
+/**
+ * A card's `id` is `${setCode}-${localId}` (e.g. "sv04.5-240" for localId
+ * "240"), but set codes themselves can contain dashes/dots, so this strips
+ * the known `-${localId}` suffix by length rather than splitting on "-" --
+ * splitting would cut "sv04.5-240" at the wrong dash if the code itself
+ * had one.
+ */
+function setCodeFromCardId(card: TcgdexCard): string | null {
+  if (!card.localId) return null
+  const suffix = `-${card.localId}`
+  return card.id.endsWith(suffix) ? card.id.slice(0, -suffix.length) : null
 }
 
 /**
@@ -65,7 +105,15 @@ export async function searchTcgdexCards(query: string): Promise<TcgdexCard[]> {
         if (!merged.has(card.id)) merged.set(card.id, card)
       }
     }
-    return Array.from(merged.values()).slice(0, 30)
+    const results = Array.from(merged.values()).slice(0, 30)
+
+    const setsIndex = await getTcgdexSetsIndex()
+    for (const card of results) {
+      const code = setCodeFromCardId(card)
+      if (code) card.setName = setsIndex.get(code)
+    }
+
+    return results
   } catch (err) {
     console.error(`TCGdex card search failed for query "${query}":`, err)
     return []

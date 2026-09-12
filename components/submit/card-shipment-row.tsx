@@ -9,13 +9,20 @@ import { fetchMarketValue } from '@/lib/pricing-client'
 import { SportsCardSearch, type SportsCardResult } from '@/components/submit/sports-card-search'
 import { SPORT_OPTIONS } from '@/lib/submission-types'
 import type { CardEntry, CardType } from '@/lib/submission-types'
+import { searchTcgdexCards, fetchTcgdexSetName, TCGDEX_UNSPECIFIED_SET, type TcgdexCard } from '@/lib/tcgdex'
 
-interface PokemonSetCard {
-  id: string
-  name: string
-  localId?: string
-  image?: string
-}
+/**
+ * This row used to keep its own copy of the TCGdex search/fetch logic
+ * (fetchCards/searchPokemonCards/fetchPokemonSetName) in parallel with
+ * lib/tcgdex.ts's near-identical copy -- after the third fix in a row that
+ * had to be applied to both places (the "240/193" localId split, then the
+ * dropdown thumbnail, then set-name resolution), the duplication's real
+ * cost outweighed the smaller diff of keeping them separate. Now imports
+ * the shared implementation instead.
+ */
+type PokemonSetCard = TcgdexCard
+const searchPokemonCards = searchTcgdexCards
+const fetchPokemonSetName = fetchTcgdexSetName
 
 /**
  * submission_items.set_name is a NOT NULL column, but there's no longer any
@@ -25,97 +32,10 @@ interface PokemonSetCard {
  * result itself didn't resolve a set name, or the customer typed a card
  * name that matched nothing and moved on. Admin can correct it at intake.
  */
-const UNSPECIFIED_SET = 'Not specified'
+const UNSPECIFIED_SET = TCGDEX_UNSPECIFIED_SET
 
 const MIN_QUERY_LENGTH = 3
 const SEARCH_DEBOUNCE_MS = 500
-
-function hasDigit(value: string): boolean {
-  return /\d/.test(value)
-}
-
-/**
- * One TCGdex list request, with real error visibility: a non-2xx response
- * is logged with its status and body (not just silently treated as "no
- * results"), since a rate-limit or malformed-query response looks
- * identical to a genuine empty result set unless you log it.
- */
-async function fetchCards(url: string): Promise<PokemonSetCard[]> {
-  const res = await fetch(url)
-  if (!res.ok) {
-    const bodyText = await res.text().catch(() => '<could not read response body>')
-    console.error(`TCGdex request failed: ${res.status} ${res.statusText} — ${url} — ${bodyText}`)
-    return []
-  }
-  const data = await res.json()
-  return Array.isArray(data) ? (data as PokemonSetCard[]) : []
-}
-
-/**
- * Global search across TCGdex's entire card index, not scoped to any one
- * set -- replaces the old "load one selected set's card list, filter
- * client-side" approach now that there's no set picker to scope it with.
- * Same base endpoint components/submit's sibling app/api/fetch-images/
- * route.ts already uses as its own last-resort global lookup.
- *
- * Searches by `name` always, and ALSO by card number (TCGdex's `localId`
- * field) whenever the query contains a digit. This is the actual fix for
- * "typing 120 shows Card not found": a `name=` search can never match a
- * purely numeric query -- no card is literally named "120" -- so TCGdex was
- * correctly returning a genuine empty array, not failing. There was no
- * thrown error to catch because nothing was actually broken at the fetch
- * level; the missing piece was a number-aware query at all.
- *
- * Verified directly against the live API rather than trusting the docs at
- * face value: TCGdex's own filtering docs (https://tcgdex.dev/rest/
- * filtering-sorting-pagination) document an `eq:` prefix for an exact-match
- * filter (e.g. `localId=eq:120`), but that returned zero results in
- * practice for every localId tested. The bare substring form already used
- * for `name` -- `localId=120` -- is what actually returns real results (81
- * cards for "120"), so that's what this uses; do not "fix" this to `eq:`
- * without re-verifying against the live API first.
- *
- * `localId` only ever holds the card's own number, never the "/set-size"
- * suffix printed on the card ("240" not "240/193") -- confirmed live:
- * `?localId=240` returns real matches, `?localId=240%2F193` returns `[]`
- * every time, encoded or not. So a query like "240/193" is split on the
- * first `/` for the localId lookup only; the `name=` search still gets the
- * untouched original query, since a card's actual name is never expected to
- * contain that suffix and there's no reason to touch it.
- */
-async function searchPokemonCards(query: string): Promise<PokemonSetCard[]> {
-  try {
-    const localId = query.split('/')[0].trim()
-    const requests = [fetchCards(`https://api.tcgdex.net/v2/en/cards?name=${encodeURIComponent(query)}`)]
-    if (hasDigit(localId)) {
-      requests.push(fetchCards(`https://api.tcgdex.net/v2/en/cards?localId=${encodeURIComponent(localId)}`))
-    }
-    const resultSets = await Promise.all(requests)
-    const merged = new Map<string, PokemonSetCard>()
-    for (const set of resultSets) {
-      for (const card of set) {
-        if (!merged.has(card.id)) merged.set(card.id, card)
-      }
-    }
-    return Array.from(merged.values()).slice(0, 30)
-  } catch (err) {
-    console.error(`Pokemon card search failed for query "${query}":`, err)
-    return []
-  }
-}
-
-/** Full card detail (not returned by the search-list endpoint above) is where TCGdex's real set name lives. */
-async function fetchPokemonSetName(cardId: string): Promise<string> {
-  try {
-    const res = await fetch(`https://api.tcgdex.net/v2/en/cards/${cardId}`)
-    if (!res.ok) return UNSPECIFIED_SET
-    const detail = (await res.json()) as { set?: { name?: string } }
-    return detail.set?.name?.trim() || UNSPECIFIED_SET
-  } catch (err) {
-    console.error('Could not resolve set name for', cardId, err)
-    return UNSPECIFIED_SET
-  }
-}
 
 function ResultsDropdown({
   results,
@@ -142,15 +62,46 @@ function ResultsDropdown({
           type="button"
           onMouseDown={(e) => e.preventDefault()}
           onClick={() => onSelect(result)}
-          className="w-full text-left px-3 py-2 text-[13px]"
+          className="w-full flex items-center gap-2.5 text-left px-3 py-2 text-[13px]"
           style={{ borderColor: 'var(--line)', color: 'var(--ink)' }}
         >
-          {result.name}
-          {result.localId && (
-            <span className="ml-1.5" style={{ color: 'var(--ink-muted)' }}>
-              #{result.localId}
-            </span>
+          {/* "low" not "high" -- a dropdown can show up to 30 of these at
+              once, and TCGdex's low variant is ~4x smaller (confirmed:
+              ~59KB vs ~265KB for the same card) with no visible loss at
+              this thumbnail size; /high.png is still what gets used for
+              the actual selected-card preview elsewhere in this file. */}
+          {result.image ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={`${result.image}/low.png`}
+              alt=""
+              loading="lazy"
+              className="w-8 h-11 object-cover rounded-[2px] shrink-0 border"
+              style={{ borderColor: 'var(--line)' }}
+              onError={(e) => {
+                e.currentTarget.style.visibility = 'hidden'
+              }}
+            />
+          ) : (
+            <span
+              className="w-8 h-11 rounded-[2px] shrink-0 border"
+              style={{ borderColor: 'var(--line)', background: 'var(--paper)' }}
+              aria-hidden="true"
+            />
           )}
+          <span className="min-w-0 truncate">
+            {result.name}
+            {result.localId && (
+              <span className="ml-1.5" style={{ color: 'var(--ink-muted)' }}>
+                #{result.localId}
+              </span>
+            )}
+            {result.setName && (
+              <span className="block text-[11px] truncate" style={{ color: 'var(--ink-muted)' }}>
+                {result.setName}
+              </span>
+            )}
+          </span>
         </button>
       ))}
     </div>

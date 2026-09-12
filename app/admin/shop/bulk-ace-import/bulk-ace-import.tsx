@@ -89,15 +89,44 @@ function ResultsDropdown({
           type="button"
           onMouseDown={(e) => e.preventDefault()}
           onClick={() => onSelect(result)}
-          className="w-full text-left px-3 py-2 text-[13px]"
+          className="w-full flex items-center gap-2.5 text-left px-3 py-2 text-[13px]"
           style={{ borderColor: 'var(--line)', color: 'var(--ink)' }}
         >
-          {result.name}
-          {result.localId && (
-            <span className="ml-1.5" style={{ color: 'var(--ink-muted)' }}>
-              #{result.localId}
-            </span>
+          {/* "low" not "high" -- up to 30 of these can render at once, and
+              TCGdex's low variant is ~4x smaller with no visible loss at
+              this thumbnail size. */}
+          {result.image ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={`${result.image}/low.png`}
+              alt=""
+              loading="lazy"
+              className="w-8 h-11 object-cover rounded-[2px] shrink-0 border"
+              style={{ borderColor: 'var(--line)' }}
+              onError={(e) => {
+                e.currentTarget.style.visibility = 'hidden'
+              }}
+            />
+          ) : (
+            <span
+              className="w-8 h-11 rounded-[2px] shrink-0 border"
+              style={{ borderColor: 'var(--line)', background: 'var(--paper)' }}
+              aria-hidden="true"
+            />
           )}
+          <span className="min-w-0 truncate">
+            {result.name}
+            {result.localId && (
+              <span className="ml-1.5" style={{ color: 'var(--ink-muted)' }}>
+                #{result.localId}
+              </span>
+            )}
+            {result.setName && (
+              <span className="block text-[11px] truncate" style={{ color: 'var(--ink-muted)' }}>
+                {result.setName}
+              </span>
+            )}
+          </span>
         </button>
       ))}
     </div>
