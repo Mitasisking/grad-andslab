@@ -355,6 +355,19 @@ function ImportRow({ row, onChange }: ImportRowProps) {
  * app/admin/shop/shop-admin-dashboard.tsx already uses for "hidden until
  * priced" (it even labels these rows "Hidden from shop" with an Edit
  * button) -- price and activate those ones later from that same dashboard.
+ *
+ * products has no grading_company/grader column (confirmed against
+ * supabase/migrations -- see components/shop/product-filters.tsx's
+ * matchesGrader, which can only ever check the product's title text). This
+ * used to just save row.title as-is for Pokémon rows -- the official card
+ * name pulled straight from TCGdex, e.g. "Ninetales", never "ACE" -- so
+ * every Pokémon card imported through this tool was silently invisible to
+ * the shop's own Grader filter despite this page's copy claiming otherwise.
+ * "ACE" and the grade are now appended to the saved title in
+ * handleCreateAll below, decoupled from the plain card name shown in the
+ * search input (appending it directly to the input's own value would also
+ * get wiped out on the next keystroke, since typing there resets
+ * setName/imageUrl to re-trigger a fresh TCGdex search).
  */
 export function BulkAceImport() {
   const [rawInput, setRawInput] = useState('')
@@ -426,7 +439,10 @@ export function BulkAceImport() {
       const isActive = price > 0
 
       return {
-        title: row.title.trim(),
+        // See this file's top-level doc comment: there's no grader column
+        // to set, so "ACE" is baked into the title itself here -- the only
+        // thing the shop's Grader filter actually checks.
+        title: `${row.title.trim()} — ACE ${row.grade}`,
         description: `ACE Cert #${row.certNumber}${row.grade ? ` — Grade ${row.grade}` : ''}`,
         category: 'graded',
         franchise: row.franchise,
@@ -510,8 +526,8 @@ export function BulkAceImport() {
         <Link href="/admin/shop" className="underline underline-offset-2" style={{ color: 'var(--ink)' }}>
           Shop inventory
         </Link>
-        . Include &quot;ACE&quot; in the title so the shop&apos;s existing Grader filter picks it up (e.g.
-        &quot;Charizard ex — ACE 10 Gem Mint&quot;).
+        . &quot;ACE&quot; and the grade are appended to the saved title automatically so the shop&apos;s existing
+        Grader filter picks it up.
       </p>
 
       <div className="mt-8">
