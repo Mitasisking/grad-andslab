@@ -116,6 +116,13 @@ export function ShopAdminDashboard() {
           >
             Bulk ACE Import
           </Link>
+          <Link
+            href="/admin/shop/bulk-pcg-import"
+            className="px-4 py-2 text-[13.5px] rounded-[3px] border"
+            style={{ borderColor: 'var(--line)', color: 'var(--ink)' }}
+          >
+            Bulk PCG Import
+          </Link>
           <button
             type="button"
             onClick={() => setModalProduct('new')}
