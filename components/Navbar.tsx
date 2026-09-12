@@ -105,6 +105,9 @@ export default function Navbar() {
             <Link href="/vendor" className={`hover:text-amber-400 transition ${pathname === '/vendor' ? 'text-amber-400' : ''}`}>
               Vendor
             </Link>
+            <Link href="/experience" className={`hover:text-amber-400 transition ${pathname === '/experience' ? 'text-amber-400' : ''}`}>
+              The Vault
+            </Link>
             <Link href="/contact" className={`hover:text-amber-400 transition ${pathname === '/contact' ? 'text-amber-400' : ''}`}>
               Contact
             </Link>
