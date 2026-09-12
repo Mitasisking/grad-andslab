@@ -1,5 +1,5 @@
 import { getSupabaseRouteClient } from '@/lib/supabase-route-client'
-import { CategoryTabs } from '@/components/shop/category-tabs'
+import { CategoryTabs, POKEMON_CENTER_CATEGORY } from '@/components/shop/category-tabs'
 import { ProductTypeToggle } from '@/components/shop/product-type-toggle'
 import { SportsCardFilters } from '@/components/shop/sports-card-filters'
 import { ShopBrowser } from '@/components/shop/shop-browser'
@@ -46,6 +46,23 @@ export default async function ShopPage({ searchParams }: { searchParams: Promise
   }
 
   const supabase = await getSupabaseRouteClient()
+  const isPokemonCenterView = category === POKEMON_CENTER_CATEGORY
+
+  // Sealed products stay hidden from the storefront entirely until 3 years
+  // have passed since release -- a Pokémon Center exclusive is exempt and
+  // shows regardless of age, the same exemption it gets from the category
+  // filter itself under the Pokémon Center pill. Expressed as one OR-group
+  // so it applies uniformly whether browsing "All" or "Sealed" specifically
+  // -- a per-category `if` wouldn't catch sealed rows mixed into "All".
+  // release_date already backfilled/used by lib/shop/availability.ts's
+  // identical 3-year threshold for the existing In Print/Out of Print
+  // sub-pills; this is the same cutoff computed as a query filter instead
+  // of a per-row JS check, and unaffected products (release_date null,
+  // category not sealed) fail safe -- unrecognized age never counts as
+  // "old enough."
+  const sealedGateCutoff = new Date()
+  sealedGateCutoff.setFullYear(sealedGateCutoff.getFullYear() - 3)
+  const sealedGateFilter = `category.neq.sealed,is_pokemon_center.eq.true,release_date.lte.${sealedGateCutoff.toISOString().slice(0, 10)}`
 
   // Only is_active products are visible here at all — enforced by
   // products_select_public_active_or_admin (0001_init_schema.sql), not
@@ -65,7 +82,14 @@ export default async function ShopPage({ searchParams }: { searchParams: Promise
     .eq('is_auction', false)
     .order('created_at', { ascending: false })
 
-  if (category) baseQuery = baseQuery.eq('category', category)
+  if (isPokemonCenterView) {
+    // "regardless of category or age" — ignores both the real category
+    // filter and the Sealed time-gate above.
+    baseQuery = baseQuery.eq('is_pokemon_center', true)
+  } else {
+    if (category) baseQuery = baseQuery.eq('category', category)
+    baseQuery = baseQuery.or(sealedGateFilter)
+  }
 
   // Fetched with only card_type + category applied — this is what the
   // sports-card sidebar derives its Brand checkbox options from, so
@@ -93,13 +117,19 @@ export default async function ShopPage({ searchParams }: { searchParams: Promise
       .eq('card_type', 'sports_card')
       .eq('region', activeRegion)
       .eq('is_auction', false)
-    if (category) filteredQuery = filteredQuery.eq('category', category)
-    if (sports.length > 0) filteredQuery = filteredQuery.in('sport', sports)
-    if (brands.length > 0) filteredQuery = filteredQuery.in('brand', brands)
-    if (cardVariants.length > 0) filteredQuery = filteredQuery.in('card_variant', cardVariants)
-    if (player?.trim()) {
-      const term = player.trim().replace(/[%,]/g, '')
-      filteredQuery = filteredQuery.or(`player_name.ilike.%${term}%,title.ilike.%${term}%`)
+
+    if (isPokemonCenterView) {
+      filteredQuery = filteredQuery.eq('is_pokemon_center', true)
+    } else {
+      if (category) filteredQuery = filteredQuery.eq('category', category)
+      filteredQuery = filteredQuery.or(sealedGateFilter)
+      if (sports.length > 0) filteredQuery = filteredQuery.in('sport', sports)
+      if (brands.length > 0) filteredQuery = filteredQuery.in('brand', brands)
+      if (cardVariants.length > 0) filteredQuery = filteredQuery.in('card_variant', cardVariants)
+      if (player?.trim()) {
+        const term = player.trim().replace(/[%,]/g, '')
+        filteredQuery = filteredQuery.or(`player_name.ilike.%${term}%,title.ilike.%${term}%`)
+      }
     }
     filteredQuery = filteredQuery.order('created_at', { ascending: false })
 

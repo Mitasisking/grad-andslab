@@ -25,6 +25,9 @@ export interface ProductInput {
   images: string[]
   isActive: boolean
   isAuction: boolean
+  /** ISO date string ('YYYY-MM-DD'), or null if not yet known -- see products.release_date (0020_add_product_release_date.sql). */
+  releaseDate: string | null
+  isPokemonCenter: boolean
   cardType: CardType
   setName: string | null
   cardNumber: string | null
@@ -61,6 +64,9 @@ export function validateProductInput(body: Partial<ProductInput>): string | null
   if (body.cardVariant && !VALID_CARD_VARIANTS.includes(body.cardVariant)) {
     return 'Invalid card type/variant.'
   }
+  if (body.releaseDate && Number.isNaN(Date.parse(body.releaseDate))) {
+    return 'Release date must be a valid date.'
+  }
   if (!body.region || !VALID_REGIONS.includes(body.region)) {
     return 'A valid region is required.'
   }
@@ -81,6 +87,8 @@ export function toProductRow(body: ProductInput) {
     images: body.images ?? [],
     is_active: body.isActive ?? true,
     is_auction: body.isAuction ?? false,
+    release_date: body.releaseDate || null,
+    is_pokemon_center: body.isPokemonCenter ?? false,
     card_type: cardType,
     set_name: body.setName?.trim() || null,
     card_number: body.cardNumber?.trim() || null,

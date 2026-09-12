@@ -41,6 +41,8 @@ interface Draft {
   imageUrl: string
   isActive: boolean
   isAuction: boolean
+  releaseDate: string
+  isPokemonCenter: boolean
   cardType: CardType
   setName: string
   cardNumber: string
@@ -63,6 +65,8 @@ function draftFromProduct(product: AdminProduct | null): Draft {
     imageUrl: product?.images?.[0] ?? '',
     isActive: product?.is_active ?? true,
     isAuction: product?.is_auction ?? false,
+    releaseDate: product?.release_date ?? '',
+    isPokemonCenter: product?.is_pokemon_center ?? false,
     cardType: product?.card_type ?? 'pokemon',
     setName: product?.set_name ?? '',
     cardNumber: product?.card_number ?? '',
@@ -139,6 +143,8 @@ export function ProductFormModal({ product, onClose, onSaved }: Props) {
       images: draft.imageUrl.trim() ? [draft.imageUrl.trim()] : [],
       isActive: draft.isActive,
       isAuction: draft.isAuction,
+      releaseDate: draft.releaseDate.trim() || null,
+      isPokemonCenter: draft.isPokemonCenter,
       cardType: draft.cardType,
       setName: draft.setName.trim() || null,
       cardNumber: draft.cardNumber.trim() || null,
@@ -292,20 +298,37 @@ export function ProductFormModal({ product, onClose, onSaved }: Props) {
             </div>
           </div>
 
-          <div>
-            <label className={labelClass} style={labelStyle}>
-              Stock
-            </label>
-            <input
-              required
-              type="number"
-              min={0}
-              step="1"
-              value={draft.stock}
-              onChange={(e) => update('stock', e.target.value)}
-              className={inputClass}
-              style={{ ...inputStyle, fontVariantNumeric: 'tabular-nums' }}
-            />
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className={labelClass} style={labelStyle}>
+                Stock
+              </label>
+              <input
+                required
+                type="number"
+                min={0}
+                step="1"
+                value={draft.stock}
+                onChange={(e) => update('stock', e.target.value)}
+                className={inputClass}
+                style={{ ...inputStyle, fontVariantNumeric: 'tabular-nums' }}
+              />
+            </div>
+            <div>
+              <label className={labelClass} style={labelStyle}>
+                Release date
+              </label>
+              <input
+                type="date"
+                value={draft.releaseDate}
+                onChange={(e) => update('releaseDate', e.target.value)}
+                className={inputClass}
+                style={inputStyle}
+              />
+              <p className="text-[11.5px] mt-1" style={{ color: 'var(--ink-muted)' }}>
+                Drives the Sealed category&apos;s 3-year time-gate below.
+              </p>
+            </div>
           </div>
 
           <div className="flex flex-wrap gap-x-6 gap-y-2">
@@ -325,11 +348,25 @@ export function ProductFormModal({ product, onClose, onSaved }: Props) {
               />
               Send to Auction
             </label>
+            <label className="flex items-center gap-2 text-[13.5px]" style={{ color: 'var(--ink)' }}>
+              <input
+                type="checkbox"
+                checked={draft.isPokemonCenter}
+                onChange={(e) => update('isPokemonCenter', e.target.checked)}
+              />
+              Pokémon Center exclusive
+            </label>
           </div>
           {draft.isAuction && (
             <p className="text-[11.5px] -mt-2" style={{ color: 'var(--ink-muted)' }}>
               Shows on the Live Auctions &quot;Coming Soon&quot; grid instead of the regular shop, regardless of the setting
               above.
+            </p>
+          )}
+          {draft.isPokemonCenter && (
+            <p className="text-[11.5px] -mt-2" style={{ color: 'var(--ink-muted)' }}>
+              Shows under the Shop&apos;s &quot;Pokémon Center&quot; category pill regardless of category or release
+              date, and skips the Sealed category&apos;s 3-year time-gate.
             </p>
           )}
 

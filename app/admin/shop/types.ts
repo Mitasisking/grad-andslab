@@ -21,6 +21,10 @@ export interface AdminProduct {
   linked_submission_item_id: string | null
   set_name: string | null
   card_number: string | null
+  /** Used by lib/shop/availability.ts's 3-year in-print/out-of-print split and the Sealed-category shop time-gate (0020_add_product_release_date.sql). */
+  release_date: string | null
+  /** Bypasses the Sealed time-gate and surfaces under its own Shop category pill regardless of category/age -- see 0055_add_product_pokemon_center.sql. */
+  is_pokemon_center: boolean
   card_type: CardType
   sport: Sport | null
   brand: string | null
