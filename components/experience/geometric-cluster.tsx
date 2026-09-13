@@ -85,10 +85,10 @@ export function GeometricCluster({ sceneState }: { sceneState: React.MutableRefO
     })
   })
 
-  const scaleForViewport = Math.min(viewport.width, viewport.height) * 0.075
+  const scaleForViewport = Math.min(viewport.width, viewport.height) * 0.05
 
   return (
-    <group ref={groupRef} scale={THREE.MathUtils.clamp(scaleForViewport, 0.45, 0.85)}>
+    <group ref={groupRef} scale={THREE.MathUtils.clamp(scaleForViewport, 0.24, 0.45)}>
       <mesh ref={coreRef}>
         <icosahedronGeometry args={[1, 1]} />
         <meshStandardMaterial
