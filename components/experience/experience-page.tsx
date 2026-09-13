@@ -32,9 +32,8 @@ export function ExperiencePage() {
         const p = self.progress
         sceneStateRef.current.scroll = p
         // Shards fly apart through the first half of the journey, hold, then
-        // draw back in through the second half -- matching the "Reassembled,
-        // Graded" panel's promise that the card comes back together, not just
-        // shatters and stays that way.
+        // draw back in through the second half -- the object shatters and
+        // reforms rather than staying broken apart.
         const explodeUp = gsap.utils.clamp(0, 1, (p - 0.1) / 0.35)
         const explodeDown = gsap.utils.clamp(0, 1, (p - 0.6) / 0.35)
         sceneStateRef.current.explode = explodeUp - explodeDown
@@ -56,10 +55,10 @@ export function ExperiencePage() {
             className="mb-6 text-xs uppercase tracking-[0.35em] text-[#e8b84b]/80"
             style={{ textShadow: '0 2px 20px rgba(10,7,2,0.9)' }}
           >
-            Cuppa&rsquo;s Cards &mdash; The Vault
+            Cuppa&rsquo;s Cards &mdash; South Africa&rsquo;s premier middleman service
           </span>
           <KineticHeading
-            text="Every Grade, Held in Light"
+            text="Making every grade simple"
             className="max-w-4xl text-5xl font-serif leading-[1.05] sm:text-6xl md:text-7xl"
             style={{ textShadow: '0 4px 40px rgba(10,7,2,0.85)' }}
           />
@@ -67,8 +66,7 @@ export function ExperiencePage() {
             className="mt-8 max-w-md text-sm text-[#f4ead9]/70"
             style={{ textShadow: '0 2px 16px rgba(10,7,2,0.9)' }}
           >
-            Scroll to watch a single graded slab become a thousand facets &mdash;
-            then reassemble into the card in your hands.
+            Everything should be made as simple as possible, but not simpler.
           </p>
         </section>
 
@@ -76,20 +74,15 @@ export function ExperiencePage() {
         <div ref={journeyRef} className="relative" style={{ height: '300vh' }}>
           <div className="sticky top-0 flex h-screen flex-col justify-center gap-40 px-6">
             <ParallaxPanel speed={1.4} className="ml-auto max-w-md text-right">
-              <h2 className="font-serif text-3xl sm:text-4xl">Precision, Fractured</h2>
-              <p className="mt-4 text-sm text-[#f4ead9]/60">
-                Every corner, every surface flaw, examined as its own facet of
-                the whole &mdash; the same rigor ACE and PCG apply to a slab,
-                rendered as light.
-              </p>
+              <h2 className="font-serif text-3xl sm:text-4xl">
+                PCG and ACE certified middleman.
+              </h2>
             </ParallaxPanel>
 
             <ParallaxPanel speed={0.6} className="mr-auto max-w-md">
-              <h2 className="font-serif text-3xl sm:text-4xl">Reassembled, Graded</h2>
-              <p className="mt-4 text-sm text-[#f4ead9]/60">
-                Keep scrolling and the shards draw back in &mdash; the same
-                card, now a number you can trust.
-              </p>
+              <h2 className="font-serif text-3xl sm:text-4xl">
+                Clean, polish and prepare services available.
+              </h2>
             </ParallaxPanel>
           </div>
         </div>
