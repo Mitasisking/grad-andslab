@@ -1,7 +1,8 @@
 'use client'
 
+import { Suspense } from 'react'
 import { Canvas } from '@react-three/fiber'
-import { GeometricCluster } from './geometric-cluster'
+import { CardShatterFan } from './card-shatter-fan'
 import type { SceneState } from './scene-state'
 
 /**
@@ -22,7 +23,9 @@ export function HeroScene({ sceneStateRef }: { sceneStateRef: React.MutableRefOb
         <ambientLight intensity={0.45} />
         <directionalLight position={[3, 4, 5]} intensity={1} color="#fff3d6" />
         <pointLight position={[-4, -2, -3]} intensity={0.3} color="#e8b84b" />
-        <GeometricCluster sceneState={sceneStateRef} />
+        <Suspense fallback={null}>
+          <CardShatterFan sceneState={sceneStateRef} />
+        </Suspense>
       </Canvas>
     </div>
   )

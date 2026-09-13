@@ -22,7 +22,7 @@ export function ExperiencePage() {
 
     // One scrubbed timeline drives the whole "journey": as the tall #journey
     // section crosses the viewport, it writes 0-1 progress into the shared
-    // scene-state ref that geometric-cluster.tsx reads every frame.
+    // scene-state ref that card-shatter-fan.tsx reads every frame.
     const trigger = ScrollTrigger.create({
       trigger: journey,
       start: 'top top',
