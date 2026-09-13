@@ -7,6 +7,7 @@ import * as THREE from 'three'
 import type { SceneState } from './scene-state'
 import { CHASE_CARDS, GRADER_SCHEMES, type ChaseCard } from './chase-cards'
 import { createLabelTexture } from './label-texture'
+import { playShatterSound, playGlintSound } from './sound-effects'
 
 // Real card print ratio (63mm x 88mm) -- gives the fragment grid and the
 // slab's card window their correct aspect instead of guessing a square.
@@ -254,6 +255,10 @@ function GradedSlab({ card, texture, sceneState, seed }: GradedSlabProps) {
       const settled = explode < 0.03
       if (settled && glintStartTime.current === null) {
         glintStartTime.current = state.clock.elapsedTime
+        // Spread the three cards' chimes into a chord (rather than three
+        // identical copies stacked in unison, since all three settle on the
+        // same shared `explode` value in the same frame).
+        playGlintSound(seed * 3)
       } else if (!settled) {
         glintStartTime.current = null
       }
@@ -337,6 +342,7 @@ function GradedSlab({ card, texture, sceneState, seed }: GradedSlabProps) {
 export function CardShatterFan({ sceneState }: { sceneState: React.MutableRefObject<SceneState> }) {
   const groupRef = useRef<THREE.Group>(null)
   const pointer = useRef({ x: 0, y: 0 })
+  const hasPlayedShatter = useRef(false)
   const { viewport } = useThree()
   const textures = useTexture(CHASE_CARDS.map((c) => c.image))
 
@@ -348,7 +354,18 @@ export function CardShatterFan({ sceneState }: { sceneState: React.MutableRefObj
   }, [textures])
 
   useFrame((state, delta) => {
-    const { scroll } = sceneState.current
+    const { scroll, explode } = sceneState.current
+
+    // One shared "crack" for all three cards breaking at once, rather than
+    // three separate copies -- fires once per rising crossing and re-arms
+    // once `explode` has fully settled back near 0, so scrolling back up and
+    // shattering again later replays it.
+    if (explode > 0.12 && !hasPlayedShatter.current) {
+      hasPlayedShatter.current = true
+      playShatterSound()
+    } else if (explode < 0.02) {
+      hasPlayedShatter.current = false
+    }
 
     // Mouse-follow tilt: ease toward the cursor so the fan settles instead of
     // snapping every frame.
