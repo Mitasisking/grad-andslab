@@ -3,6 +3,7 @@ import { SOCIAL_LINKS } from '../lib/social-links'
 import { FacebookIcon, InstagramIcon, TiktokIcon, WhatsappIcon } from '../components/SocialIcons'
 import { WhatnotBanner } from '../components/WhatnotBanner'
 import { FeaturedCarousel } from '../components/FeaturedCarousel'
+import { CardNavHub } from '../components/home/card-nav-hub'
 import { LivePools } from '../components/LivePools'
 import { getSupabaseRouteClient } from '../lib/supabase-route-client'
 import { getFeaturedProducts } from '../lib/shop/featured-products'
@@ -62,6 +63,8 @@ export default async function HomePage({ searchParams }: HomePageProps) {
         {/* Background decorative glow */}
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-amber-500/5 rounded-full blur-3xl -z-10 pointer-events-none"></div>
       </section>
+
+      <CardNavHub />
 
       <LivePools pools={activePools} />
 
