@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 import { useCart } from '@/lib/cart/cart-context'
 import { formatByRegion } from '@/lib/currency'
 import type { ProductRegion } from '@/lib/shop/product-type'
@@ -40,7 +41,13 @@ export function ProductGrid({ products }: { products: Product[] }) {
     (p) => (p.category !== 'cards' || p.price >= MIN_CARD_PRICE) && p.images.length > 0,
   )
 
-  function handleAddItem(product: Product) {
+  function handleAddItem(e: React.MouseEvent, product: Product) {
+    // The whole card is now a <Link> to /shop/[id] -- without these, this
+    // click would both add to cart AND navigate away to the detail page,
+    // since a click on a descendant still bubbles up to (and activates) the
+    // enclosing anchor.
+    e.preventDefault()
+    e.stopPropagation()
     const result = addItem(product)
     setCartError(result.ok ? null : result.error)
   }
@@ -64,9 +71,10 @@ export function ProductGrid({ products }: { products: Product[] }) {
         {visibleProducts.map((product) => {
         const outOfStock = product.stock <= 0
         return (
-          <div
+          <Link
             key={product.id}
-            className="border rounded-[3px] overflow-hidden flex flex-col"
+            href={`/shop/${product.id}`}
+            className="border rounded-[3px] overflow-hidden flex flex-col transition-all duration-200 ease-out hover:-translate-y-1 hover:shadow-[0_12px_24px_-8px_rgba(232,184,75,0.35)]"
             style={{ borderColor: 'var(--line)' }}
           >
             <div className="aspect-square flex items-center justify-center" style={{ background: 'var(--paper-raised)' }}>
@@ -108,7 +116,7 @@ export function ProductGrid({ products }: { products: Product[] }) {
                 </span>
                 <button
                   type="button"
-                  onClick={() => handleAddItem(product)}
+                  onClick={(e) => handleAddItem(e, product)}
                   disabled={outOfStock}
                   className="px-3 py-1.5 text-[13px] rounded-[3px] disabled:opacity-40"
                   style={{ background: 'var(--vault)', color: 'var(--vault-ink)' }}
@@ -117,7 +125,7 @@ export function ProductGrid({ products }: { products: Product[] }) {
                 </button>
               </div>
             </div>
-          </div>
+          </Link>
           )
         })}
       </div>
