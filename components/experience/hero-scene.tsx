@@ -4,6 +4,12 @@ import { Suspense } from 'react'
 import { Canvas } from '@react-three/fiber'
 import { CardShatterFan } from './card-shatter-fan'
 import type { SceneState } from './scene-state'
+import type { ChaseCard } from './chase-cards'
+
+interface HeroSceneProps {
+  sceneStateRef: React.MutableRefObject<SceneState>
+  chaseCards: ChaseCard[]
+}
 
 /**
  * Fixed full-viewport canvas that sits behind the scrolling HTML content --
@@ -12,7 +18,7 @@ import type { SceneState } from './scene-state'
  * The scroll-tied timeline in experience-page.tsx writes into `sceneStateRef`
  * every frame; this component only owns the render surface.
  */
-export function HeroScene({ sceneStateRef }: { sceneStateRef: React.MutableRefObject<SceneState> }) {
+export function HeroScene({ sceneStateRef, chaseCards }: HeroSceneProps) {
   return (
     <div className="fixed inset-0 -z-10" aria-hidden="true">
       <Canvas
@@ -24,7 +30,7 @@ export function HeroScene({ sceneStateRef }: { sceneStateRef: React.MutableRefOb
         <directionalLight position={[3, 4, 5]} intensity={1} color="#fff3d6" />
         <pointLight position={[-4, -2, -3]} intensity={0.3} color="#e8b84b" />
         <Suspense fallback={null}>
-          <CardShatterFan sceneState={sceneStateRef} />
+          <CardShatterFan sceneState={sceneStateRef} chaseCards={chaseCards} />
         </Suspense>
       </Canvas>
     </div>

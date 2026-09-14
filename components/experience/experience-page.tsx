@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef } from 'react'
+import Link from 'next/link'
 import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { SmoothScrollProvider } from './smooth-scroll-provider'
@@ -8,11 +9,79 @@ import { HeroScene } from './hero-scene'
 import { KineticHeading } from './kinetic-heading'
 import { ParallaxPanel } from './parallax-panel'
 import { MagneticButton } from './magnetic-button'
+import { AudioToggle } from './audio-toggle'
 import { createSceneState } from './scene-state'
+import type { ChaseCard } from './chase-cards'
 
 gsap.registerPlugin(ScrollTrigger)
 
-export function ExperiencePage() {
+/** Shared hover treatment for the two narrative beats that double as nav links -- an underline plus a shift to the same gold used throughout the page's CTAs, so a reader recognizes both as "clickable" the same way. */
+const INLINE_LINK_CLASS =
+  'underline decoration-[#e8b84b]/50 underline-offset-4 transition-colors duration-200 hover:text-[#e8b84b] hover:decoration-[#e8b84b]'
+
+interface JourneyBeat {
+  eyebrow: string
+  heading: React.ReactNode
+  body: string
+  speed: number
+  align: 'left' | 'right'
+}
+
+/**
+ * The actual Cuppa's Cards pipeline, one beat per stage -- replaces the
+ * original 2-panel placeholder copy ("PCG and ACE certified middleman." /
+ * "Clean, polish and prepare services available.") with the full Intake →
+ * Prep → Batching → Grading → Return story, keeping both of those exact
+ * sentences (now as clickable links into the flows they name) rather than
+ * discarding them.
+ */
+const JOURNEY_BEATS: JourneyBeat[] = [
+  {
+    eyebrow: '01 — Intake',
+    heading: (
+      <Link href="/submit" className={INLINE_LINK_CLASS}>
+        PCG and ACE certified middleman.
+      </Link>
+    ),
+    body: 'Every submission starts online: search your card, choose a tier, and it enters our queue in minutes.',
+    speed: 1.4,
+    align: 'right',
+  },
+  {
+    eyebrow: '02 — Prep',
+    heading: (
+      <Link href="/services" className={INLINE_LINK_CLASS}>
+        Clean, polish and prepare services available.
+      </Link>
+    ),
+    body: 'Add a prep pass at checkout and our team gets every card show-ready before it ever reaches a grader.',
+    speed: 0.6,
+    align: 'left',
+  },
+  {
+    eyebrow: '03 — Batching',
+    heading: 'Grouped into a live batch.',
+    body: "Your submission joins others on the same tier and ships the moment that batch fills — track it live from your dashboard.",
+    speed: 1.1,
+    align: 'right',
+  },
+  {
+    eyebrow: '04 — Grading',
+    heading: 'Inspected, graded, sealed.',
+    body: 'PCG or ACE examines every angle under studio light, then seals the verdict for life inside its slab.',
+    speed: 0.8,
+    align: 'left',
+  },
+  {
+    eyebrow: '05 — Return',
+    heading: 'Insured, and on its way home.',
+    body: 'We handle customs and duties, then ship your graded slabs back to your door with full fine-art insurance.',
+    speed: 1.2,
+    align: 'right',
+  },
+]
+
+export function ExperiencePage({ chaseCards }: { chaseCards: ChaseCard[] }) {
   const sceneStateRef = useRef(createSceneState())
   const journeyRef = useRef<HTMLDivElement>(null)
 
@@ -22,7 +91,10 @@ export function ExperiencePage() {
 
     // One scrubbed timeline drives the whole "journey": as the tall #journey
     // section crosses the viewport, it writes 0-1 progress into the shared
-    // scene-state ref that card-shatter-fan.tsx reads every frame.
+    // scene-state ref that card-shatter-fan.tsx reads every frame. Its total
+    // height is just the sum of the 5 beat sections below -- the explode/
+    // rotation math is expressed as fractions of that 0-1 range, so it reads
+    // the same regardless of how many beats (or how tall the section) is.
     const trigger = ScrollTrigger.create({
       trigger: journey,
       start: 'top top',
@@ -46,7 +118,8 @@ export function ExperiencePage() {
 
   return (
     <SmoothScrollProvider>
-      <HeroScene sceneStateRef={sceneStateRef} />
+      <HeroScene sceneStateRef={sceneStateRef} chaseCards={chaseCards} />
+      <AudioToggle />
 
       <main className="relative text-[#f4ead9]">
         {/* THE HOOK -- hero */}
@@ -70,21 +143,39 @@ export function ExperiencePage() {
           </p>
         </section>
 
-        {/* THE JOURNEY -- tall scroll-scrubbed section pinning the canvas behind it */}
-        <div ref={journeyRef} className="relative" style={{ height: '300vh' }}>
-          <div className="sticky top-0 flex h-screen flex-col justify-center gap-40 px-6">
-            <ParallaxPanel speed={1.4} className="ml-auto max-w-md text-right">
-              <h2 className="font-serif text-3xl sm:text-4xl">
-                PCG and ACE certified middleman.
-              </h2>
-            </ParallaxPanel>
-
-            <ParallaxPanel speed={0.6} className="mr-auto max-w-md">
-              <h2 className="font-serif text-3xl sm:text-4xl">
-                Clean, polish and prepare services available.
-              </h2>
-            </ParallaxPanel>
-          </div>
+        {/* THE JOURNEY -- 5 sequential pinned beats telling the actual Cuppa's Cards pipeline */}
+        <div ref={journeyRef} className="relative">
+          {JOURNEY_BEATS.map((beat) => (
+            <div key={beat.eyebrow} className="relative h-[140vh]">
+              <div className="sticky top-0 flex h-screen items-center px-6">
+                <ParallaxPanel
+                  speed={beat.speed}
+                  className={
+                    beat.align === 'right' ? 'ml-auto max-w-md text-right' : 'mr-auto max-w-md text-left'
+                  }
+                >
+                  <span
+                    className="mb-3 block text-xs uppercase tracking-[0.3em] text-[#e8b84b]/70"
+                    style={{ textShadow: '0 2px 16px rgba(10,7,2,0.9)' }}
+                  >
+                    {beat.eyebrow}
+                  </span>
+                  <h2
+                    className="font-serif text-3xl sm:text-4xl"
+                    style={{ textShadow: '0 2px 20px rgba(10,7,2,0.9)' }}
+                  >
+                    {beat.heading}
+                  </h2>
+                  <p
+                    className="mt-4 text-sm text-[#f4ead9]/70"
+                    style={{ textShadow: '0 2px 16px rgba(10,7,2,0.9)' }}
+                  >
+                    {beat.body}
+                  </p>
+                </ParallaxPanel>
+              </div>
+            </div>
+          ))}
         </div>
 
         {/* THE TACTILE INTERFACE */}

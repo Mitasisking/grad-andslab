@@ -2,10 +2,11 @@
 
 import { REGION_SYMBOL } from '@/lib/shop/product-type'
 import { isOutOfPrint } from '@/lib/shop/availability'
+import { matchesGrader, type Grader } from '@/lib/shop/grader'
 import type { Product } from './product-grid'
 
+export type { Grader }
 export type Language = 'en' | 'jp'
-export type Grader = 'PCG' | 'ACE'
 /** 'all' means unfiltered -- matches EMPTY_FILTERS's convention for graders/languages ([] = unfiltered) but printStatus is single-select (the Sealed sub-pills), so 'all' fills that role instead of an empty array. */
 export type PrintStatus = 'all' | 'in-print' | 'out-of-print'
 
@@ -58,22 +59,6 @@ export function deriveSetLanguages(products: Product[]): Record<string, Language
     result[setName] = jp > en ? 'jp' : 'en'
   }
   return result
-}
-
-/**
- * products has no dedicated grading-company column -- graded listings are
- * distinguished from raw ones only by category = 'graded' (app/shop/
- * page.tsx's CATEGORIES), and nothing records which of our two active
- * partners (PCG/ACE — see app/page.tsx's hero copy) actually graded a given
- * slab. Same situation isJapanese above already accepts for language: a
- * text match against the title is the only signal there is, not a real
- * structured field. Sellers/admin should include the grader's name in the
- * listing title (e.g. "PCG 10 Charizard...") for this to actually match —
- * if that stops being reliable, a real products.grading_company column is
- * the fix, not a better regex here.
- */
-export function matchesGrader(title: string, grader: Grader): boolean {
-  return title.toUpperCase().includes(grader)
 }
 
 export function applyShopFilters(products: Product[], filters: ShopFilterState): Product[] {

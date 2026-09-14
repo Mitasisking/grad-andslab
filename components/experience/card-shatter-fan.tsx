@@ -5,7 +5,7 @@ import { useFrame, useThree } from '@react-three/fiber'
 import { useTexture, RoundedBox } from '@react-three/drei'
 import * as THREE from 'three'
 import type { SceneState } from './scene-state'
-import { CHASE_CARDS, GRADER_SCHEMES, type ChaseCard } from './chase-cards'
+import { GRADER_SCHEMES, type ChaseCard } from './chase-cards'
 import { createLabelTexture } from './label-texture'
 import { playShatterSound, playGlintSound } from './sound-effects'
 
@@ -329,22 +329,33 @@ function GradedSlab({ card, texture, sceneState, seed }: GradedSlabProps) {
   )
 }
 
+/** 1x1 transparent GIF -- keeps useTexture's hook call unconditional even in the edge case where the Supabase fetch in chase-cards.ts returns 0 cards (no active Graded stock). */
+const EMPTY_TEXTURE_SOURCE = 'data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw=='
+
 /**
- * The three chase cards (Mew ex, Pikachu ex, Mega Gengar ex) fanned out
- * Mew-left/Pikachu-center/Gengar-right, tilting toward the cursor as a whole.
- * "Raw to Graded" narrative: each card's raw <CardFragments> shatters as
- * `sceneState.explode` rises, then -- at the exact scroll point where all
- * three are maximally scattered -- silently hands off to that card's
- * <GradedSlab>, whose own pieces snap together into an ACE- or PCG-labeled
- * slab as `explode` falls back to 0. All three cards read the same shared
- * `sceneState`, so every phase transition applies to all three at once.
+ * The 3 chase cards -- the site's current top-3-priced active Graded
+ * listings (components/experience/chase-cards.ts's getChaseCards), fanned
+ * out into the fixed Mew-left/Pikachu-center/Gengar-right style layout,
+ * tilting toward the cursor as a whole. "Raw to Graded" narrative: each
+ * card's raw <CardFragments> shatters as `sceneState.explode` rises, then --
+ * at the exact scroll point where all three are maximally scattered --
+ * silently hands off to that card's <GradedSlab>, whose own pieces snap
+ * together into an ACE- or PCG-labeled slab as `explode` falls back to 0.
+ * All three cards read the same shared `sceneState`, so every phase
+ * transition applies to all three at once.
  */
-export function CardShatterFan({ sceneState }: { sceneState: React.MutableRefObject<SceneState> }) {
+export function CardShatterFan({
+  sceneState,
+  chaseCards,
+}: {
+  sceneState: React.MutableRefObject<SceneState>
+  chaseCards: ChaseCard[]
+}) {
   const groupRef = useRef<THREE.Group>(null)
   const pointer = useRef({ x: 0, y: 0 })
   const hasPlayedShatter = useRef(false)
   const { viewport } = useThree()
-  const textures = useTexture(CHASE_CARDS.map((c) => c.image))
+  const textures = useTexture(chaseCards.length > 0 ? chaseCards.map((c) => c.image) : [EMPTY_TEXTURE_SOURCE])
 
   useMemo(() => {
     textures.forEach((texture) => {
@@ -390,8 +401,8 @@ export function CardShatterFan({ sceneState }: { sceneState: React.MutableRefObj
 
   return (
     <group ref={groupRef} scale={THREE.MathUtils.clamp(scaleForViewport, 0.32, 0.55)}>
-      {CHASE_CARDS.map((card, i) => (
-        <group key={card.tcgdexId}>
+      {chaseCards.map((card, i) => (
+        <group key={card.productId}>
           <CardFragments card={card} texture={textures[i]} sceneState={sceneState} seed={i} />
           <GradedSlab card={card} texture={textures[i]} sceneState={sceneState} seed={i} />
         </group>

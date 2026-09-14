@@ -13,6 +13,24 @@
 
 let audioCtx: AudioContext | null = null
 
+// Muted by default -- a raw scroll or the page's own passive gesture-unlock
+// below only satisfies the *browser's* autoplay gate (letting the
+// AudioContext resume at all); it says nothing about whether this visitor
+// actually wants sound. Actual playback additionally requires the explicit
+// opt-in below (AudioToggle), so a first-time visitor never hears anything
+// until they deliberately turn it on.
+let muted = true
+
+export function isAudioMuted(): boolean {
+  return muted
+}
+
+/** Called from AudioToggle's onClick -- a real user gesture, so this is also the reliable place to resume a still-suspended AudioContext. */
+export function setAudioMuted(next: boolean) {
+  muted = next
+  if (!muted) getContext()?.resume().catch(() => {})
+}
+
 function getContext(): AudioContext | null {
   if (typeof window === 'undefined') return null
   if (!audioCtx) {
@@ -59,6 +77,7 @@ function playClick(ctx: AudioContext, time: number, freq: number, peak: number) 
 
 /** A short burst of filtered noise plus a few sharp high "chip" clicks -- reads as cracking plastic/glass, not a uniform thud. */
 export function playShatterSound(intensity = 1) {
+  if (muted) return
   const ctx = getContext()
   if (!ctx) return
   const now = ctx.currentTime
@@ -89,6 +108,7 @@ export function playShatterSound(intensity = 1) {
 
 /** A bright, brief chime -- three detuned sine partials with a quick pitch lift, timed to the slab's glint sweep. `detuneSemitones` spreads the three cards' chimes into a chord instead of an identical stacked copy. */
 export function playGlintSound(detuneSemitones = 0) {
+  if (muted) return
   const ctx = getContext()
   if (!ctx) return
   const now = ctx.currentTime
