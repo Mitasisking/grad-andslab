@@ -23,11 +23,12 @@ export interface Product {
   region: ProductRegion
 }
 
-// Low-value singles (commons pulled straight from Collectr's per-card
-// pricing) clutter the grid without being worth listing individually —
-// hidden below this threshold rather than queried out, so the same
-// products list still works for stock/checkout elsewhere.
-const MIN_CARD_PRICE = 19.99
+// Premium price floor: Raw Cards under R100 aren't sold individually.
+// app/shop/page.tsx's own query already excludes these (and create_order()
+// rejects one at checkout regardless — see 0056_raw_card_price_floor.sql),
+// so this is a second, defense-in-depth layer for any other data source
+// that ever renders through this same grid.
+const MIN_CARD_PRICE = 100
 
 /** Quick add-to-cart, no navigation required — per app/auctions/README.md's Phase 4 file map. */
 export function ProductGrid({ products }: { products: Product[] }) {

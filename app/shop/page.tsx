@@ -64,6 +64,15 @@ export default async function ShopPage({ searchParams }: { searchParams: Promise
   sealedGateCutoff.setFullYear(sealedGateCutoff.getFullYear() - 3)
   const sealedGateFilter = `category.neq.sealed,is_pokemon_center.eq.true,release_date.lte.${sealedGateCutoff.toISOString().slice(0, 10)}`
 
+  // Premium price floor: a Raw Card under R100 is hidden from the public
+  // shop outright, applied unconditionally (including the Pokémon Center
+  // view) since it's a storefront-wide pricing policy, not a category
+  // filter. This is the browse-time half of the rule -- the authoritative
+  // enforcement lives in create_order() itself (0056_raw_card_price_floor.sql),
+  // since a stale cart or an old direct link could otherwise still reach
+  // checkout with one.
+  const RAW_CARD_PRICE_FLOOR_FILTER = 'category.neq.cards,price.gte.100'
+
   // Only is_active products are visible here at all — enforced by
   // products_select_public_active_or_admin (0001_init_schema.sql), not
   // duplicated as a client-side filter. Scoped to one region so every
@@ -80,6 +89,7 @@ export default async function ShopPage({ searchParams }: { searchParams: Promise
     .eq('card_type', activeType)
     .eq('region', activeRegion)
     .eq('is_auction', false)
+    .or(RAW_CARD_PRICE_FLOOR_FILTER)
     .order('created_at', { ascending: false })
 
   if (isPokemonCenterView) {
@@ -117,6 +127,7 @@ export default async function ShopPage({ searchParams }: { searchParams: Promise
       .eq('card_type', 'sports_card')
       .eq('region', activeRegion)
       .eq('is_auction', false)
+      .or(RAW_CARD_PRICE_FLOOR_FILTER)
 
     if (isPokemonCenterView) {
       filteredQuery = filteredQuery.eq('is_pokemon_center', true)
