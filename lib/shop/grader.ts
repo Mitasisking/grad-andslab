@@ -1,4 +1,4 @@
-export type Grader = 'PCG' | 'ACE'
+export type Grader = 'PCG' | 'ACE' | 'PSA'
 
 /**
  * products has no dedicated grading-company column -- graded listings are
@@ -20,9 +20,10 @@ export function matchesGrader(title: string, grader: Grader): boolean {
   return title.toUpperCase().includes(grader)
 }
 
-/** First matching grader in a title, or null if neither PCG nor ACE appears. */
+/** First matching grader in a title, or null if none of PCG, ACE or PSA appear. */
 export function detectGrader(title: string): Grader | null {
   if (matchesGrader(title, 'PCG')) return 'PCG'
   if (matchesGrader(title, 'ACE')) return 'ACE'
+  if (matchesGrader(title, 'PSA')) return 'PSA'
   return null
 }

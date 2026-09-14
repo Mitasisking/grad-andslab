@@ -16,6 +16,7 @@ export interface GraderScheme {
 export const GRADER_SCHEMES: Record<Grader, GraderScheme> = {
   PCG: { bg: '#e9c465', fg: '#241b06', accent: '#7a5a12', gradeText: 'GEM MINT 10' },
   ACE: { bg: '#16233f', fg: '#eaf6ff', accent: '#5ad1e6', gradeText: 'GRADE 10' },
+  PSA: { bg: '#c8161d', fg: '#fdf3e7', accent: '#f2c14e', gradeText: 'GEM MT 10' },
 }
 
 export interface ChaseCard {

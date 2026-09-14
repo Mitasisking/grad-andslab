@@ -99,7 +99,7 @@ interface Props {
 }
 
 const CHECKBOX_LABEL = 'flex items-center gap-2 text-[13.5px] py-1 cursor-pointer'
-const GRADERS: Grader[] = ['PCG', 'ACE']
+const GRADERS: Grader[] = ['PCG', 'ACE', 'PSA']
 
 /** Sidebar filters for the shop grid — set/language facets are derived from whatever products the current category tab loaded, so they never offer a set or language that has zero matches. Checking exactly one language also narrows the Set list to that language's sets, so English/Japanese set names don't clutter each other. */
 export function ProductFilters({ products, filters, onChange, showGraderFilter = false }: Props) {

@@ -169,6 +169,13 @@ export function ShopAdminDashboard() {
           >
             Bulk PCG Import
           </Link>
+          <Link
+            href="/admin/shop/bulk-psa-import"
+            className="px-4 py-2 text-[13.5px] rounded-[3px] border"
+            style={{ borderColor: 'var(--line)', color: 'var(--ink)' }}
+          >
+            Bulk PSA Import
+          </Link>
           <button
             type="button"
             onClick={() => setModalProduct('new')}

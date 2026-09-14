@@ -68,6 +68,24 @@ export function createLabelTexture(grader: Grader, scheme: GraderScheme): THREE.
     ctx.lineTo(w * -0.06, h)
     ctx.fill()
     ctx.restore()
+  } else if (grader === 'PSA') {
+    // Deep red with a thin gold pinstripe -- reads as the familiar red/gold
+    // pairing without reproducing PSA's actual trademarked label art.
+    const bg = ctx.createLinearGradient(0, 0, w, 0)
+    bg.addColorStop(0, '#8f1116')
+    bg.addColorStop(0.5, scheme.bg)
+    bg.addColorStop(1, '#8f1116')
+    ctx.fillStyle = bg
+    ctx.fillRect(0, 0, w, h)
+
+    ctx.strokeStyle = 'rgba(242,193,78,0.35)'
+    ctx.lineWidth = 2
+    ctx.beginPath()
+    ctx.moveTo(0, h * 0.08)
+    ctx.lineTo(w, h * 0.08)
+    ctx.moveTo(0, h * 0.92)
+    ctx.lineTo(w, h * 0.92)
+    ctx.stroke()
   } else {
     // Deep navy with a faint technical grid -- reads as "certified/scanned".
     const bg = ctx.createLinearGradient(0, 0, 0, h)
@@ -91,18 +109,26 @@ export function createLabelTexture(grader: Grader, scheme: GraderScheme): THREE.
   roundedRectPath(ctx, 4, 4, w - 8, h - 8, 14)
   ctx.stroke()
 
+  const BADGE_FILL: Record<Grader, string> = { PCG: '#241b06', ACE: '#eaf6ff', PSA: '#fdf3e7' }
+  const BADGE_NUMBER: Record<Grader, string> = { PCG: scheme.bg, ACE: scheme.accent, PSA: scheme.accent }
+  const SUBTITLE: Record<Grader, string> = {
+    PCG: 'PREMIER CARD GRADING',
+    ACE: 'AUTHENTIC CARD EXAM',
+    PSA: 'PROFESSIONAL SPORTS AUTHENTICATOR',
+  }
+
   // Grade badge, left -- the number a collector's eye actually looks for.
   const badgeR = h * 0.34
   const badgeX = badgeR + 30
   const badgeY = h / 2
   ctx.beginPath()
   ctx.arc(badgeX, badgeY, badgeR, 0, Math.PI * 2)
-  ctx.fillStyle = grader === 'PCG' ? '#241b06' : '#eaf6ff'
+  ctx.fillStyle = BADGE_FILL[grader]
   ctx.fill()
   ctx.lineWidth = 4
   ctx.strokeStyle = scheme.accent
   ctx.stroke()
-  ctx.fillStyle = grader === 'PCG' ? scheme.bg : scheme.accent
+  ctx.fillStyle = BADGE_NUMBER[grader]
   ctx.textAlign = 'center'
   ctx.textBaseline = 'middle'
   ctx.font = `800 ${Math.round(badgeR * 1.15)}px Georgia, serif`
@@ -116,7 +142,7 @@ export function createLabelTexture(grader: Grader, scheme: GraderScheme): THREE.
   ctx.fillText(grader, textX, h * 0.36)
 
   ctx.font = '600 26px Arial, sans-serif'
-  ctx.fillText(grader === 'PCG' ? 'PREMIER CARD GRADING' : 'AUTHENTIC CARD EXAM', textX, h * 0.52)
+  ctx.fillText(SUBTITLE[grader], textX, h * 0.52)
 
   ctx.font = '700 38px Arial, sans-serif'
   ctx.fillStyle = scheme.accent
@@ -130,7 +156,8 @@ export function createLabelTexture(grader: Grader, scheme: GraderScheme): THREE.
   ctx.stroke()
 
   // Pseudo-barcode, bottom-right -- textural cert-lookup flourish, not a real code.
-  drawBarcode(ctx, textX, h * 0.84, w - textX - 40, h * 0.08, grader === 'PCG' ? 17 : 41, scheme.fg)
+  const BARCODE_SEED: Record<Grader, number> = { PCG: 17, ACE: 41, PSA: 29 }
+  drawBarcode(ctx, textX, h * 0.84, w - textX - 40, h * 0.08, BARCODE_SEED[grader], scheme.fg)
 
   const texture = new THREE.CanvasTexture(canvas)
   texture.colorSpace = THREE.SRGBColorSpace

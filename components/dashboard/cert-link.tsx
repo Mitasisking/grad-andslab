@@ -6,13 +6,17 @@ import { ExternalLink } from 'lucide-react'
  * data. The point of "verify this cert" is checking against the grader's
  * live record (a card can be downgraded/reholdered/invalidated after the
  * fact); anything scraped and cached ourselves would go stale and
- * misrepresent itself as current. Only the two graders with a known public
- * cert-lookup page are listed -- PSA is temporarily hidden site-wide
- * anyway (see lib/submission-types.ts's GRADING_COMPANY_OPTIONS).
+ * misrepresent itself as current. PSA's own public cert page joins ACE/PCG
+ * here as of PSA's platform-wide grading support -- new submissions still
+ * can't choose PSA (see lib/submission-types.ts's GRADING_COMPANY_OPTIONS),
+ * but that's a separate, deliberate restriction on what customers can send
+ * us; it doesn't affect linking out for a PSA slab we already stock or
+ * already-submitted PSA cards on file.
  */
 const CERT_LOOKUP_BASE_URL: Record<string, string> = {
   ACE: 'https://acegrading.com/cert/',
   PCG: 'https://pcgpopreport.com/report/',
+  PSA: 'https://www.psacard.com/cert/',
 }
 
 /** So callers can decide whether to render CertLink or a plain-text fallback before rendering, rather than CertLink silently returning null for an unlisted grader. */

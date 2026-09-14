@@ -12,6 +12,7 @@ const GRADER_OPTIONS: { value: Grader | null; label: string }[] = [
   { value: null, label: 'All Graded' },
   { value: 'PCG', label: 'PCG' },
   { value: 'ACE', label: 'ACE' },
+  { value: 'PSA', label: 'PSA' },
 ]
 
 const PRINT_STATUS_OPTIONS: { value: PrintStatus; label: string }[] = [
