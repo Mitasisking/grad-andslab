@@ -1,6 +1,7 @@
 import type { CardType, Sport } from '@/lib/submission-types'
 import type { CardVariant, ProductRegion } from '@/lib/shop/product-type'
 import { REGION_OPTIONS } from '@/lib/shop/product-type'
+import { isOutOfPrint } from '@/lib/shop/availability'
 
 export type { ProductRegion }
 export type ProductCategory = 'sealed' | 'accessories' | 'graded' | 'cards'
@@ -28,6 +29,10 @@ export interface ProductInput {
   /** ISO date string ('YYYY-MM-DD'), or null if not yet known -- see products.release_date (0020_add_product_release_date.sql). */
   releaseDate: string | null
   isPokemonCenter: boolean
+  /** Manual curation for "The Cuppa's Cards Vault" homepage carousel -- see 0057_add_product_is_vault_grail.sql. Blocked on a Sealed product until it's out of print (validated below). */
+  isVaultGrail: boolean
+  /** Optional ~100-word collector story, AI-drafted then admin-reviewed -- see 0058_add_product_lore.sql and /api/admin/generate-lore. */
+  lore: string | null
   cardType: CardType
   setName: string | null
   cardNumber: string | null
@@ -67,6 +72,9 @@ export function validateProductInput(body: Partial<ProductInput>): string | null
   if (body.releaseDate && Number.isNaN(Date.parse(body.releaseDate))) {
     return 'Release date must be a valid date.'
   }
+  if (body.isVaultGrail && body.category === 'sealed' && isOutOfPrint(body.releaseDate ?? null) === false) {
+    return 'Modern sealed products cannot be featured in the Vault.'
+  }
   if (!body.region || !VALID_REGIONS.includes(body.region)) {
     return 'A valid region is required.'
   }
@@ -89,6 +97,8 @@ export function toProductRow(body: ProductInput) {
     is_auction: body.isAuction ?? false,
     release_date: body.releaseDate || null,
     is_pokemon_center: body.isPokemonCenter ?? false,
+    is_vault_grail: body.isVaultGrail ?? false,
+    lore: body.lore?.trim() || null,
     card_type: cardType,
     set_name: body.setName?.trim() || null,
     card_number: body.cardNumber?.trim() || null,

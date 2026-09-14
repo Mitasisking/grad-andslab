@@ -6,6 +6,7 @@ import type { CardType, Sport } from '@/lib/submission-types'
 import { CARD_VARIANT_OPTIONS, REGION_OPTIONS } from '@/lib/shop/product-type'
 import type { CardVariant, ProductRegion } from '@/lib/shop/product-type'
 import type { ProductCategory, ProductFranchise } from '@/lib/admin/product-input'
+import { isOutOfPrint } from '@/lib/shop/availability'
 import { uploadProductImage } from '@/lib/admin/product-image-upload'
 import { formatByRegion } from '@/lib/currency'
 import { ProductThumbnail } from './product-thumbnail'
@@ -43,6 +44,8 @@ interface Draft {
   isAuction: boolean
   releaseDate: string
   isPokemonCenter: boolean
+  isVaultGrail: boolean
+  lore: string
   cardType: CardType
   setName: string
   cardNumber: string
@@ -67,6 +70,8 @@ function draftFromProduct(product: AdminProduct | null): Draft {
     isAuction: product?.is_auction ?? false,
     releaseDate: product?.release_date ?? '',
     isPokemonCenter: product?.is_pokemon_center ?? false,
+    isVaultGrail: product?.is_vault_grail ?? false,
+    lore: product?.lore ?? '',
     cardType: product?.card_type ?? 'pokemon',
     setName: product?.set_name ?? '',
     cardNumber: product?.card_number ?? '',
@@ -95,11 +100,22 @@ export function ProductFormModal({ product, onClose, onSaved }: Props) {
   const [error, setError] = useState<string | null>(null)
   const [uploading, setUploading] = useState(false)
   const [uploadError, setUploadError] = useState<string | null>(null)
+  const [generatingLore, setGeneratingLore] = useState(false)
+  const [loreError, setLoreError] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   function update<K extends keyof Draft>(key: K, value: Draft[K]) {
     setDraft((prev) => ({ ...prev, [key]: value }))
   }
+
+  // Vintage rule: a Sealed product can only be featured in the Vault once
+  // it's confirmed out of print (`false` means confirmed modern -- an
+  // unknown release date, `null`, doesn't block, since we can't prove it's
+  // modern either). Derived (not stored in state) so switching a
+  // Vault-featured product to a fresh Sealed release can't leave a stale
+  // `true` sitting behind a disabled-but-still-checked checkbox.
+  const isModernSealed = draft.category === 'sealed' && isOutOfPrint(draft.releaseDate || null) === false
+  const effectiveVaultGrail = draft.isVaultGrail && !isModernSealed
 
   async function handleFileSelected(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -115,6 +131,32 @@ export function ProductFormModal({ product, onClose, onSaved }: Props) {
       setUploadError(err instanceof Error ? err.message : 'Could not upload image.')
     } finally {
       setUploading(false)
+    }
+  }
+
+  async function handleGenerateLore() {
+    if (!draft.title.trim()) {
+      setLoreError('Add a name first.')
+      return
+    }
+    setGeneratingLore(true)
+    setLoreError(null)
+    try {
+      const res = await fetch('/api/admin/generate-lore', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cardTitle: draft.title.trim(), cardSet: draft.setName.trim() || undefined }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        setLoreError(data.error ?? 'Could not generate lore.')
+        return
+      }
+      update('lore', data.lore)
+    } catch {
+      setLoreError('Could not generate lore.')
+    } finally {
+      setGeneratingLore(false)
     }
   }
 
@@ -145,6 +187,8 @@ export function ProductFormModal({ product, onClose, onSaved }: Props) {
       isAuction: draft.isAuction,
       releaseDate: draft.releaseDate.trim() || null,
       isPokemonCenter: draft.isPokemonCenter,
+      isVaultGrail: effectiveVaultGrail,
+      lore: draft.lore.trim() || null,
       cardType: draft.cardType,
       setName: draft.setName.trim() || null,
       cardNumber: draft.cardNumber.trim() || null,
@@ -356,6 +400,20 @@ export function ProductFormModal({ product, onClose, onSaved }: Props) {
               />
               Pokémon Center exclusive
             </label>
+            <span title={isModernSealed ? 'Modern sealed products cannot be featured in the Vault.' : undefined}>
+              <label
+                className="flex items-center gap-2 text-[13.5px]"
+                style={{ color: isModernSealed ? 'var(--ink-muted)' : 'var(--ink)' }}
+              >
+                <input
+                  type="checkbox"
+                  checked={effectiveVaultGrail}
+                  disabled={isModernSealed}
+                  onChange={(e) => update('isVaultGrail', e.target.checked)}
+                />
+                Feature in Vault
+              </label>
+            </span>
           </div>
           {draft.isAuction && (
             <p className="text-[11.5px] -mt-2" style={{ color: 'var(--ink-muted)' }}>
@@ -367,6 +425,11 @@ export function ProductFormModal({ product, onClose, onSaved }: Props) {
             <p className="text-[11.5px] -mt-2" style={{ color: 'var(--ink-muted)' }}>
               Shows under the Shop&apos;s &quot;Pokémon Center&quot; category pill regardless of category or release
               date, and skips the Sealed category&apos;s 3-year time-gate.
+            </p>
+          )}
+          {effectiveVaultGrail && (
+            <p className="text-[11.5px] -mt-2" style={{ color: 'var(--ink-muted)' }}>
+              Shows in &quot;The Cuppa&apos;s Cards Vault&quot; homepage carousel.
             </p>
           )}
 
@@ -416,6 +479,40 @@ export function ProductFormModal({ product, onClose, onSaved }: Props) {
               className={inputClass}
               style={inputStyle}
             />
+          </div>
+
+          <div>
+            <div className="flex items-center justify-between mb-1">
+              <label className={labelClass} style={{ ...labelStyle, marginBottom: 0 }}>
+                Card lore
+              </label>
+              <button
+                type="button"
+                onClick={handleGenerateLore}
+                disabled={generatingLore}
+                className="text-[12.5px] underline underline-offset-2 disabled:opacity-50"
+                style={{ color: 'var(--seal)' }}
+              >
+                {generatingLore ? 'Generating…' : '✨ Generate Lore'}
+              </button>
+            </div>
+            <textarea
+              rows={4}
+              value={draft.lore}
+              onChange={(e) => update('lore', e.target.value)}
+              className={inputClass}
+              style={inputStyle}
+              placeholder="A short, ~100-word collector story for high-end chase cards…"
+            />
+            {loreError && (
+              <p className="text-[12px] mt-1" style={{ color: 'var(--danger)' }}>
+                {loreError}
+              </p>
+            )}
+            <p className="text-[11.5px] mt-1" style={{ color: 'var(--ink-muted)' }}>
+              Optional. Shown on the shop card as &quot;The Story of this Card&quot; when set. Review and edit the
+              generated text before saving.
+            </p>
           </div>
 
           <div className="pt-2 border-t" style={{ borderColor: 'var(--line)' }}>

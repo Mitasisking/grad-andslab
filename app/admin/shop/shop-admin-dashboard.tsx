@@ -7,6 +7,7 @@ import { ProductFormModal } from './product-form-modal'
 import { ProductThumbnail } from './product-thumbnail'
 import type { AdminProduct } from './types'
 import type { ProductCategory, ProductFranchise } from '@/lib/admin/product-input'
+import { isOutOfPrint } from '@/lib/shop/availability'
 
 const CATEGORY_LABEL: Record<string, string> = {
   sealed: 'Sealed',
@@ -54,6 +55,7 @@ export function ShopAdminDashboard() {
   const [franchiseFilter, setFranchiseFilter] = useState<ProductFranchise | 'all'>('all')
   const [categoryFilter, setCategoryFilter] = useState<ProductCategory | 'all'>('all')
   const [togglingAuctionId, setTogglingAuctionId] = useState<string | null>(null)
+  const [togglingVaultId, setTogglingVaultId] = useState<string | null>(null)
 
   const filteredProducts = products.filter(
     (p) =>
@@ -106,6 +108,24 @@ export function ShopAdminDashboard() {
       return
     }
     setProducts((prev) => prev.map((p) => (p.id === product.id ? { ...p, is_auction: nextValue } : p)))
+  }
+
+  async function handleToggleVault(product: AdminProduct) {
+    setTogglingVaultId(product.id)
+    const nextValue = !product.is_vault_grail
+    const res = await fetch(`/api/admin/products/${product.id}/vault-grail`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ isVaultGrail: nextValue }),
+    })
+    setTogglingVaultId(null)
+
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}))
+      setError(data.error ?? 'Could not update Vault status.')
+      return
+    }
+    setProducts((prev) => prev.map((p) => (p.id === product.id ? { ...p, is_vault_grail: nextValue } : p)))
   }
 
   function handleSaved(saved: AdminProduct) {
@@ -223,6 +243,11 @@ export function ShopAdminDashboard() {
 
             {filteredProducts.map((product) => {
               const outOfStock = product.stock <= 0
+              // Vintage rule: a Sealed product can only be featured in the
+              // Vault once it's confirmed out of print -- `false` here means
+              // confirmed modern (an unknown release_date, `null`, doesn't
+              // block, since we can't prove it's modern either).
+              const isModernSealed = product.category === 'sealed' && isOutOfPrint(product.release_date) === false
               return (
                 <div
                   key={product.id}
@@ -242,6 +267,11 @@ export function ShopAdminDashboard() {
                     {product.is_auction && (
                       <span className="text-[11px] block" style={{ color: 'var(--seal)' }}>
                         Sent to auction
+                      </span>
+                    )}
+                    {product.is_vault_grail && (
+                      <span className="text-[11px] block" style={{ color: 'var(--seal)' }}>
+                        Featured in Vault
                       </span>
                     )}
                   </div>
@@ -289,6 +319,21 @@ export function ShopAdminDashboard() {
                           ? 'Remove from auction'
                           : 'Send to auction'}
                     </button>
+                    <span title={isModernSealed ? 'Modern sealed products cannot be featured in the Vault.' : undefined}>
+                      <button
+                        type="button"
+                        onClick={() => handleToggleVault(product)}
+                        disabled={togglingVaultId === product.id || isModernSealed}
+                        className="text-[12.5px] underline underline-offset-2 disabled:opacity-50 disabled:no-underline"
+                        style={{ color: product.is_vault_grail ? 'var(--seal)' : 'var(--ink-muted)' }}
+                      >
+                        {togglingVaultId === product.id
+                          ? '…'
+                          : product.is_vault_grail
+                            ? 'Remove from Vault'
+                            : 'Feature in Vault'}
+                      </button>
+                    </span>
                     <button
                       type="button"
                       onClick={() => setModalProduct(product)}

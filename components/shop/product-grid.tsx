@@ -21,6 +21,8 @@ export interface Product {
   card_variant?: string | null
   player_name?: string | null
   region: ProductRegion
+  /** Optional ~100-word collector story -- see 0058_add_product_lore.sql. */
+  lore?: string | null
 }
 
 // Premium price floor: Raw Cards under R100 aren't sold individually.
@@ -86,6 +88,19 @@ export function ProductGrid({ products }: { products: Product[] }) {
                 <p className="text-[12.5px] mt-1 line-clamp-2" style={{ color: 'var(--ink-muted)' }}>
                   {product.description}
                 </p>
+              )}
+              {product.lore && (
+                <div className="mt-3 pl-3 border-l-2" style={{ borderColor: 'var(--vault)' }}>
+                  <p
+                    className="text-[10.5px] uppercase tracking-wide"
+                    style={{ color: 'var(--ink-muted)', letterSpacing: '0.06em' }}
+                  >
+                    The Story of this Card
+                  </p>
+                  <p className="text-[12.5px] italic mt-1 line-clamp-4" style={{ color: 'var(--ink-muted)' }}>
+                    {product.lore}
+                  </p>
+                </div>
               )}
               <div className="flex items-center justify-between mt-auto pt-4">
                 <span className="text-[15px]" style={{ fontVariantNumeric: 'tabular-nums', color: 'var(--ink)' }}>

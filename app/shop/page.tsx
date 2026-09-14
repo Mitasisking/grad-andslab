@@ -10,7 +10,7 @@ import type { ShopUrlParams } from '@/lib/shop/shop-url'
 const VALID_REGIONS = new Set(REGION_OPTIONS.map((r) => r.value))
 
 const PRODUCT_COLUMNS =
-  'id, title, description, category, price, stock, images, set_name, release_date, card_type, sport, brand, card_variant, player_name, region'
+  'id, title, description, category, price, stock, images, set_name, release_date, card_type, sport, brand, card_variant, player_name, region, lore'
 
 function splitParam(value: string | undefined): string[] {
   return value ? value.split(',').filter(Boolean) : []
