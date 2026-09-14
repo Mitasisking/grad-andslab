@@ -38,7 +38,17 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ verified: false, error: 'No PSA cert found with that number.' }, { status: 404 })
     }
     if (!res.ok) {
-      return NextResponse.json({ error: `PSA lookup failed (${res.status}).` }, { status: 502 })
+      // Surface PSA's own response body (not just the status) -- a 401/403
+      // is almost always a token problem (missing "Bearer " expectation,
+      // wrong header name, token not yet active/scoped for this endpoint),
+      // and PSA's error text says which without needing to guess from the
+      // status code alone.
+      const bodyText = await res.text().catch(() => '')
+      console.error('psa verify-cert: PSA responded', res.status, bodyText)
+      return NextResponse.json(
+        { error: `PSA lookup failed (${res.status}).`, detail: bodyText.slice(0, 500) },
+        { status: 502 },
+      )
     }
 
     const data = await res.json()

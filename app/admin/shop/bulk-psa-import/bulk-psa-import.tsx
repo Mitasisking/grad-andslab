@@ -350,7 +350,8 @@ export function BulkPsaImport() {
       if (res.status === 404) {
         updateRow(certNumber, { verify: 'not_found', verifyMessage: data.error ?? 'No PSA cert found.' })
       } else if (!res.ok) {
-        updateRow(certNumber, { verify: 'error', verifyMessage: data.error ?? 'Could not verify.' })
+        const message = data.detail ? `${data.error} ${data.detail}` : (data.error ?? 'Could not verify.')
+        updateRow(certNumber, { verify: 'error', verifyMessage: message })
       } else {
         updateRow(certNumber, { verify: 'verified', verifyMessage: undefined })
       }
