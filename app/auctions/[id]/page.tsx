@@ -1,9 +1,16 @@
-import { notFound } from 'next/navigation'
+import { notFound, redirect } from 'next/navigation'
 import { getSupabaseRouteClient } from '@/lib/supabase-route-client'
 import { AuctionDetail } from './auction-detail'
 import type { AuctionRow, BidRow } from '@/lib/auction-types'
 
 export default async function AuctionPage({ params }: { params: Promise<{ id: string }> }) {
+  // Live Auctions is shelved for a future Phase 2 -- see app/auctions/page.tsx.
+  // Widened to `boolean` (not the literal `false`) so TypeScript can't prove
+  // this branch always taken and mark the rest of the function unreachable --
+  // that would silently drop the null-narrowing the code below relies on.
+  const AUCTIONS_ENABLED = false as boolean
+  if (!AUCTIONS_ENABLED) redirect('/shop')
+
   const { id } = await params
   const supabase = await getSupabaseRouteClient()
 

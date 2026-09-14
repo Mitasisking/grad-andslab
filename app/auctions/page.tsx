@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { redirect } from 'next/navigation'
 import type { Metadata } from 'next'
 import { getSupabaseRouteClient } from '@/lib/supabase-route-client'
 import { formatZAR, formatGBP, formatUSD } from '@/lib/currency'
@@ -63,6 +64,15 @@ const LISTING_COLUMNS = 'id, title, description, images, starting_price, current
  * this page's only job now is to list what's active and link there.
  */
 export default async function AuctionsPage() {
+  // Live Auctions is shelved for a future Phase 2 -- the schema, bidding
+  // logic and this page all stay intact, just unreachable, so re-enabling
+  // later is a matter of flipping this flag. Widened to `boolean` (not the
+  // literal `false`) so TypeScript can't prove this branch always taken and
+  // mark the rest of the function unreachable -- that would silently drop
+  // the null-narrowing the code below relies on.
+  const AUCTIONS_ENABLED = false as boolean
+  if (!AUCTIONS_ENABLED) redirect('/shop')
+
   const supabase = await getSupabaseRouteClient()
 
   const [{ data }, { data: comingSoonData, error: comingSoonError }, rate] = await Promise.all([

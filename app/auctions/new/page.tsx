@@ -15,6 +15,13 @@ export default async function NewAuctionPage({
 }: {
   searchParams: Promise<{ itemId?: string }>
 }) {
+  // Live Auctions is shelved for a future Phase 2 -- see app/auctions/page.tsx.
+  // Widened to `boolean` (not the literal `false`) so TypeScript can't prove
+  // this branch always taken and mark the rest of the function unreachable --
+  // that would silently drop the null-narrowing the code below relies on.
+  const AUCTIONS_ENABLED = false as boolean
+  if (!AUCTIONS_ENABLED) redirect('/shop')
+
   const { itemId } = await searchParams
   if (!itemId) redirect('/')
 

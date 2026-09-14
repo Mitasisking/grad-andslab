@@ -1,7 +1,10 @@
 import Link from 'next/link'
 import { SOCIAL_LINKS } from '../lib/social-links'
 import { FacebookIcon, InstagramIcon, TiktokIcon, WhatsappIcon } from '../components/SocialIcons'
-import { WhatnotBanner } from '../components/WhatnotBanner'
+// Whatnot Live is shelved for now (launch is focused purely on grading
+// submissions and shop inventory) -- component and import kept, just
+// commented out, so re-enabling later is a two-line uncomment.
+// import { WhatnotBanner } from '../components/WhatnotBanner'
 import { FeaturedCarousel } from '../components/FeaturedCarousel'
 import { LivePools } from '../components/LivePools'
 import { getSupabaseRouteClient } from '../lib/supabase-route-client'
@@ -65,7 +68,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
 
       <LivePools pools={activePools} />
 
-      <WhatnotBanner />
+      {/* <WhatnotBanner /> */}
 
       <FeaturedCarousel products={featuredProducts} />
 
