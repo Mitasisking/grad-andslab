@@ -35,6 +35,16 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'cardTitle is required' }, { status: 400 })
   }
 
+  // Checked explicitly (not just left to fail inside the try/catch below)
+  // so a missing key reports as exactly that instead of collapsing into the
+  // same generic "Could not generate lore right now." every other failure
+  // (a real Anthropic outage, a bad response) also produces -- same
+  // reasoning as app/api/admin/psa/verify-cert/route.ts's PSA_API_TOKEN check.
+  if (!process.env.ANTHROPIC_API_KEY) {
+    console.error('generate-lore: ANTHROPIC_API_KEY is not configured')
+    return NextResponse.json({ error: 'ANTHROPIC_API_KEY is not configured.' }, { status: 500 })
+  }
+
   try {
     const message = await getAnthropicClient().messages.create({
       model: MODEL,
@@ -62,6 +72,11 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ lore })
   } catch (err) {
     console.error('generate-lore: Anthropic request failed', err)
-    return NextResponse.json({ error: 'Could not generate lore right now.' }, { status: 502 })
+    // Surface the SDK's own message (e.g. "invalid x-api-key", "overloaded_error")
+    // rather than just a generic string -- same reasoning as PSA verify-cert's
+    // `detail` field: a specific cause beats a guess when this shows up in the
+    // admin UI.
+    const detail = err instanceof Error ? err.message : undefined
+    return NextResponse.json({ error: 'Could not generate lore right now.', detail }, { status: 502 })
   }
 }

@@ -149,12 +149,15 @@ export function ProductFormModal({ product, onClose, onSaved }: Props) {
       })
       const data = await res.json()
       if (!res.ok) {
-        setLoreError(data.error ?? 'Could not generate lore.')
+        const message = data.detail ? `${data.error} ${data.detail}` : (data.error ?? 'Could not generate lore.')
+        console.error('Generate Lore failed', res.status, data)
+        setLoreError(message)
         return
       }
       update('lore', data.lore)
-    } catch {
-      setLoreError('Could not generate lore.')
+    } catch (err) {
+      console.error('Generate Lore request failed', err)
+      setLoreError('Could not generate lore — check your connection and try again.')
     } finally {
       setGeneratingLore(false)
     }
