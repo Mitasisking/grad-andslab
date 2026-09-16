@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { SOCIAL_LINKS } from '../lib/social-links'
-import { FacebookIcon, InstagramIcon, TiktokIcon, WhatsappIcon } from '../components/SocialIcons'
+import { WhatsappIcon } from '../components/SocialIcons'
 // Whatnot Live is shelved for now (launch is focused purely on grading
 // submissions and shop inventory) -- component and import kept, just
 // commented out, so re-enabling later is a two-line uncomment.
@@ -135,64 +135,6 @@ export default async function HomePage({ searchParams }: HomePageProps) {
           </div>
         </div>
       </section>
-
-      {/* Footer */}
-      <footer className="bg-slate-900 py-12">
-        <div className="max-w-6xl mx-auto px-6 flex flex-col md:flex-row justify-between items-center gap-8 md:gap-4 text-sm text-slate-500">
-          <p>© {new Date().getFullYear()} Cuppa&apos;s Cards. All rights reserved.</p>
-          <div className="flex gap-6">
-            <Link href="/vendor" className="hover:text-amber-400 transition">Vendor Inquiries</Link>
-            <Link href="/terms" className="hover:text-amber-400 transition">Terms of Service</Link>
-            <Link href="/privacy" className="hover:text-amber-400 transition">Privacy Policy</Link>
-            <Link href="/contact" className="hover:text-amber-400 transition">Contact Us</Link>
-          </div>
-          <div className="flex items-center gap-4">
-            <span className="text-xs font-semibold uppercase tracking-wide text-slate-600">Follow Us</span>
-            <div className="flex items-center gap-4">
-              <a
-                href={SOCIAL_LINKS.facebook}
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-label="Cuppa's Cards on Facebook"
-                className="flex items-center gap-1.5 hover:text-amber-400 transition"
-              >
-                <FacebookIcon className="w-4 h-4" />
-                <span>Facebook</span>
-              </a>
-              <a
-                href={SOCIAL_LINKS.instagram}
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-label="Cuppa's Cards on Instagram"
-                className="flex items-center gap-1.5 hover:text-amber-400 transition"
-              >
-                <InstagramIcon className="w-4 h-4" />
-                <span>Instagram</span>
-              </a>
-              <a
-                href={SOCIAL_LINKS.tiktok}
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-label="Cuppa's Cards on TikTok"
-                className="flex items-center gap-1.5 hover:text-amber-400 transition"
-              >
-                <TiktokIcon className="w-4 h-4" />
-                <span>TikTok</span>
-              </a>
-              <a
-                href={SOCIAL_LINKS.whatsapp}
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-label="Cuppa's Cards on WhatsApp"
-                className="flex items-center gap-1.5 hover:text-[#25D366] transition"
-              >
-                <WhatsappIcon className="w-4 h-4" />
-                <span>WhatsApp</span>
-              </a>
-            </div>
-          </div>
-        </div>
-      </footer>
     </div>
   )
 }
