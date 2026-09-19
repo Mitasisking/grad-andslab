@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAdmin } from '@/lib/require-admin'
+import { getSupabaseServerClient } from '@/lib/supabase-server'
 import { getContact } from '@/lib/email/send-order-confirmation'
 import { sendGradingUpdate } from '@/lib/email/send-grading-update'
 import type { GradingCompany, ProductRegion, SubmissionTier } from '@/lib/submission-types'
@@ -59,7 +60,13 @@ export async function POST(request: NextRequest) {
       .select('card_name, set_name, card_number')
       .eq('submission_id', updated.id)
 
-    const { fullName, email } = await getContact(supabase, updated.user_id)
+    // getContact's auth.admin.getUserById call needs the service-role
+    // client -- the Admin API namespace isn't reachable from the
+    // session-scoped `supabase` requireAdmin() hands back, even though that
+    // session belongs to an admin (RLS admin access and Admin API access
+    // are two different things; confirmed live -- passing the RLS-scoped
+    // client here silently returned no email for a real test submission).
+    const { fullName, email } = await getContact(getSupabaseServerClient(), updated.user_id)
     if (email) {
       await sendGradingUpdate({
         stage: 'RECEIVED_HQ',
