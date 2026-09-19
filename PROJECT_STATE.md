@@ -13,16 +13,13 @@ This file is updated at the end of every response that builds or modifies a comp
 
 ## Current Milestone
 
-**Phase: In-Person Event Drop-Off — click-tested, one bug found and fixed.** The ACE tier
-overhaul, ACE Label Options, and grading notification system stage 1 (`ORDER_CONFIRMED`) are
-**committed and pushed** (`4026e1d` on `main`). The in-person event drop-off feature itself is
-**committed and pushed** (`df13969`), migration 0062 is live on production. This session's
-click-test of the admin events toggle and booth-handover flow exercised the real code path
-end-to-end (via two real test submissions on production — see below) and found one real bug,
-now fixed but **not yet committed**: `app/api/admin/intake/booth-handover/route.ts` passed the
-wrong Supabase client into `getContact`, silently losing the customer's email on every booth
-handover. Two older audit items remain open product/schema decisions — see
-**Blocked / Needs a Decision** below.
+**Phase: grading-notification call sites.** ACE tier overhaul + Label Options + notification
+system stage 1 (`4026e1d`), In-Person Event Drop-Off (`df13969`), and the booth-handover
+contact-lookup bug fix found via this session's click-testing (`0de1894`) are all **committed
+and pushed** to `main`, migrations 0059-0062 all live on production. Active work: wiring real
+call sites for the notification system — `ORDER_CONFIRMED` now fires from the Payfast webhook
+on successful grading payment (**uncommitted**, see below). Two older audit items remain open
+product/schema decisions — see **Blocked / Needs a Decision** below.
 
 ---
 
@@ -187,49 +184,37 @@ up today — not a to-do list.
 ## Uncommitted work in the tree right now
 
 **Committed and pushed**: ACE tier overhaul + ACE Label Options + notification system stage 1
-(`4026e1d`); In-Person Event Drop-Off (`df13969`), migration 0062 live on production.
+(`4026e1d`); In-Person Event Drop-Off (`df13969`); booth-handover contact-lookup bug fix
+(`0de1894`), found via this session's click-testing of the admin events toggle and
+booth-handover flow (both confirmed working live via real test submissions on production,
+since cleaned up and independently re-verified — full detail is in that commit's history, not
+repeated here). Migrations 0059-0062 all live on production.
 
-**Uncommitted — one bug fix**, found via live click-testing this session:
-- `app/api/admin/intake/booth-handover/route.ts` — was calling `getContact(supabase, ...)` with
-  the RLS-scoped session client `requireAdmin()` hands back. `getContact` needs
-  `auth.admin.getUserById`, which only works with the service-role client — admin RLS access and
-  Admin API access are different things. This silently dropped the customer's email on every
-  real booth handover (confirmed live: server log showed "no contact email" for a real test
-  submission). Fixed by passing `getSupabaseServerClient()` instead. `tsc`/`eslint` clean.
-
-**Click-test results this session** (admin events toggle + booth-handover flow, per your
-request):
-- **Admin events toggle** (`/admin/events`): confirmed working — slug + live toggle save and
-  persist correctly (`information_schema`/direct read confirmed the row updated).
-- **In-person mode detection, both paths**: confirmed working live — the `?intake=in-person`
-  URL param path (tested earlier) and the global-toggle fallback path (tested this session, no
-  URL params, just the admin toggle) both correctly drive Step 3's free "In-Person Drop-Off"
-  override.
-- **Full checkout → confirmation screen**: confirmed working live, via two real test submissions
-  created against production under the "Test Buyer" account (existing designated test identity).
-  Confirmed PayFast integration is already sandboxed (`sandbox.payfast.co.za`, not live) — no
-  real-payment risk in this flow at all. The confirmation screen correctly shows "AWAITING BOOTH
-  HANDOVER", a real scannable QR code, and the 4-digit PIN.
-- **Booth-handover PIN verification**: confirmed working live, including the fix above —
-  verifying the PIN atomically sets `intake_verified_at`, reuses the existing
-  `IntakeOrderPanel` display, and the confirmation screen's PIN/QR block disappears on its own
-  via the existing realtime hook (no extra wiring needed, confirmed).
-- **`RECEIVED_HQ` email send**: code path confirmed correct after the fix (reaches Resend
-  successfully), but actual delivery is blocked by an **unrelated, pre-existing account
-  issue**: Resend rejects the send with "The cuppacards.com domain is not verified" (403). This
-  affects every email this app sends, not just this one — it's an account/DNS setup task outside
-  what a code fix can resolve, not something introduced by this session's work.
-- **Test-data cleanup: done, independently verified.** The two test submissions
-  (`cab95223-007e-46ae-9950-6876a89ecaf7`, `ac10d150-8393-4461-87ec-105ad4b71658`) and their
-  `ledger_entries` are deleted (`submission_items` cascaded automatically); `ACE ace_basic Batch #1`
-  is restored to its correct pre-test state (`current_count=18`, `capacity=20`, `status=open`,
-  `closed_at=null` — there's no on-delete trigger to reverse a pool's capacity bump automatically,
-  so this had to be done explicitly alongside the deletes, not just the two submission rows).
-  You ran this SQL yourself (the sandbox correctly blocked me from running the raw
-  `DELETE`/`UPDATE` directly, same as it did for the earlier `UPDATE` attempt) — verified
-  independently afterward via fresh read-only queries, not by trusting the "i ran it" report at
-  face value. The live-event toggle switched on mid-test was already switched back off and
-  confirmed off earlier. Production is back to its pre-test state.
+**Uncommitted — `ORDER_CONFIRMED` call site wired**:
+- `lib/email/send-grading-update.ts` — new `sendOrderConfirmedEmail(submissionId)`: fetches the
+  submission + items + contact (via the now-exported `getContact`, using the service-role
+  client — same lesson as the booth-handover fix, `getContact`'s `auth.admin.getUserById` needs
+  it), builds the `OrderConfirmedPayload`, and calls `sendGradingUpdate`. Skips entirely for
+  `intake_channel = 'in_person_event'` — that customer already has their PIN/QR on the dashboard
+  and has nothing to ship, so a "here's your packing slip" email would be actively confusing.
+  `packingSlipUrl` points at the existing `/dashboard/submissions/[id]` page, not a dedicated
+  packing-slip route — `components/submit/packing-slip.tsx` is still unwired to any route (see
+  its earlier note above); building that route is separate future work, not done here.
+- `app/api/webhooks/payfast/route.ts` — calls `sendOrderConfirmedEmail(mPaymentId)` alongside
+  the existing `sendSubmissionConfirmationEmail` call, both independently best-effort
+  (`.catch()`-wrapped, matching the file's existing pattern exactly). **Note**: a customer now
+  gets two emails on successful grading payment — the existing line-item receipt and this new
+  pipeline-stage email. Whether to merge them is a product decision, not made here.
+- `tsc`/`eslint`/`npm run build` all clean. **Not click-tested live** — doing so would require
+  either faking a real signed Payfast ITN callback (its own `/validate` round-trip makes that
+  hard to do authentically) or a full real sandbox payment; either way, actual email delivery is
+  blocked regardless by the pre-existing Resend domain-verification issue noted below, so a live
+  test wouldn't prove more than the code review + build already have. Verified by careful reading
+  against the same patterns already live-tested in `RECEIVED_HQ`'s call site.
+- **`RECEIVED_HQ` email delivery is still blocked** by an unrelated, pre-existing account issue:
+  Resend rejects sends with "The cuppacards.com domain is not verified" (403). This affects every
+  email this app sends, including this new `ORDER_CONFIRMED` call site — an account/DNS setup
+  task, not something a code fix can resolve.
 - **Not built, by design** (see Blocked / Needs a Decision below): a return-shipping selector
   ("Return Courier to Door" / "Vault / Marketplace Listing") — the original request said to
   "retain" this, but no such selector exists anywhere in the codebase to retain. Flagged and
@@ -255,9 +240,11 @@ request):
 
 ## Immediate Next Task
 
-Click-testing and cleanup are both done. Waiting on you to commit the one bug fix above
-(`booth-handover/route.ts`'s contact-lookup client). After that: wire a real call site for
-`sendGradingUpdate('ORDER_CONFIRMED', ...)` — still nothing invokes it; fix the Resend
-domain-verification issue (account/DNS task, not code) before `RECEIVED_HQ`/any email can
-actually deliver; the remaining older audit items and the deferred return-shipping selector
-above.
+`ORDER_CONFIRMED` call site is wired and locally verified (`tsc`/`eslint`/build), waiting on your
+go-ahead to commit. After that: fix the Resend domain-verification issue (account/DNS task, not
+code) — nothing this app sends can actually deliver until that's resolved, which now includes
+both `RECEIVED_HQ` and `ORDER_CONFIRMED`; the remaining 6 notification stages still have no call
+site (`COLLECTION_BOOKED`, `DISPATCHED_TO_GRADER`, `RECEIVED_BY_GRADER`, `DISPATCHED_TO_SA`,
+`LANDED_AT_HQ`, `DISPATCHED_TO_CUSTOMER` all still throw "not implemented" — none have a DB
+trigger point yet, per `types/notifications.ts`'s header comment); the remaining older audit
+items and the deferred return-shipping selector above.

@@ -1,6 +1,9 @@
 import { getResendClient, getEmailFrom } from '@/lib/email/resend-client'
+import { getSupabaseServerClient } from '@/lib/supabase-server'
+import { getContact } from '@/lib/email/send-order-confirmation'
 import { renderOrderConfirmedEmail } from '@/lib/email/templates/order-confirmed'
 import { renderReceivedHqEmail } from '@/lib/email/templates/received-hq'
+import type { GradingCompany, ProductRegion, SubmissionTier } from '@/lib/submission-types'
 import type { GradingEmailPayload } from '@/types/notifications'
 
 const UNIMPLEMENTED_STAGE_MESSAGE =
@@ -48,5 +51,79 @@ export async function sendGradingUpdate(payload: GradingEmailPayload): Promise<v
     to: payload.customer.email,
     subject,
     html,
+  })
+}
+
+/**
+ * Fetches everything ORDER_CONFIRMED needs and sends it for a just-paid
+ * grading submission -- called from app/api/webhooks/payfast/route.ts once
+ * a submission's payment_status flips to 'captured'. Same
+ * fetch-then-send-best-effort shape as lib/email/send-order-confirmation.ts's
+ * sendSubmissionConfirmationEmail (which already fires alongside this for
+ * the same event -- that one is the line-item payment receipt, this one is
+ * the "here's your packing slip and QR code" pipeline-stage email; whether
+ * to eventually merge them into one send is a product decision, not made
+ * here).
+ *
+ * Skipped entirely for intake_channel = 'in_person_event': that flow's
+ * customer already sees their PIN/QR on the post-checkout dashboard page
+ * (app/dashboard/submissions/[id]/submission-detail.tsx) and has nothing to
+ * ship, so a "here's your packing slip" email would be actively confusing.
+ *
+ * Uses getSupabaseServerClient() (service-role), not a route's session
+ * client -- getContact's auth.admin.getUserById call requires it (confirmed
+ * the hard way: passing an RLS-scoped client here silently drops the
+ * customer's email, same bug already found and fixed in
+ * app/api/admin/intake/booth-handover/route.ts).
+ */
+export async function sendOrderConfirmedEmail(submissionId: string): Promise<void> {
+  const supabase = getSupabaseServerClient()
+
+  const { data: submission } = await supabase
+    .from('submissions')
+    .select('id, user_id, grading_company, tier, region, service_fee, qr_code_token, intake_channel')
+    .eq('id', submissionId)
+    .single()
+
+  if (!submission) {
+    console.error('sendOrderConfirmedEmail: submission not found', submissionId)
+    return
+  }
+
+  if (submission.intake_channel === 'in_person_event') return
+
+  const { data: items } = await supabase
+    .from('submission_items')
+    .select('card_name, set_name, card_number')
+    .eq('submission_id', submissionId)
+
+  const { fullName, email } = await getContact(supabase, submission.user_id)
+  if (!email) {
+    console.error('sendOrderConfirmedEmail: no contact email for submission', submissionId)
+    return
+  }
+
+  const appBaseUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://website-three-iota-83.vercel.app'
+
+  await sendGradingUpdate({
+    stage: 'ORDER_CONFIRMED',
+    customer: { name: fullName || email, email },
+    submissionId: submission.id,
+    submissionLabel: `Grading Submission #${submission.id.slice(0, 8).toUpperCase()}`,
+    gradingCompany: submission.grading_company as GradingCompany,
+    tier: submission.tier as SubmissionTier,
+    region: submission.region as ProductRegion,
+    cards: (items ?? []).map((item) => ({
+      cardName: item.card_name,
+      setName: item.set_name,
+      cardNumber: item.card_number,
+    })),
+    totalPaid: Number(submission.service_fee ?? 0),
+    // components/submit/packing-slip.tsx is still not wired to any route
+    // (see types/notifications.ts's OrderConfirmedPayload doc comment) --
+    // links to the existing submission detail page instead, which is real
+    // and already live. Swap for a real packing-slip route if one gets built.
+    packingSlipUrl: `${appBaseUrl}/dashboard/submissions/${submission.id}`,
+    qrCodeToken: submission.qr_code_token,
   })
 }

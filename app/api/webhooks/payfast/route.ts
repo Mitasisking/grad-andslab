@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseServerClient } from '@/lib/supabase-server'
 import { getPayfastConfig, payfastEncode } from '@/lib/payments/payfast'
 import { sendSubmissionConfirmationEmail, sendShopOrderConfirmationEmail } from '@/lib/email/send-order-confirmation'
+import { sendOrderConfirmedEmail } from '@/lib/email/send-grading-update'
 
 /**
  * Payfast's ITN (Instant Transaction Notification) -- the SA-storefront
@@ -110,6 +111,9 @@ export async function POST(request: NextRequest) {
       // button in the confirmation email is simply omitted for these.
       sendSubmissionConfirmationEmail(mPaymentId, null).catch((err) =>
         console.error('Could not send submission confirmation email', mPaymentId, err),
+      )
+      sendOrderConfirmedEmail(mPaymentId).catch((err) =>
+        console.error('Could not send ORDER_CONFIRMED grading update', mPaymentId, err),
       )
     }
   }
