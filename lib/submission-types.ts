@@ -18,9 +18,19 @@ export type SubmissionTier =
   | 'psa_value_bulk'
   | 'psa_regular'
   | 'psa_express'
+  /**
+   * Deprecated as of the 2026-09 ACE tier overhaul -- no longer offered in
+   * TIER_OPTIONS_BY_COMPANY.ACE or selectable in the submission wizard.
+   * Kept in this union (and in the DB enum/CHECK constraint, see
+   * supabase/migrations/0060) purely so historical submissions placed under
+   * the old tier still type- and query-check correctly. Do not re-offer it.
+   */
   | 'ace_value'
   | 'ace_basic'
   | 'ace_standard'
+  | 'ace_premier'
+  | 'ace_ultra'
+  | 'ace_luxury'
 
 /** Which search flow a card entry uses -- see components/submit/card-shipment-row.tsx. */
 export type CardType = 'pokemon' | 'sports_card'
@@ -80,6 +90,10 @@ export interface TierOption {
   label: string
   turnaround?: string
   note?: string
+  /** Short marketing blurb shown under the label (e.g. ACE's Flagship/Premium tiers). */
+  description?: string
+  /** Groups tiers under a subheading in the tier selector (e.g. ACE's "Flagship"/"Premium"). Tiers without a group render as a flat list, same as before. */
+  group?: string
   basePriceUSD: number
   basePriceGBP: number
   basePriceZAR: number
@@ -152,10 +166,69 @@ export const TIER_OPTIONS_BY_COMPANY: Record<GradingCompany, TierOption[]> = {
     { value: 'psa_regular', label: 'Regular', basePriceUSD: 80, basePriceGBP: 63, basePriceZAR: 1480 },
     { value: 'psa_express', label: 'Express', basePriceUSD: 149, basePriceGBP: 118, basePriceZAR: 2755 },
   ],
+  /**
+   * ACE Grading's official tier structure (2026-09 overhaul), split into
+   * "Flagship" and "Premium" service levels. GBP is the business-set,
+   * official per-tier price for this update; basePriceUSD/basePriceZAR are
+   * derived stand-in conversions at the same flat rates used everywhere
+   * else in this file (USD = GBP / 0.79, ZAR = USD * 18.5, each rounded to
+   * a clean price point) -- not separately invoiced costs. Replace with
+   * real invoiced USD/ZAR figures the moment the business sets them, same
+   * caveat as PCG's and the older ACE tiers' conversions above. The old
+   * 'Value' tier (£16) is retired -- see the SubmissionTier union above for
+   * why its value isn't deleted outright.
+   */
   ACE: [
-    { value: 'ace_value', label: 'Value', turnaround: '60 days', basePriceUSD: 20, basePriceGBP: 16, basePriceZAR: 370 },
-    { value: 'ace_basic', label: 'Basic', turnaround: '30 days', basePriceUSD: 24, basePriceGBP: 19, basePriceZAR: 445 },
-    { value: 'ace_standard', label: 'Standard', turnaround: '15 days', basePriceUSD: 34, basePriceGBP: 27, basePriceZAR: 630 },
+    {
+      value: 'ace_basic',
+      label: 'Basic',
+      group: 'Flagship',
+      turnaround: '30 days',
+      description: 'Grading for everyday submissions',
+      basePriceUSD: 23,
+      basePriceGBP: 18,
+      basePriceZAR: 425,
+    },
+    {
+      value: 'ace_standard',
+      label: 'Standard',
+      group: 'Flagship',
+      turnaround: '15 days',
+      description: 'A balanced service combining speed & value',
+      basePriceUSD: 32,
+      basePriceGBP: 25,
+      basePriceZAR: 590,
+    },
+    {
+      value: 'ace_premier',
+      label: 'Premier',
+      group: 'Flagship',
+      turnaround: '10 days',
+      description: 'Faster grading for higher priority submissions',
+      basePriceUSD: 41,
+      basePriceGBP: 32,
+      basePriceZAR: 760,
+    },
+    {
+      value: 'ace_ultra',
+      label: 'Ultra',
+      group: 'Premium',
+      turnaround: '5 days',
+      description: 'Priority handling for high-value submissions',
+      basePriceUSD: 76,
+      basePriceGBP: 60,
+      basePriceZAR: 1405,
+    },
+    {
+      value: 'ace_luxury',
+      label: 'Luxury',
+      group: 'Premium',
+      turnaround: '2 days',
+      description: 'Our fastest, most premium grading service',
+      basePriceUSD: 152,
+      basePriceGBP: 120,
+      basePriceZAR: 2810,
+    },
   ],
 }
 
@@ -202,6 +275,8 @@ export interface SubmissionRow {
   needs_clean_and_polish: boolean
   needs_semi_rigids: boolean
   interested_in_consignment: boolean
+  /** Only ever set for grading_company = 'ACE' (supabase/migrations/0061_add_ace_label_option.sql's CHECK constraint enforces this); null for every other submission. */
+  ace_label_option: AceLabelOption | null
   pool_id: string | null
   pool_status: PoolStatus | null
   created_at: string
@@ -257,6 +332,38 @@ export function inspectionFeeForRegion(region: ProductRegion): number {
   if (region === 'usa') return INSPECTION_FEE_USD
   if (region === 'uk') return INSPECTION_FEE_GBP
   return INSPECTION_FEE_ZAR
+}
+
+/**
+ * ACE Grading's label options -- a per-submission choice (applies to every
+ * card in the batch, same as needs_clean_and_polish/needs_semi_rigids
+ * above, not per-card) offered only when GradingCompany is 'ACE'. GBP is
+ * the business-set official price; ZAR is ACE's own designated retail
+ * price (R25/R75), NOT the ~18.5 USD/ZAR stand-in conversion used
+ * elsewhere in this file -- ACE set these ZAR figures directly. USD is
+ * still the usual derived stand-in (USD = GBP / 0.79) since no real
+ * invoiced USD price has been set for this option yet.
+ */
+export type AceLabelOption = 'standard' | 'colour_match' | 'ace_label'
+
+export interface LabelOptionMeta {
+  value: AceLabelOption
+  label: string
+  feeUSD: number
+  feeGBP: number
+  feeZAR: number
+}
+
+export const ACE_LABEL_OPTIONS: LabelOptionMeta[] = [
+  { value: 'standard', label: 'Standard', feeUSD: 0, feeGBP: 0, feeZAR: 0 },
+  { value: 'colour_match', label: 'Colour Match', feeUSD: 1, feeGBP: 1, feeZAR: 25 },
+  { value: 'ace_label', label: 'Ace Label', feeUSD: 4, feeGBP: 3, feeZAR: 75 },
+]
+
+export function labelOptionFeeForRegion(option: LabelOptionMeta, region: ProductRegion): number {
+  if (region === 'usa') return option.feeUSD
+  if (region === 'uk') return option.feeGBP
+  return option.feeZAR
 }
 
 export interface SubmissionItemRow {

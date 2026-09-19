@@ -5,12 +5,21 @@ import { Button } from '@/components/ui/button'
 import { AddAddressForm } from '@/components/submit/add-address-form'
 import { formatByRegion } from '@/lib/currency'
 import {
+  ACE_LABEL_OPTIONS,
   TIER_OPTIONS_BY_COMPANY,
   cleanAndPolishFeeForRegion,
   inspectionFeeForRegion,
+  labelOptionFeeForRegion,
   tierPriceForRegion,
 } from '@/lib/submission-types'
-import type { CardEntry, GradingCompany, ProductRegion, ShippingAddress, SubmissionTier } from '@/lib/submission-types'
+import type {
+  AceLabelOption,
+  CardEntry,
+  GradingCompany,
+  ProductRegion,
+  ShippingAddress,
+  SubmissionTier,
+} from '@/lib/submission-types'
 
 // GBP/ZAR figures are approximate conversions from the real USD costs
 // (0.79 USD/GBP, 18.5 USD/ZAR -- the same ZAR rate already used for
@@ -33,6 +42,7 @@ interface Props {
   region: ProductRegion
   gradingCompany: GradingCompany
   tier: SubmissionTier
+  labelOption: AceLabelOption
   cards: CardEntry[]
   addresses: ShippingAddress[]
   addressesLoaded: boolean
@@ -51,6 +61,7 @@ export function StepReviewPay({
   region,
   gradingCompany,
   tier,
+  labelOption,
   cards,
   addresses,
   addressesLoaded,
@@ -79,8 +90,13 @@ export function StepReviewPay({
   const gradingSubtotal = perCardFee * cards.length
   const inspectionSubtotal = cards.filter((c) => c.preCheckOptIn).length * inspectionFeeForRegion(region)
   const cleanAndPolishSubtotal = needsCleanAndPolish ? cleanAndPolishFeeForRegion(region) : 0
+  // Label options only apply to ACE (components/submit/step-grader-tier.tsx
+  // hides the selector for every other company); labelOption otherwise
+  // stays at its 'standard' (free) default and contributes nothing.
+  const labelOptionMeta = ACE_LABEL_OPTIONS.find((o) => o.value === labelOption)!
+  const labelOptionSubtotal = gradingCompany === 'ACE' ? labelOptionFeeForRegion(labelOptionMeta, region) * cards.length : 0
   const shippingCost = courierMeta ? courierCostForRegion(courierMeta, region) : 0
-  const serviceFee = gradingSubtotal + inspectionSubtotal + cleanAndPolishSubtotal
+  const serviceFee = gradingSubtotal + inspectionSubtotal + cleanAndPolishSubtotal + labelOptionSubtotal
   const total = serviceFee + shippingCost
 
   async function beginCheckout() {
@@ -105,6 +121,7 @@ export function StepReviewPay({
         needsCleanAndPolish,
         needsSemiRigids,
         interestedInConsignment,
+        aceLabelOption: gradingCompany === 'ACE' ? labelOption : null,
         items: cards.map((c) => ({
           cardType: c.cardType,
           sport: c.sport,
@@ -255,6 +272,14 @@ export function StepReviewPay({
             <div className="flex justify-between gap-4">
               <span>Clean and Polish</span>
               <span style={{ fontVariantNumeric: 'tabular-nums' }}>{formatByRegion(cleanAndPolishSubtotal, region)}</span>
+            </div>
+          )}
+          {labelOptionSubtotal > 0 && (
+            <div className="flex justify-between gap-4">
+              <span>
+                {labelOptionMeta.label} label × {cards.length}
+              </span>
+              <span style={{ fontVariantNumeric: 'tabular-nums' }}>{formatByRegion(labelOptionSubtotal, region)}</span>
             </div>
           )}
           <div className="flex justify-between gap-4">

@@ -10,7 +10,14 @@ import { StepAddOns } from '@/components/submit/step-addons'
 import { StepReviewPay } from '@/components/submit/step-review-pay'
 import { fetchAddresses } from '@/lib/addresses-client'
 import { TIER_OPTIONS_BY_COMPANY } from '@/lib/submission-types'
-import type { CardEntry, GradingCompany, ProductRegion, ShippingAddress, SubmissionTier } from '@/lib/submission-types'
+import type {
+  AceLabelOption,
+  CardEntry,
+  GradingCompany,
+  ProductRegion,
+  ShippingAddress,
+  SubmissionTier,
+} from '@/lib/submission-types'
 
 const VALID_COMPANIES = new Set<GradingCompany>(['PCG', 'PSA', 'ACE'])
 
@@ -57,6 +64,7 @@ export function SubmissionWizard() {
   const [region, setRegion] = useState<ProductRegion>('sa')
   const [company, setCompany] = useState<GradingCompany>(initialCompany)
   const [tier, setTier] = useState<SubmissionTier | null>(initialTier)
+  const [labelOption, setLabelOption] = useState<AceLabelOption>('standard')
   const [cards, setCards] = useState<CardEntry[]>([createEmptyCard()])
   const [addresses, setAddresses] = useState<ShippingAddress[]>([])
   const [addressesLoaded, setAddressesLoaded] = useState(false)
@@ -89,6 +97,11 @@ export function SubmissionWizard() {
     // Tiers are company-specific (lib/submission-types.ts TIER_OPTIONS_BY_COMPANY),
     // so a tier chosen under one company is never valid under another.
     setTier(null)
+    // Label options only exist for ACE (components/submit/step-grader-tier.tsx
+    // hides the selector for every other company) -- reset to the free
+    // default so a stale non-standard choice can't silently carry over if
+    // the customer switches away from ACE and back.
+    if (next !== 'ACE') setLabelOption('standard')
   }, [])
 
   const updateCard = useCallback((id: string, patch: Partial<CardEntry>) => {
@@ -145,10 +158,12 @@ export function SubmissionWizard() {
                 region={region}
                 company={company}
                 tier={tier}
+                labelOption={labelOption}
                 cards={cards}
                 onSelectRegion={setRegion}
                 onSelectCompany={selectCompany}
                 onSelectTier={setTier}
+                onSelectLabelOption={setLabelOption}
                 onUpdateCard={updateCard}
                 onAddCard={addCard}
                 onRemoveCard={removeCard}
@@ -178,6 +193,7 @@ export function SubmissionWizard() {
                 region={region}
                 gradingCompany={company}
                 tier={tier}
+                labelOption={labelOption}
                 cards={cards}
                 addresses={addresses}
                 addressesLoaded={addressesLoaded}

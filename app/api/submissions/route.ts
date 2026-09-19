@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseRouteClient } from '@/lib/supabase-route-client'
 import { REGION_EXCHANGE_RATE_TO_ZAR, REGION_OPTIONS, REGION_TAX_RATE } from '@/lib/shop/product-type'
-import type { CardType, GradingCompany, ProductRegion, Sport, SubmissionTier } from '@/lib/submission-types'
+import type { AceLabelOption, CardType, GradingCompany, ProductRegion, Sport, SubmissionTier } from '@/lib/submission-types'
 
 const VALID_REGIONS = new Set(REGION_OPTIONS.map((r) => r.value))
+const VALID_ACE_LABEL_OPTIONS = new Set<AceLabelOption>(['standard', 'colour_match', 'ace_label'])
 
 interface SubmissionItemInput {
   cardType: CardType
@@ -57,6 +58,7 @@ interface CreateSubmissionBody {
   needsCleanAndPolish: boolean
   needsSemiRigids: boolean
   interestedInConsignment: boolean
+  aceLabelOption: AceLabelOption | null
   items: SubmissionItemInput[]
 }
 
@@ -92,6 +94,18 @@ export async function POST(request: NextRequest) {
   if (body.courier && hasControlCharacters(body.courier)) {
     return NextResponse.json({ error: 'Invalid characters in courier' }, { status: 400 })
   }
+  // Label options only exist for ACE (components/submit/step-grader-tier.tsx
+  // hides the selector for every other company, and 0061_add_ace_label_option.sql's
+  // CHECK constraint enforces this at the DB layer too) -- a non-ACE
+  // submission always gets null, regardless of what the client sent.
+  // An ACE submission with no valid option defaults to 'standard' (free),
+  // same default the wizard itself starts every customer on.
+  const aceLabelOption: AceLabelOption | null =
+    body.gradingCompany === 'ACE'
+      ? VALID_ACE_LABEL_OPTIONS.has(body.aceLabelOption as AceLabelOption)
+        ? (body.aceLabelOption as AceLabelOption)
+        : 'standard'
+      : null
 
   const { data: address, error: addressError } = await supabase
     .from('addresses')
@@ -136,6 +150,7 @@ export async function POST(request: NextRequest) {
       needs_clean_and_polish: Boolean(body.needsCleanAndPolish),
       needs_semi_rigids: Boolean(body.needsSemiRigids),
       interested_in_consignment: Boolean(body.interestedInConsignment),
+      ace_label_option: aceLabelOption,
     })
     .select('id, qr_code_token, pool_id')
     .single()
