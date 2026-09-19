@@ -28,7 +28,7 @@ import type { GradingCompany, SubmissionTier } from '@/lib/submission-types'
  * auth.users, which is the sanctioned way to read a real email address
  * server-side regardless of what profiles.email ends up being long-term.
  */
-async function getContact(
+export async function getContact(
   supabase: ReturnType<typeof getSupabaseServerClient>,
   userId: string,
 ): Promise<{ fullName: string | null; email: string | null }> {

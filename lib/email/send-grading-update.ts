@@ -1,5 +1,6 @@
 import { getResendClient, getEmailFrom } from '@/lib/email/resend-client'
 import { renderOrderConfirmedEmail } from '@/lib/email/templates/order-confirmed'
+import { renderReceivedHqEmail } from '@/lib/email/templates/received-hq'
 import type { GradingEmailPayload } from '@/types/notifications'
 
 const UNIMPLEMENTED_STAGE_MESSAGE =
@@ -7,12 +8,12 @@ const UNIMPLEMENTED_STAGE_MESSAGE =
 
 /**
  * Dispatches a GradingEmailPayload (types/notifications.ts) to its stage's
- * template. Only ORDER_CONFIRMED has a real template so far -- the other 7
- * stages are typed and routable today so future work only has to add a
- * `case` + a renderer, but each currently throws rather than silently
- * sending nothing, since there's no current call site for them anyway (see
- * types/notifications.ts's header comment on why most stages have no DB
- * trigger yet).
+ * template. ORDER_CONFIRMED and RECEIVED_HQ have real templates -- the
+ * remaining 6 stages are typed and routable today so future work only has
+ * to add a `case` + a renderer, but each currently throws rather than
+ * silently sending nothing, since there's no current call site for them
+ * anyway (see types/notifications.ts's header comment on why most stages
+ * have no DB trigger yet).
  */
 function renderGradingEmail(payload: GradingEmailPayload): { subject: string; html: string } {
   switch (payload.stage) {
@@ -20,8 +21,9 @@ function renderGradingEmail(payload: GradingEmailPayload): { subject: string; ht
       const appBaseUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://website-three-iota-83.vercel.app'
       return renderOrderConfirmedEmail(payload, appBaseUrl)
     }
-    case 'COLLECTION_BOOKED':
     case 'RECEIVED_HQ':
+      return renderReceivedHqEmail(payload)
+    case 'COLLECTION_BOOKED':
     case 'DISPATCHED_TO_GRADER':
     case 'RECEIVED_BY_GRADER':
     case 'DISPATCHED_TO_SA':

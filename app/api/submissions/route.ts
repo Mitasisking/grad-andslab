@@ -1,10 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseRouteClient } from '@/lib/supabase-route-client'
 import { REGION_EXCHANGE_RATE_TO_ZAR, REGION_OPTIONS, REGION_TAX_RATE } from '@/lib/shop/product-type'
-import type { AceLabelOption, CardType, GradingCompany, ProductRegion, Sport, SubmissionTier } from '@/lib/submission-types'
+import type {
+  AceLabelOption,
+  CardType,
+  GradingCompany,
+  IntakeChannel,
+  ProductRegion,
+  Sport,
+  SubmissionTier,
+} from '@/lib/submission-types'
 
 const VALID_REGIONS = new Set(REGION_OPTIONS.map((r) => r.value))
 const VALID_ACE_LABEL_OPTIONS = new Set<AceLabelOption>(['standard', 'colour_match', 'ace_label'])
+
+function generateHandoverPin(): string {
+  return String(Math.floor(1000 + Math.random() * 9000))
+}
 
 interface SubmissionItemInput {
   cardType: CardType
@@ -59,6 +71,8 @@ interface CreateSubmissionBody {
   needsSemiRigids: boolean
   interestedInConsignment: boolean
   aceLabelOption: AceLabelOption | null
+  intakeChannel: IntakeChannel
+  eventSlug: string | null
   items: SubmissionItemInput[]
 }
 
@@ -107,6 +121,20 @@ export async function POST(request: NextRequest) {
         : 'standard'
       : null
 
+  // In-person event drop-off (0062_add_in_person_event_intake.sql) --
+  // anything other than exactly 'in_person_event' from the client is
+  // treated as the normal online-shipment flow, same defensive default
+  // pattern as aceLabelOption above. event_slug only ever gets set
+  // alongside it; a handover PIN is only minted for an in-person
+  // submission, since chk_submissions_event_fields_match_channel forbids
+  // one on an online submission.
+  const intakeChannel: IntakeChannel = body.intakeChannel === 'in_person_event' ? 'in_person_event' : 'online_shipment'
+  const eventSlug = intakeChannel === 'in_person_event' ? body.eventSlug?.trim() || null : null
+  const handoverPin = intakeChannel === 'in_person_event' ? generateHandoverPin() : null
+  if (eventSlug && hasControlCharacters(eventSlug)) {
+    return NextResponse.json({ error: 'Invalid characters in event slug' }, { status: 400 })
+  }
+
   const { data: address, error: addressError } = await supabase
     .from('addresses')
     .select('*')
@@ -151,8 +179,11 @@ export async function POST(request: NextRequest) {
       needs_semi_rigids: Boolean(body.needsSemiRigids),
       interested_in_consignment: Boolean(body.interestedInConsignment),
       ace_label_option: aceLabelOption,
+      intake_channel: intakeChannel,
+      event_slug: eventSlug,
+      handover_pin: handoverPin,
     })
-    .select('id, qr_code_token, pool_id')
+    .select('id, qr_code_token, pool_id, handover_pin')
     .single()
 
   if (submissionError || !submission) {
@@ -217,5 +248,6 @@ export async function POST(request: NextRequest) {
     submissionId: submission.id,
     qrCodeToken: submission.qr_code_token,
     poolId: submission.pool_id,
+    handoverPin: submission.handover_pin,
   })
 }

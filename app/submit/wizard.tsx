@@ -60,6 +60,35 @@ export function SubmissionWizard() {
       ? (initialTierParam as SubmissionTier)
       : null
 
+  // In-person event drop-off (supabase/migrations/0062_add_in_person_event_intake.sql):
+  // a booth QR code links to /submit?intake=in-person&event=slug, which
+  // always wins outright. With no such link, fall back to the admin's
+  // global event_settings toggle (app/admin/events) -- e.g. a customer who
+  // found the booth's tablet already sitting open on /submit.
+  const urlIntakeIsInPerson = searchParams.get('intake') === 'in-person'
+  const urlEventSlug = searchParams.get('event')
+  const [inPersonMode, setInPersonMode] = useState(urlIntakeIsInPerson)
+  const [eventSlug, setEventSlug] = useState<string | null>(urlIntakeIsInPerson ? urlEventSlug : null)
+
+  useEffect(() => {
+    if (urlIntakeIsInPerson) return // the URL param already decided this, unambiguously
+    let cancelled = false
+    fetch('/api/events/active')
+      .then((res) => res.json())
+      .then((settings: { active_event_slug: string | null; is_live: boolean }) => {
+        if (cancelled || !settings.is_live) return
+        setInPersonMode(true)
+        setEventSlug(settings.active_event_slug)
+      })
+      .catch(() => {
+        // Best-effort: a failed lookup just leaves the wizard in its normal
+        // online-shipment default rather than blocking the page.
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [urlIntakeIsInPerson])
+
   const [step, setStep] = useState(0)
   const [region, setRegion] = useState<ProductRegion>('sa')
   const [company, setCompany] = useState<GradingCompany>(initialCompany)
@@ -194,6 +223,8 @@ export function SubmissionWizard() {
                 gradingCompany={company}
                 tier={tier}
                 labelOption={labelOption}
+                inPersonMode={inPersonMode}
+                eventSlug={eventSlug}
                 cards={cards}
                 addresses={addresses}
                 addressesLoaded={addressesLoaded}

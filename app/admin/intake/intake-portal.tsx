@@ -17,6 +17,9 @@ export function IntakePortal() {
   const [lookupError, setLookupError] = useState<string | null>(null)
   const [manualToken, setManualToken] = useState('')
   const [loading, setLoading] = useState(false)
+  const [handoverPin, setHandoverPin] = useState('')
+  const [handoverError, setHandoverError] = useState<string | null>(null)
+  const [handoverLoading, setHandoverLoading] = useState(false)
 
   async function lookupToken(nextToken: string) {
     setLoading(true)
@@ -30,6 +33,26 @@ export function IntakePortal() {
     }
     setToken(nextToken)
     setOrder({ submission: data.submission, items: data.items, statusHistory: data.statusHistory ?? [] })
+  }
+
+  async function verifyHandoverPin() {
+    setHandoverLoading(true)
+    setHandoverError(null)
+    const res = await fetch('/api/admin/intake/booth-handover', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ pin: handoverPin }),
+    })
+    const data = await res.json()
+    setHandoverLoading(false)
+    if (!res.ok) {
+      setHandoverError(data.error ?? 'Could not verify that PIN.')
+      return
+    }
+    setHandoverPin('')
+    // Reuses the same lookup path a QR scan would take, so the found
+    // submission renders through the same IntakeOrderPanel below.
+    await lookupToken(data.qrCodeToken)
   }
 
   if (order && token) {
@@ -87,6 +110,41 @@ export function IntakePortal() {
           {lookupError}
         </p>
       )}
+
+      <div className="mt-10 pt-8 border-t" style={{ borderColor: 'var(--line)' }}>
+        <h2 className="text-[18px]" style={{ fontFamily: 'var(--font-display)', color: 'var(--ink)' }}>
+          Booth handover
+        </h2>
+        <p className="text-[13.5px] mt-1" style={{ color: 'var(--ink-muted)' }}>
+          For in-person event drop-off: enter the customer&rsquo;s 4-digit PIN from their
+          confirmation screen.
+        </p>
+        <div className="mt-4 flex gap-2">
+          <input
+            value={handoverPin}
+            onChange={(e) => setHandoverPin(e.target.value.replace(/\D/g, '').slice(0, 4))}
+            placeholder="4-digit PIN"
+            inputMode="numeric"
+            maxLength={4}
+            className="flex-1 border rounded-[3px] px-3 py-2 text-[14px] bg-transparent tracking-[0.2em]"
+            style={{ borderColor: 'var(--line)', color: 'var(--ink)' }}
+          />
+          <button
+            type="button"
+            onClick={verifyHandoverPin}
+            disabled={handoverPin.length !== 4 || handoverLoading}
+            className="px-4 py-2 text-[13.5px] rounded-[3px] shrink-0"
+            style={{ background: 'var(--vault)', color: 'var(--vault-ink)' }}
+          >
+            {handoverLoading ? 'Verifying…' : 'Confirm handover'}
+          </button>
+        </div>
+        {handoverError && (
+          <p className="text-[13px] mt-3" style={{ color: 'var(--danger)' }}>
+            {handoverError}
+          </p>
+        )}
+      </div>
     </main>
   )
 }

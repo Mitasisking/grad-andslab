@@ -6,6 +6,7 @@ import { AddAddressForm } from '@/components/submit/add-address-form'
 import { formatByRegion } from '@/lib/currency'
 import {
   ACE_LABEL_OPTIONS,
+  IN_PERSON_DROPOFF_LABEL,
   TIER_OPTIONS_BY_COMPANY,
   cleanAndPolishFeeForRegion,
   inspectionFeeForRegion,
@@ -43,6 +44,8 @@ interface Props {
   gradingCompany: GradingCompany
   tier: SubmissionTier
   labelOption: AceLabelOption
+  inPersonMode: boolean
+  eventSlug: string | null
   cards: CardEntry[]
   addresses: ShippingAddress[]
   addressesLoaded: boolean
@@ -62,6 +65,8 @@ export function StepReviewPay({
   gradingCompany,
   tier,
   labelOption,
+  inPersonMode,
+  eventSlug,
   cards,
   addresses,
   addressesLoaded,
@@ -95,12 +100,16 @@ export function StepReviewPay({
   // stays at its 'standard' (free) default and contributes nothing.
   const labelOptionMeta = ACE_LABEL_OPTIONS.find((o) => o.value === labelOption)!
   const labelOptionSubtotal = gradingCompany === 'ACE' ? labelOptionFeeForRegion(labelOptionMeta, region) * cards.length : 0
-  const shippingCost = courierMeta ? courierCostForRegion(courierMeta, region) : 0
+  // In-person event drop-off (0062_add_in_person_event_intake.sql): inbound
+  // shipping is always free table intake, so no courier selection is
+  // needed or charged -- courierMeta/courier stay irrelevant here.
+  const shippingCost = inPersonMode ? 0 : courierMeta ? courierCostForRegion(courierMeta, region) : 0
   const serviceFee = gradingSubtotal + inspectionSubtotal + cleanAndPolishSubtotal + labelOptionSubtotal
   const total = serviceFee + shippingCost
+  const canCheckout = inPersonMode ? Boolean(addressId) : Boolean(addressId && courier)
 
   async function beginCheckout() {
-    if (!addressId || !courier) return
+    if (!canCheckout) return
     setCreatingOrder(true)
     setCheckoutError(null)
 
@@ -116,12 +125,14 @@ export function StepReviewPay({
         tier,
         region,
         addressId,
-        courier,
+        courier: inPersonMode ? IN_PERSON_DROPOFF_LABEL : courier,
         serviceFee,
         needsCleanAndPolish,
         needsSemiRigids,
         interestedInConsignment,
         aceLabelOption: gradingCompany === 'ACE' ? labelOption : null,
+        intakeChannel: inPersonMode ? 'in_person_event' : 'online_shipment',
+        eventSlug: inPersonMode ? eventSlug : null,
         items: cards.map((c) => ({
           cardType: c.cardType,
           sport: c.sport,
@@ -229,26 +240,37 @@ export function StepReviewPay({
 
       <div>
         <h2 className="text-[22px]" style={{ fontFamily: 'var(--font-display)', color: 'var(--ink)' }}>
-          Courier
+          {inPersonMode ? 'Inbound' : 'Courier'}
         </h2>
-        <div className="flex flex-col mt-3 border-t" style={{ borderColor: 'var(--line)' }}>
-          {COURIERS.map((c) => (
-            <button
-              key={c.value}
-              type="button"
-              onClick={() => onSelectCourier(c.value)}
-              className="flex items-center justify-between py-3 border-b text-left"
-              style={{ borderColor: 'var(--line)' }}
-            >
-              <span className="text-[14px]" style={{ color: 'var(--ink)' }}>
-                {c.label}
-              </span>
-              <span className="text-[13px]" style={{ fontVariantNumeric: 'tabular-nums', color: 'var(--ink-muted)' }}>
-                {formatByRegion(courierCostForRegion(c, region), region)}
-              </span>
-            </button>
-          ))}
-        </div>
+        {inPersonMode ? (
+          <div className="flex items-center justify-between py-3 mt-3 border-t border-b" style={{ borderColor: 'var(--line)' }}>
+            <span className="text-[14px]" style={{ color: 'var(--ink)' }}>
+              {IN_PERSON_DROPOFF_LABEL}
+            </span>
+            <span className="text-[13px]" style={{ fontVariantNumeric: 'tabular-nums', color: 'var(--ink-muted)' }}>
+              {formatByRegion(0, region)}
+            </span>
+          </div>
+        ) : (
+          <div className="flex flex-col mt-3 border-t" style={{ borderColor: 'var(--line)' }}>
+            {COURIERS.map((c) => (
+              <button
+                key={c.value}
+                type="button"
+                onClick={() => onSelectCourier(c.value)}
+                className="flex items-center justify-between py-3 border-b text-left"
+                style={{ borderColor: 'var(--line)' }}
+              >
+                <span className="text-[14px]" style={{ color: 'var(--ink)' }}>
+                  {c.label}
+                </span>
+                <span className="text-[13px]" style={{ fontVariantNumeric: 'tabular-nums', color: 'var(--ink-muted)' }}>
+                  {formatByRegion(courierCostForRegion(c, region), region)}
+                </span>
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       <div>
@@ -283,7 +305,7 @@ export function StepReviewPay({
             </div>
           )}
           <div className="flex justify-between gap-4">
-            <span>Shipping{courierMeta ? ` (${courierMeta.label})` : ''}</span>
+            <span>{inPersonMode ? IN_PERSON_DROPOFF_LABEL : `Shipping${courierMeta ? ` (${courierMeta.label})` : ''}`}</span>
             <span style={{ fontVariantNumeric: 'tabular-nums' }}>{formatByRegion(shippingCost, region)}</span>
           </div>
           <div
@@ -308,7 +330,7 @@ export function StepReviewPay({
         </Button>
         <Button
           onClick={beginCheckout}
-          disabled={!addressId || !courier || creatingOrder}
+          disabled={!canCheckout || creatingOrder}
           className="rounded-[3px]"
           style={{ background: 'var(--vault)', color: 'var(--vault-ink)' }}
         >

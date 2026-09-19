@@ -277,6 +277,12 @@ export interface SubmissionRow {
   interested_in_consignment: boolean
   /** Only ever set for grading_company = 'ACE' (supabase/migrations/0061_add_ace_label_option.sql's CHECK constraint enforces this); null for every other submission. */
   ace_label_option: AceLabelOption | null
+  intake_channel: IntakeChannel
+  event_slug: string | null
+  /** 4-digit booth handover PIN, only ever set when intake_channel = 'in_person_event'. */
+  handover_pin: string | null
+  /** Set once an admin verifies the handover PIN at /admin/intake -- null means "awaiting booth handover" for an in-person submission. */
+  intake_verified_at: string | null
   pool_id: string | null
   pool_status: PoolStatus | null
   created_at: string
@@ -364,6 +370,24 @@ export function labelOptionFeeForRegion(option: LabelOptionMeta, region: Product
   if (region === 'usa') return option.feeUSD
   if (region === 'uk') return option.feeGBP
   return option.feeZAR
+}
+
+/**
+ * In-person event drop-off (live card shows/conventions) -- see
+ * supabase/migrations/0062_add_in_person_event_intake.sql. "Awaiting Booth
+ * Handover" and "Received & Logged" are UI labels derived from
+ * intake_channel + intake_verified_at below, not their own
+ * SubmissionStatus values -- every submission (in-person or not) still
+ * gets status = 'received' at creation, same as before this feature.
+ */
+export type IntakeChannel = 'online_shipment' | 'in_person_event'
+
+export const IN_PERSON_DROPOFF_LABEL = 'In-Person Drop-Off (Table Intake)'
+
+/** Mirrors public.event_settings's single row (0062_add_in_person_event_intake.sql). */
+export interface EventSettingsRow {
+  active_event_slug: string | null
+  is_live: boolean
 }
 
 export interface SubmissionItemRow {

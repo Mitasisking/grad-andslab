@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import { QRCodeSVG } from 'qrcode.react'
 import { useRealtimeSubmission } from '@/lib/hooks/use-realtime-submission'
 import { PipelineProgress } from '@/components/dashboard/pipeline-progress'
 import { PhotoModal } from '@/components/dashboard/photo-modal'
@@ -32,6 +33,29 @@ export function SubmissionDetail({ initialSubmission, initialItems }: Props) {
       <h1 className="text-[26px] mt-1" style={{ fontFamily: 'var(--font-display)', color: 'var(--ink)' }}>
         {submission.grading_company} — {items.length} {items.length === 1 ? 'card' : 'cards'}
       </h1>
+
+      {submission.intake_channel === 'in_person_event' && !submission.intake_verified_at && submission.handover_pin && (
+        <div className="mt-8 border rounded-[3px] p-6 flex items-center gap-6" style={{ borderColor: 'var(--seal)' }}>
+          <div className="shrink-0 bg-white p-2 rounded-[3px]">
+            <QRCodeSVG value={submission.qr_code_token} size={96} />
+          </div>
+          <div>
+            <p className="text-[12px] uppercase tracking-wide" style={{ color: 'var(--seal)' }}>
+              Awaiting booth handover
+            </p>
+            <p className="text-[13.5px] mt-1" style={{ color: 'var(--ink-muted)' }}>
+              Show this screen at the table. Our team will scan the code or enter your PIN to
+              confirm we&rsquo;ve taken custody of your cards.
+            </p>
+            <p
+              className="text-[32px] mt-3 tracking-[0.2em]"
+              style={{ fontFamily: 'var(--font-display)', color: 'var(--ink)', fontVariantNumeric: 'tabular-nums' }}
+            >
+              {submission.handover_pin}
+            </p>
+          </div>
+        </div>
+      )}
 
       <div className="mt-10">
         <PipelineProgress status={submission.status} />

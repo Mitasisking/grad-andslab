@@ -13,13 +13,13 @@ This file is updated at the end of every response that builds or modifies a comp
 
 ## Current Milestone
 
-**Phase: grading-pipeline notification system (stage 1 of 8) + ACE Label Options.** Core
-platform is built and launch-audited (`launch_readiness_report.md`, already committed). The
-ACE tier overhaul (5-tier Flagship/Premium) is code-complete and its migrations are live on
-production, awaiting your review before commit. Active work: `ORDER_CONFIRMED`, the first of
-an 8-stage transactional email lifecycle for the grading pipeline, is now typed, mailable, and
-templated. Next up: ACE Label Options (Standard/Colour Match/Ace Label) on `/submit`. Two older
-audit items remain open product/schema decisions — see **Blocked / Needs a Decision** below.
+**Phase: In-Person Event Drop-Off.** The ACE tier overhaul, ACE Label Options, and grading
+notification system stage 1 (`ORDER_CONFIRMED`) are **committed and pushed** (`4026e1d` on
+`main`, migrations 0059-0061 live on production). Active work: a new in-person drop-off mode
+for live card shows/conventions, letting a customer skip inbound shipping entirely at a booth
+and hand cards over on the spot against a PIN. This also completes a second real email
+template (`RECEIVED_HQ`) as part of wiring the booth-handover flow. Two older audit items
+remain open product/schema decisions — see **Blocked / Needs a Decision** below.
 
 ---
 
@@ -58,6 +58,13 @@ up today — not a to-do list.
 - Label Options selector (`components/submit/step-grader-tier.tsx`, below Turnaround, ACE-only)
   feeding `step-review-pay.tsx`'s subtotal and `app/api/submissions/route.ts`'s insert — click-tested
   live in the running app: selector renders/toggles correctly, hidden entirely for PCG/PSA.
+- **In-person event drop-off** (`app/submit/wizard.tsx` detects it via `?intake=in-person&event=slug`
+  or the global `event_settings` toggle; `step-review-pay.tsx` replaces the Courier section with a
+  fixed free "In-Person Drop-Off (Table Intake)" line when active). `supabase/migrations/0062_add_in_person_event_intake.sql`
+  adds `submissions.intake_channel/event_slug/handover_pin/intake_verified_at` and the singleton
+  `event_settings` table. Click-tested live through Step 3 — Inbound correctly shows R0,00 and the
+  Pay button enables without a courier selection; checkout itself (the actual DB insert) was **not**
+  exercised since migration 0062 isn't applied to production yet.
 
 ### Customer dashboard
 - `app/dashboard/page.tsx`, `app/dashboard/submissions/page.tsx`, `app/dashboard/submissions/[id]/page.tsx` + `submission-detail.tsx`
@@ -65,11 +72,25 @@ up today — not a to-do list.
 - `lib/hooks/use-realtime-submission.ts`
 
 ### Admin — grading intake & pipeline
-- `app/admin/intake/*` (`intake-portal.tsx`), `app/admin/grading/*` (`grading-portal.tsx`)
+- `app/admin/intake/*` (`intake-portal.tsx` — now also has a "Booth handover" PIN input below the
+  existing QR-scan/manual-token flow), `app/admin/grading/*` (`grading-portal.tsx`)
 - `components/admin/intake-order-panel.tsx`, `grade-entry-panel.tsx`, `qr-scanner.tsx`
 - `app/api/admin/intake/{lookup,photo,photo-confirm,status}/route.ts`
+- `app/api/admin/intake/booth-handover/route.ts` — verifies a 4-digit PIN against submissions where
+  `intake_channel = 'in_person_event' and intake_verified_at is null`, atomically sets
+  `intake_verified_at`, best-effort sends `sendGradingUpdate('RECEIVED_HQ', ...)`, returns the
+  submission's `qr_code_token` so `intake-portal.tsx` can reuse the existing lookup-by-token flow
+  to display it.
 - `app/api/admin/grading/{queue,save}/route.ts`
 - `lib/admin/submission-status.ts`, `lib/admin/photo-upload-client.ts`
+
+### Admin — events
+- `app/admin/events/page.tsx` + `events-settings-panel.tsx` — single global toggle
+  (`active_event_slug` + `is_live`) for defaulting every `/submit` visitor into in-person mode
+  without a booth QR code. Same inline per-page auth pattern as `app/admin/pools/page.tsx`
+  (no shared `layout.tsx`/`requireAdmin()` for pages — that's an API-route-only convention).
+- `app/api/admin/events/route.ts` — admin-only POST to update the singleton row.
+- `app/api/events/active/route.ts` — public GET, read by the `/submit` wizard.
 
 ### Admin — pools & logistics
 - `app/admin/pools/page.tsx` + `pools-board.tsx`, `app/api/admin/pools/status/route.ts`, `lib/pools/active-pools.ts`
@@ -122,7 +143,13 @@ up today — not a to-do list.
 - `lib/email/templates/order-confirmed.ts` — `renderOrderConfirmedEmail`, the `ORDER_CONFIRMED`
   template. Reuses `order-confirmation.ts`'s `COLORS`/`escapeHtml` (same dark/gold palette, same
   hand-rolled inline-styled HTML approach — see Shared Contracts below for why). No call site
-  wires this to a real trigger yet — nothing currently invokes `sendGradingUpdate`.
+  wires this to a real trigger yet — nothing currently invokes it for this stage.
+- `lib/email/templates/received-hq.ts` — `renderReceivedHqEmail`, the `RECEIVED_HQ` template.
+  Wired to a real trigger: `app/api/admin/intake/booth-handover/route.ts` calls it on every
+  verified PIN. Renders gracefully with an empty `inspectionPhotos` (true at booth-handover time,
+  since dual-surface photos come from a later, separate step) vs. a real photo grid when populated.
+- `getContact` in `lib/email/send-order-confirmation.ts` is now exported (was module-private) so
+  `booth-handover/route.ts` can reuse the same profile+auth-email lookup instead of duplicating it.
 - `app/api/contact-inquiries/route.ts`, `app/api/vendor-inquiries/route.ts`, `app/api/notify/route.ts`, `app/api/webhooks/pool-milestone/route.ts`
 - `components/auth/turnstile-widget.tsx` — bot protection
 
@@ -149,35 +176,60 @@ up today — not a to-do list.
 - **Email templating convention (decided explicitly, do not revisit without asking)**: all transactional emails are hand-rolled HTML strings with inline styles in `lib/email/templates/*.ts`, never JSX/React Email — most email clients (Outlook especially) ignore `<style>`/CSS-in-JS. Every interpolated user-entered value MUST go through `escapeHtml` (`lib/email/templates/order-confirmation.ts`) — a real stored-XSS was fixed here before. `@react-email/*` is deliberately not a dependency. Senders live in `lib/email/send-*.ts` (not `lib/mail/`), take a payload, call `getResendClient().emails.send()` directly, and do not catch their own errors — the caller wraps in try/catch and only logs, since a notification failure must never fail the pipeline event that triggered it.
 - **`GradingEmailStage`** (`types/notifications.ts`) — an 8-stage notification-layer lifecycle, intentionally more granular than the DB's `SubmissionStatus` (5 stages) or `shipment_batch_status` (5 stages, migration 0052). Most stages beyond `ORDER_CONFIRMED` have no DB column or call site yet — adding a stage here is a type contract, not a promise it's wired up.
 - **`AceLabelOption`** = `'standard' | 'colour_match' | 'ace_label'` — lives in `lib/submission-types.ts` (with `ACE_LABEL_OPTIONS`/`labelOptionFeeForRegion`), **not** a separate `types/grading.ts` — that path was requested but deliberately not created, to avoid a second, competing home for grading-domain types alongside the existing single source of truth. Same per-submission modeling as `needs_clean_and_polish`/`needs_semi_rigids` (one choice for the whole batch, not per-card) — only ever non-null when `grading_company = 'ACE'` (enforced by `chk_submissions_ace_label_option_valid`, migration 0061). ZAR fees (R25/R75) are ACE's own designated retail prices, not the usual ~18.5 USD/ZAR stand-in conversion; USD is still the derived stand-in.
+- **`IntakeChannel`** = `'online_shipment' | 'in_person_event'` and **`EventSettingsRow`** — `lib/submission-types.ts` (again, not `types/grading.ts` — same reasoning as `AceLabelOption` above; every new domain type this session has gone into the existing file, not a parallel one). "Awaiting Booth Handover" / "Received & Logged" are **UI labels derived from `intake_channel` + `intake_verified_at`**, deliberately not new `SubmissionStatus` enum values — that enum is shared with the customer pipeline stepper (`STATUS_STAGES`/`PipelineProgress`) and `lib/admin/submission-status.ts`'s `changeSubmissionStatus`, which only accepts its fixed 5 values; extending it for a pre-`received` state would mean touching that shared stepper UI for a state most submissions never pass through. Every submission, in-person or not, still gets `status = 'received'` at creation, unchanged.
+- **`event_settings`** is a Postgres singleton-row table (`id boolean primary key default true`, `check(id)`) — the same trick as any single-row settings table; there is deliberately no way to have zero or multiple rows.
 
 ---
 
 ## Uncommitted work in the tree right now
 
-- **ACE Grading tier overhaul** (this task, awaiting your review before commit):
-  - `lib/submission-types.ts` — `SubmissionTier` union gains `ace_premier`/`ace_ultra`/`ace_luxury`;
-    `TierOption` gains `description`/`group`; `TIER_OPTIONS_BY_COMPANY.ACE` replaced with the
-    5-tier Flagship/Premium structure, `ace_value` entry removed from the list (kept in the type).
-  - `components/submit/step-grader-tier.tsx` — tier selector now groups by `TierOption.group`
-    and renders `TierOption.description`.
-  - `supabase/migrations/0059_add_ace_flagship_premium_tiers.sql`,
-    `0060_allow_ace_flagship_premium_tiers.sql` — **applied to production** (project
-    `wzqkvqafzcrqrouikuar`, "Gradeandslabproject") via the Dashboard SQL Editor on 2026-09-19.
-    Verified post-apply: `enum_range(null::public.submission_tier)` includes `ace_premier`,
-    `ace_ultra`, `ace_luxury`; `chk_submissions_tier_matches_company`'s definition confirmed
-    via `pg_get_constraintdef` to allow all five current ACE tiers plus retained `ace_value`.
-    Verified with `npx tsc --noEmit` and `npx eslint` (both clean pre-apply); click-tested live
-    in the running app on 2026-09-19 — Flagship/Premium groups + descriptions render correctly
-    for ACE, PCG's flat 4-tier list is unaffected.
-- **Grading notification system, stage 1** (this task, awaiting your review before commit):
-  `types/notifications.ts`, `lib/email/send-grading-update.ts`,
-  `lib/email/templates/order-confirmed.ts` — all new files, `npx tsc --noEmit` and `npx eslint`
-  both clean. **Not yet wired to anything** — no route or webhook calls `sendGradingUpdate` yet,
-  so no email will actually send until a call site is added (e.g. alongside or in place of
-  `sendSubmissionConfirmationEmail` in `app/api/webhooks/payfast/route.ts`). `OrderConfirmedPayload.packingSlipUrl`
-  also has no real page to point at yet — `components/submit/packing-slip.tsx` exists but isn't
-  wired to any route; whoever adds the call site needs to build that route first or pass a
-  different URL.
+**Committed and pushed** (`4026e1d` on `main`, ahead of `origin/main` as of this snapshot — verify
+before assuming it's still current): ACE tier overhaul, ACE Label Options, notification system
+stage 1 (`ORDER_CONFIRMED`). Migrations 0059/0060/0061 are live on production, independently
+re-verified.
+
+**Uncommitted — In-Person Event Drop-Off** (this task):
+- `supabase/migrations/0062_add_in_person_event_intake.sql` — **applied to production**, by the
+  user directly via the Dashboard SQL Editor, then independently re-verified from this session:
+  `information_schema.columns` confirms all four new `submissions` columns with the exact
+  expected types/nullability; `select * from event_settings` returns exactly the expected
+  singleton row (`id=true, active_event_slug=null, is_live=false`); Postgres's own unified logs
+  show the literal migration statement (matching this file byte-for-byte, including its header
+  comments) executed via the dashboard at `2026-09-19T17:53:14Z`. The ordering risk this note
+  used to warn about (every submission insert failing without this column) no longer applies.
+- `lib/submission-types.ts` — `IntakeChannel`, `EventSettingsRow`, `IN_PERSON_DROPOFF_LABEL`,
+  and four new `SubmissionRow` fields.
+- `app/admin/events/page.tsx` + `events-settings-panel.tsx`, `app/api/admin/events/route.ts`,
+  `app/api/events/active/route.ts` — new admin toggle + its public read endpoint. Build-verified
+  (`npm run build`), not click-tested live (would need 0062 applied first to load real data,
+  though the page degrades gracefully to `is_live: false` without it).
+- `app/submit/wizard.tsx`, `components/submit/step-review-pay.tsx` — in-person detection
+  (URL param wins outright, falls back to the global toggle) and the Step 3 Inbound override.
+  **Click-tested live end-to-end through Step 3**: `?intake=in-person&event=comic-con-jhb`
+  correctly shows the Flagship/Premium tier UI, then Step 3 shows "In-Person Drop-Off (Table
+  Intake) — R 0,00" with no courier picker, correct total, and an enabled Pay button with no
+  courier selected. **Did not click Pay** — that would attempt a real DB insert against
+  production, which would fail without migration 0062 applied.
+- `app/api/submissions/route.ts` — accepts `intakeChannel`/`eventSlug`, generates a 4-digit
+  `handoverPin` for in-person submissions, persists all four new columns.
+- `app/dashboard/submissions/[id]/submission-detail.tsx` — shows the PIN + a real scannable
+  `QRCodeSVG` (reusing the existing `qr_code_token`, `qrcode.react` already a dependency) when
+  `intake_channel = 'in_person_event' and !intake_verified_at`. Reactive via the existing
+  `useRealtimeSubmission` hook — the block disappears on its own once an admin verifies the PIN,
+  no extra wiring needed for that. Not click-tested live (needs a real in-person submission to
+  exist, which needs 0062 applied first).
+- `app/admin/intake/intake-portal.tsx` + new `app/api/admin/intake/booth-handover/route.ts` —
+  PIN verification, atomic (`is('intake_verified_at', null)` guard against a double-submit race),
+  best-effort `sendGradingUpdate('RECEIVED_HQ', ...)` on success. Not click-tested live (same
+  0062 dependency).
+- `lib/email/templates/received-hq.ts`, `lib/email/send-grading-update.ts` — `RECEIVED_HQ` is
+  now a real, wired template (previously one of the 7 stages that just threw "not implemented").
+- All of the above: `npx tsc --noEmit`, `npx eslint` (all touched files), and `npm run build`
+  are clean.
+- **Not built, by design** (see Blocked / Needs a Decision): a return-shipping selector
+  ("Return Courier to Door" / "Vault / Marketplace Listing") — the original request said to
+  "retain" this, but no such selector exists anywhere in the codebase to retain. Flagged and
+  explicitly deferred rather than inventing new scope silently.
 - Untracked, not yet triaged into the repo structure: `Stock photos/`, `TheCardApi.txt`,
   `claude context.txt`, `cuppa cards logo temp logo.jpeg`, `termsofservice.txt`, `zernio.txt`.
 
@@ -192,14 +244,16 @@ up today — not a to-do list.
 3. **PayFast sandbox walkthrough** — IP allowlisting unimplemented; intermediate payment
    statuses (e.g. EFT) unconfirmed against PayFast's real sandbox. Needs someone with PayFast
    sandbox credentials, not another code pass.
+4. **Return-shipping selector doesn't exist** — the in-person drop-off request assumed Step 3
+   already had a "Return Courier to Door" / "Vault / Marketplace Listing" choice to retain.
+   It doesn't. Deferred as its own future feature (new column + UI + order-summary wiring)
+   rather than building it as an unplanned side effect of this task.
 
 ## Immediate Next Task
 
-All three production migrations (0059, 0060, 0061) are confirmed live and independently
-re-verified against the database directly — nothing left to apply. Everything built this
-session is code-complete and locally verified (`tsc`, `eslint`, and for the two UI-facing
-features, click-tested live): ACE tier overhaul, grading-notification system stage 1, ACE Label
-Options. All still uncommitted. Remaining sequence: (1) commit everything together on your
-go-ahead, (2) wire a real call site for `sendGradingUpdate('ORDER_CONFIRMED', ...)` (nothing
-invokes it yet), (3) the two older audit items (`products.grading_company` migration,
-currency-display policy scope).
+Migration 0062 is live and verified — nothing left to apply. Next: (1) click-test the parts that
+need real data now that the schema exists (admin events toggle end-to-end, a real in-person
+submission's confirmation-screen PIN/QR, the booth-handover PIN flow in `/admin/intake`), (2)
+commit on your go-ahead, (3) wire a real call site for `sendGradingUpdate('ORDER_CONFIRMED', ...)`
+— still nothing invokes it, (4) the remaining older audit items and the deferred
+return-shipping selector above.
