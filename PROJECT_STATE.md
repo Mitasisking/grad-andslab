@@ -16,11 +16,17 @@ This file is updated at the end of every response that builds or modifies a comp
 **Phase: launch simplification pass (ACE-only + Pokémon-only + shop filter simplification +
 Add-ons rework) + outbound email moved to Google SMTP/Nodemailer + WhatsApp community link + hero
 copy + brand-name harmonization to "CuppasCards" + full 8-stage grading email lifecycle templates.**
-Live in production as of `648f42d`: In-Person Event Submissions Admin Control + customer
-flow, and the earlier "My Submissions" nav-link personalization (`3deec54`) — Vercel alias
-`website-three-iota-83.vercel.app`, deployment `dpl_74cnQGHK5BnVsHTw6sFHj2jvbeSe`. Migrations
-0059-0064 all live. Active work (this task, seven separate pieces, plus a vendor-page hide,
-brand-name cleanup, and the email-lifecycle work documented under Uncommitted work below):
+**Live in production as of `d521c60`** (deployed via `vercel --prod`, deployment
+`dpl_7gWkiTWrotGVNpyhoCzCMgnQfy6c`, aliased to `website-three-iota-83.vercel.app`): the hero copy
+update, the Google SMTP/Nodemailer email migration, the WhatsApp community link, the Step 1
+ACE-only simplification, the Pokémon-only card category lock, the shop filter pill simplification,
+the vendor page's "Where We've Been" hide, the "CuppasCards" brand-name harmonization, and the
+full 8-stage grading email lifecycle templates + `/admin/test-emails` test harness — i.e.
+everything described in items 4-7 below plus the vendor/brand/email-lifecycle work documented
+under Uncommitted work history further down this file. This deploy was built from this project's
+own manual `vercel --prod` CLI workflow (confirmed via `vercel ls`: prior deploys all show as
+CLI/Production, no git-triggered auto-deploy bot), not an automatic git-push trigger — pushing to
+`origin/main` alone does not put changes on production here. Migrations 0059-0064 all live.
 
 4. **Step 1 (`Grader & tier`) simplified to ACE-only for launch** — `components/submit/
    step-grader-tier.tsx` no longer renders a "Country of origin" or "Grading company" selector;
@@ -471,9 +477,15 @@ field that drives routing/matching logic, never the name.
 
 ## Uncommitted work in the tree right now
 
-**Committed, pushed, and deployed to production through `648f42d`** (see below for what's newly
-uncommitted). Everything through `648f42d` is on `main` and live on Vercel production (alias
-`website-three-iota-83.vercel.app`, deployment `dpl_74cnQGHK5BnVsHTw6sFHj2jvbeSe`): ACE tier
+**Nothing is currently uncommitted.** Everything described in this file — through commit
+`d521c60` — is committed, pushed to `origin/main`, and deployed to Vercel production (alias
+`website-three-iota-83.vercel.app`, deployment `dpl_7gWkiTWrotGVNpyhoCzCMgnQfy6c`, deployed via
+`vercel --prod`). The subsections below are kept as a historical record of what shipped in each
+past task/commit, not a list of pending changes — check `git status` if you need to confirm this
+is still true before trusting it blindly.
+
+**Committed, pushed, and deployed to production through `648f42d`** (earlier deploy, superseded by
+the one above): ACE tier
 overhaul + ACE Label Options + notification system stage 1 (`4026e1d`); In-Person Event Drop-Off
 (`df13969`); booth-handover contact-lookup bug fix (`0de1894`); `ORDER_CONFIRMED` wired into the
 Payfast webhook (`fb9bb14`); grader filter false-positive fix, `products.grading_company`
@@ -658,41 +670,36 @@ baseline). Click-tested live: `/vendor`'s hero CTA row now shows only "In-Person
    assumed this selector existed ("Retain domestic courier selection for the Return phase"); the
    existing address (used for the return destination) + `interestedInConsignment` opt-in were
    judged sufficient for now rather than building the dedicated selector as a side effect again.
-4. **Resend domain verification — explicitly parked by the user (2026-09-20).** `cuppacards.com`
-   is added in Resend (status "Not Started") but has zero DNS records live yet. The exact
-   records needed (DKIM TXT, two SPF CNAMEs, optional DMARC TXT) were pulled directly from the
-   Resend dashboard and are recorded in this session's history — ask if you need them again
-   rather than re-fetching. DNS lives at **Spaceship**, which this session has no access to.
-   User is waiting on more details before adding them. **Do not chase this further until the
-   user brings it back up** — every email this app sends (`RECEIVED_HQ`, `ORDER_CONFIRMED`, the
-   older payment-receipt emails) is blocked on this, but that's accepted as a known, deliberate
-   gap for now, not something to keep flagging every session. **Note the domain mismatch**: this
-   Resend setup targets `cuppacards.com`, while `lib/site-config.ts`'s new `siteConfig.domain` is
-   `cuppascards.co.za` (confirmed by the user as the real domain being adopted) — when email work
-   resumes, confirm with the user which domain the sending address should actually verify against
-   rather than assuming `cuppacards.com` is still correct.
+4. **Resend domain verification — RESOLVED BY REPLACEMENT, not by fixing DNS.** This was
+   previously parked (2026-09-20) pending DKIM/SPF/DMARC records at Spaceship for
+   `cuppacards.com`. Later the same session, the user explicitly replaced Resend entirely with
+   Google SMTP/Nodemailer (`lib/email/transporter.ts`, `lib/email/send-email.ts` — see the
+   `siteConfig`/email-templating Shared Contracts above) — `resend` is uninstalled and
+   `lib/email/resend-client.ts` is deleted, so there is no longer a Resend domain to verify at
+   all. The real remaining blocker for actual email delivery is simply that `.env.local`'s
+   `EMAIL_SERVER_*` values are still placeholders, not the domain-mismatch concern this item used
+   to describe.
 
 ## Immediate Next Task
 
-The homepage hero copy, the Google SMTP/Nodemailer email migration, the WhatsApp community link,
-the Step 1 ACE-only simplification, the Pokémon-only card category lock, the shop filter pill
-simplification, and the vendor page's "Where We've Been" hide are all **committed and pushed to
-`origin/main`** (commits `df3fe4b`, `6372a6c`, `709257a`, `cd5cc9f`, `67edb39`, `cf845e5`) — not
-yet deployed to production.
+Nothing is currently pending commit/push/deploy — everything through `d521c60` is live on
+production (see "Uncommitted work" section above). Legal pages, email templates, and PayFast item
+descriptors now say "CuppasCards" (harmonized this session on the user's explicit instruction —
+the brand name is no longer a deferred area). All 8 grading-lifecycle email templates now exist
+and render correctly (verified live via `/admin/test-emails`); swap in the real
+`EMAIL_SERVER_*`/`EMAIL_FROM` credentials in `.env.local` (a Gmail **App Password**, not the
+account password) before expecting any of them to actually land in an inbox rather than fail at
+Gmail's SMTP auth step.
 
-Two more pieces of work are code-complete, build-verified, and click-tested live — waiting on your
-go-ahead to commit: the "CuppasCards" brand-name harmonization across legal pages/email
-templates/PayFast descriptors, and the full 8-stage grading email lifecycle templates + admin test
-harness (`/admin/test-emails`).
-
-Swap in the real `EMAIL_SERVER_*`/`EMAIL_FROM` credentials in `.env.local` before expecting any
-real send (including the new lifecycle test harness) to actually land in an inbox — Gmail requires
-an **App Password** for SMTP, not the account password.
-
-Legal pages, email templates, and PayFast item descriptors still say "Cuppa's Cards" — deliberately
-deferred; only touch them if the user separately confirms the legal entity name is actually
-changing.
-
-Email delivery work (Resend domain verification, wiring the remaining 6 notification stages) is
-**parked at the user's request** — do not pick this back up unprompted. Other open items:
-the currency-display policy scope decision, or the deferred return-shipping selector.
+**Still genuinely open**:
+- **Resend domain verification** is moot now that Resend itself has been fully replaced by Google
+  SMTP/Nodemailer this session — the earlier "parked" blocked item about it (see Blocked below) is
+  stale and should be treated as resolved-by-replacement, not something to still chase.
+- **Wiring real production triggers** for the 6 newly-templated stages (`COLLECTION_BOOKED`,
+  `DISPATCHED_TO_GRADER`, `RECEIVED_BY_GRADER`, `DISPATCHED_TO_SA`, `LANDED_AT_HQ`,
+  `DISPATCHED_TO_CUSTOMER`) — each needs a real DB event/admin action to call `sendGradingUpdate`
+  from, same as `ORDER_CONFIRMED`/`RECEIVED_HQ` already have. Not started; do not pick this up
+  unprompted, since it touches the shipment/logistics pipeline rather than being a template-only
+  change.
+- The currency-display policy scope decision, and the deferred return-shipping selector (see
+  Blocked below).
