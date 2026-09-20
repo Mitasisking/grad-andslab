@@ -10,9 +10,14 @@ const PAST_EVENTS = [
   { name: 'Durban Trading Card Meetup', location: 'Durban, South Africa', period: 'January 2026' },
 ]
 
+// Toggle to true once real event photos/history replace the placeholder
+// PAST_EVENTS entries above -- everything the section needs (data, markup,
+// nav link) stays intact below, just not rendered.
+const SHOW_PAST_EVENTS = false
+
 const NAV_SECTIONS = [
   { id: 'in-person', label: 'In-Person Submissions' },
-  { id: 'history', label: 'Where We’ve Been' },
+  ...(SHOW_PAST_EVENTS ? [{ id: 'history', label: 'Where We’ve Been' }] : []),
   { id: 'book-us', label: 'Book Us' },
 ]
 
@@ -136,36 +141,39 @@ export default function VendorPage() {
         </div>
       </section>
 
-      {/* Where We've Been */}
-      <section id="history" className="py-20 md:py-24 scroll-mt-16">
-        <div className="max-w-6xl mx-auto px-6">
-          <div className="text-center mb-16 max-w-2xl mx-auto">
-            <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">Where We&apos;ve Been</h2>
-            <p className="text-slate-400 text-lg leading-relaxed">
-              A look at the shows we&apos;ve set up a booth at.{' '}
-              <span className="text-slate-500">(Placeholder events shown below.)</span>
-            </p>
-          </div>
+      {/* Where We've Been -- hidden until real event content replaces the
+          PAST_EVENTS placeholders (see SHOW_PAST_EVENTS above) */}
+      {SHOW_PAST_EVENTS && (
+        <section id="history" className="py-20 md:py-24 scroll-mt-16">
+          <div className="max-w-6xl mx-auto px-6">
+            <div className="text-center mb-16 max-w-2xl mx-auto">
+              <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">Where We&apos;ve Been</h2>
+              <p className="text-slate-400 text-lg leading-relaxed">
+                A look at the shows we&apos;ve set up a booth at.{' '}
+                <span className="text-slate-500">(Placeholder events shown below.)</span>
+              </p>
+            </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-            {PAST_EVENTS.map((event) => (
-              <div
-                key={event.name}
-                className="bg-slate-800 border border-slate-700 rounded-2xl overflow-hidden flex hover:border-amber-500/50 transition"
-              >
-                <div className="w-28 shrink-0 bg-slate-900 flex items-center justify-center text-3xl">🎪</div>
-                <div className="p-5">
-                  <h3 className="text-lg font-bold text-slate-100">{event.name}</h3>
-                  <p className="text-sm text-slate-400 mt-1">{event.location}</p>
-                  <p className="text-xs text-amber-400 mt-2 font-semibold uppercase tracking-wide">
-                    {event.period}
-                  </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+              {PAST_EVENTS.map((event) => (
+                <div
+                  key={event.name}
+                  className="bg-slate-800 border border-slate-700 rounded-2xl overflow-hidden flex hover:border-amber-500/50 transition"
+                >
+                  <div className="w-28 shrink-0 bg-slate-900 flex items-center justify-center text-3xl">🎪</div>
+                  <div className="p-5">
+                    <h3 className="text-lg font-bold text-slate-100">{event.name}</h3>
+                    <p className="text-sm text-slate-400 mt-1">{event.location}</p>
+                    <p className="text-xs text-amber-400 mt-2 font-semibold uppercase tracking-wide">
+                      {event.period}
+                    </p>
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
+      )}
 
       {/* Book Us */}
       <section id="book-us" className="py-20 md:py-24 bg-slate-950 border-t border-slate-800 scroll-mt-16">

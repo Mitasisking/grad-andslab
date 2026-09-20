@@ -117,7 +117,12 @@ up today — not a to-do list.
   `components/LivePools.tsx`, its exclusive slate/amber-themed renderer) is gone; `/batches` now
   308-redirects to `/submit` via `next.config.js`'s `redirects()`. Its content lives on `/submit`
   itself now — see the Submission flow section below.
-- `app/services/page.tsx`, `app/prepare/page.tsx`, `app/contact/page.tsx`, `app/vendor/page.tsx`
+- `app/services/page.tsx`, `app/prepare/page.tsx`, `app/contact/page.tsx`
+- `app/vendor/page.tsx` — `SHOW_PAST_EVENTS = false` module-level flag hides the "Where We've
+  Been" hero nav button and its whole event-gallery section (real `PAST_EVENTS` are still
+  placeholders — no live event photos exist yet). `NAV_SECTIONS` conditionally includes the
+  `history` entry based on the same flag, so the button and the section it links to are always in
+  sync. Nothing deleted — flipping the flag to `true` brings both back exactly as they were.
 - `app/terms/page.tsx`, `app/privacy/page.tsx`, `app/refund-policy/page.tsx`, `app/shipping-policy/page.tsx` (+ `components/legal/legal-page.tsx`)
 - `app/login/page.tsx`, `app/signup/page.tsx`, `app/my-account/page.tsx`, `app/my-account/reset-password/page.tsx`
 
@@ -549,6 +554,15 @@ advanced to Step 2, confirmed no Semi-Rigids/Consignment cards, confirmed the OR
 and confirmed toggling batch-level Clean & Polish to "Yes" collapses the per-card toggle into the
 badge.
 
+**Uncommitted — vendor page "Where We've Been" hidden until real event content exists**:
+`app/vendor/page.tsx` gained a `SHOW_PAST_EVENTS = false` module-level flag; `NAV_SECTIONS` only
+includes the "Where We've Been" hero button when it's `true`, and the whole event-gallery
+`<section id="history">` is wrapped in `{SHOW_PAST_EVENTS && (...)}`. `PAST_EVENTS` data and the
+section's full markup are untouched — toggling the flag to `true` once real event photos/history
+exist is the only change needed to restore it. `tsc`/`eslint`/`npm run build` all clean (same
+baseline). Click-tested live: `/vendor`'s hero CTA row now shows only "In-Person Submissions" and
+"Book Us", and the history section itself no longer renders.
+
 - Untracked, not yet triaged into the repo structure: `Stock photos/`, `TheCardApi.txt`,
   `claude context.txt`, `cuppa cards logo temp logo.jpeg`, `termsofservice.txt`, `zernio.txt`.
 
@@ -584,13 +598,15 @@ badge.
 
 ## Immediate Next Task
 
-Seven pieces of work are code-complete, build-verified, and click-tested live — waiting on your
-go-ahead to commit: the homepage hero copy update, the Google SMTP/Nodemailer email migration
-(swap in the real `EMAIL_SERVER_*`/`EMAIL_FROM` credentials in `.env.local` before expecting real
-sends to succeed — Gmail requires an **App Password** for SMTP, not the account password), the
-WhatsApp community link, the Step 1 ACE-only simplification, the Pokémon-only card category lock,
-the shop filter pill simplification, and the Step 2 Add-ons rework (removed Semi-Rigids/
-Consignment, new copy, OR divider, collapsing per-card indicator).
+The homepage hero copy, the Google SMTP/Nodemailer email migration, the WhatsApp community link,
+the Step 1 ACE-only simplification, the Pokémon-only card category lock, and the shop filter pill
+simplification are all **committed and pushed to `origin/main`** (commits `df3fe4b`, `6372a6c`,
+`709257a`, `cd5cc9f`, `67edb39`) — not yet deployed to production. Swap in the real
+`EMAIL_SERVER_*`/`EMAIL_FROM` credentials in `.env.local` before expecting real sends to succeed
+(Gmail requires an **App Password** for SMTP, not the account password).
+
+One piece of work is code-complete, build-verified, and click-tested live — waiting on your
+go-ahead to commit: the vendor page's "Where We've Been" section hidden via `SHOW_PAST_EVENTS`.
 
 Legal pages, email templates, and PayFast item descriptors still say "Cuppa's Cards" — deliberately
 deferred; only touch them if the user separately confirms the legal entity name is actually
