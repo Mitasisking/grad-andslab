@@ -14,6 +14,7 @@ import { TIER_OPTIONS_BY_COMPANY } from '@/lib/submission-types'
 import type {
   AceLabelOption,
   CardEntry,
+  EventSettingsRow,
   GradingCompany,
   PoolRow,
   ProductRegion,
@@ -79,16 +80,32 @@ export function SubmissionWizard({ activePools, showBatchTracker }: Props) {
   const urlEventSlug = searchParams.get('event')
   const [inPersonMode, setInPersonMode] = useState(urlIntakeIsInPerson)
   const [eventSlug, setEventSlug] = useState<string | null>(urlIntakeIsInPerson ? urlEventSlug : null)
+  // Display-only name for the "Live Intake Active" badge below -- kept
+  // separate from eventSlug (which drives routing/matching) since a name
+  // is purely cosmetic. Always fetched, even when the URL param already
+  // decided inPersonMode/eventSlug, so a booth QR link still gets a
+  // friendly name; only applied when the fetched slug actually matches the
+  // slug already in play, so a stale QR code from a past event can't show
+  // the wrong (current) event's name.
+  const [eventName, setEventName] = useState<string | null>(null)
 
   useEffect(() => {
-    if (urlIntakeIsInPerson) return // the URL param already decided this, unambiguously
     let cancelled = false
     fetch('/api/events/active')
       .then((res) => res.json())
-      .then((settings: { active_event_slug: string | null; is_live: boolean }) => {
-        if (cancelled || !settings.is_live) return
-        setInPersonMode(true)
-        setEventSlug(settings.active_event_slug)
+      .then((settings: EventSettingsRow) => {
+        if (cancelled) return
+        if (!urlIntakeIsInPerson) {
+          if (settings.is_live) {
+            setInPersonMode(true)
+            setEventSlug(settings.active_event_slug)
+            setEventName(settings.active_event_name)
+          }
+          return
+        }
+        if (settings.active_event_slug && settings.active_event_slug === urlEventSlug) {
+          setEventName(settings.active_event_name)
+        }
       })
       .catch(() => {
         // Best-effort: a failed lookup just leaves the wizard in its normal
@@ -97,7 +114,7 @@ export function SubmissionWizard({ activePools, showBatchTracker }: Props) {
     return () => {
       cancelled = true
     }
-  }, [urlIntakeIsInPerson])
+  }, [urlIntakeIsInPerson, urlEventSlug])
 
   const [step, setStep] = useState(0)
   const [region, setRegion] = useState<ProductRegion>('sa')
@@ -187,6 +204,16 @@ export function SubmissionWizard({ activePools, showBatchTracker }: Props) {
 
   return (
     <div>
+      {inPersonMode && (
+        <div
+          className="mb-8 inline-flex items-center gap-2 px-3.5 py-2 rounded-[3px] border text-[13px]"
+          style={{ borderColor: 'var(--seal)', background: 'var(--paper-raised)', color: 'var(--ink)' }}
+        >
+          <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: 'var(--seal)' }} />
+          Live Intake Active{eventName ? ` — Handing in at ${eventName}` : ''}
+        </div>
+      )}
+
       {showBatchTracker && step === 0 && <LiveBatchTracker pools={activePools} onSelectBatch={joinBatch} />}
 
       <div className="grid lg:grid-cols-[220px_1fr] gap-10 lg:gap-16">

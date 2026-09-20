@@ -12,8 +12,12 @@ import type { EventSettingsRow } from '@/lib/submission-types'
 export async function GET() {
   const supabase = await getSupabaseRouteClient()
 
-  const { data } = await supabase.from('event_settings').select('active_event_slug, is_live').eq('id', true).single()
+  const { data } = await supabase
+    .from('event_settings')
+    .select('active_event_slug, active_event_name, is_live')
+    .eq('id', true)
+    .single()
 
-  const settings: EventSettingsRow = data ?? { active_event_slug: null, is_live: false }
+  const settings: EventSettingsRow = data ?? { active_event_slug: null, active_event_name: null, is_live: false }
   return NextResponse.json(settings)
 }

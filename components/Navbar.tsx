@@ -107,7 +107,7 @@ export default function Navbar() {
   if (pathname === '/login' || pathname === '/signup') return null
 
   return (
-    <nav className="bg-slate-950 border-b border-slate-800 text-white sticky top-0 z-50">
+    <nav className="print:hidden bg-slate-950 border-b border-slate-800 text-white sticky top-0 z-50">
       <div className="max-w-6xl mx-auto px-6 py-4 flex justify-between items-center">
         
         {/* Left Side: Logo & Main Links */}

@@ -13,28 +13,37 @@ This file is updated at the end of every response that builds or modifies a comp
 
 ## Current Milestone
 
-**Phase: personalize the "My Submissions" nav link.** Live in production as of `451ca05`: the
-site-wide "CuppasCards" brand rename (UI copy pass), the `/submit` nav label cleanup
-("Submit & Batches" → "Submit"), and the Live Batch Tracker feature flag. Everything through that
-was click-tested directly on production (homepage, `/submit`, `/batches` redirect, `/shop` +
-product detail, `/dashboard`, `/contact`, `/vendor`, `/admin` + `/admin/shop` edit modal) — no
-console errors, no broken images (one apparent broken-image screenshot on the homepage carousel
-was confirmed to be a load-race artifact, not a real bug). Active work: `components/Navbar.tsx`'s
-"My Submissions" link now reads `"{FirstName}'s Submissions"` (or `"{FirstName}' Submissions"` for
-a name already ending in s) for a logged-in customer, pulling the first name from
-`profiles.full_name` — the same column `app/dashboard/page.tsx`'s "Welcome back" greeting already
-reads — falling back to the original "My Submissions" for a logged-out visitor or before the
-profile fetch resolves. No hydration risk: `firstName` starts `null` on both the server render and
-this client component's first render (same as the existing `user`/`isAdmin` state), only changing
-after the post-mount effect resolves — confirmed no hydration-mismatch warnings in the console.
-Code-complete, `tsc`/`eslint`/`npm run build` all clean, click-tested live in the browser
-(**uncommitted**, see below). Everything through the brand rename is on `main` (`4026e1d`,
-`df13969`, `0de1894`, `fb9bb14`, `8913730`, `2c7c9f3`, `66aae87`, `f796950`, `2249a9f`, `03c67de`,
-`451ca05`) and **live on production** (Vercel alias `website-three-iota-83.vercel.app`,
-deployment `dpl_3YBTks4a4vez2RdYhCfj4WGLETtT`), migrations 0059-0063 all live on production. Email
-delivery work (Resend domain verification, the remaining 6 notification stages) is **explicitly
-parked at the user's request** — do not pick it back up unprompted. No uncommitted work is
-outstanding.
+**Phase: In-Person Event Submissions — Admin Control + customer flow, built out fully.** Committed
+locally as of `3deec54` (Navbar personalization, pushed) — everything through `451ca05` is **live
+on production** (Vercel alias `website-three-iota-83.vercel.app`), migrations 0059-0063 live.
+Active work (this task): the request asked for a brand-new `platform_settings` table, but that
+duplicates the existing `event_settings` singleton (migration 0062, already RLS'd public-read /
+admin-write, already wired end-to-end via `app/admin/events`, `app/api/events/active`, and
+`app/submit/wizard.tsx`) — **per the user's explicit choice, extended the existing system instead
+of building a parallel one.** Concretely: (1) migration `0064_add_event_settings_name.sql` adds
+`active_event_name` (nullable text) to `event_settings`, applied to production and independently
+re-verified via `information_schema.columns`; (2) `app/admin/events/events-settings-panel.tsx`
+rebuilt with an Event Name field, a real shadcn `Switch` (new `components/ui/switch.tsx`, backed by
+the newly-installed `@radix-ui/react-switch` — confirmed with the user before adding the
+dependency), a shareable booth link, a `QRCodeSVG`-rendered QR code, and Copy/Download/Print
+actions (print scoped via Tailwind's `print:` variant, with `print:hidden` added to `Navbar.tsx`/
+`Footer.tsx` so a printed booth flyer excludes site chrome); (3) `app/submit/wizard.tsx` gained a
+"Live Intake Active — Handing in at {event name}" badge, name-matched by slug so a stale/old booth
+QR code can't show the wrong current event's name; (4) the "Zero-Paper Intake Handshake" (unique
+4-digit `handover_pin`, the confirmation-screen PIN display, and `/admin/intake`'s "Booth handover"
+PIN-verify box that marks the submission received and fires `RECEIVED_HQ`) **already existed
+end-to-end** from the earlier In-Person Event Drop-Off task — audited, confirmed correct, left
+untouched. **Explicitly not built**: a dedicated return-shipping courier/Vault-Consignment
+selector — the existing address (used for the return destination) + `interestedInConsignment`
+opt-in already cover this reasonably, and a dedicated selector remains the separately-deferred
+future feature already tracked in Blocked below; do not build it as an unplanned side effect here.
+`tsc`/`eslint`/`npm run build` all clean; click-tested live end-to-end in the browser (admin panel
+save flow, QR/booth link, the wizard badge via both the admin-toggle path and the `?intake=in-
+person&event=slug` URL-param path) after tracking down and ruling out a **dev-server-only**
+Turbopack quirk (see Uncommitted work below) via a clean production build. Migration 0064 is live
+on production Supabase; the admin toggle was reset back to off after testing, confirmed via a
+fresh read. Email delivery work (Resend domain verification, the remaining 6 notification stages)
+is **explicitly parked at the user's request** — do not pick it back up unprompted.
 
 ---
 
@@ -83,6 +92,13 @@ up today — not a to-do list.
   card headline); a pool still open under a since-retired tier (e.g. ACE's old `ace_value`) falls
   back to a humanized version of the slug rather than showing it verbatim. Currently unmounted in
   the running app (`SHOW_BATCH_TRACKER = false`) but fully wired and ready.
+- **In-person event drop-off badge** (`app/submit/wizard.tsx`) — when `inPersonMode` is true (via
+  either the `?intake=in-person&event=slug` URL param or the admin's global toggle), renders a
+  "Live Intake Active — Handing in at {eventName}" badge above the wizard. `eventName` is fetched
+  from `/api/events/active` and only applied when its `active_event_slug` matches the `eventSlug`
+  already in play, so a stale/printed booth QR code from a past event never shows the current
+  (different) event's name. Falls back to just "Live Intake Active" with no name if the slug
+  can't be matched or the fetch fails.
 - `components/submit/step-grader-tier.tsx` — tier selector, now renders `TierOption.group`
   subheadings ("Flagship levels" / "Premium levels") when a company's tiers set `group`;
   companies without groups (PCG, PSA) render as a flat list, unchanged. Also renders
@@ -134,12 +150,22 @@ up today — not a to-do list.
 - `lib/admin/submission-status.ts`, `lib/admin/photo-upload-client.ts`
 
 ### Admin — events
-- `app/admin/events/page.tsx` + `events-settings-panel.tsx` — single global toggle
-  (`active_event_slug` + `is_live`) for defaulting every `/submit` visitor into in-person mode
+- `app/admin/events/page.tsx` + `events-settings-panel.tsx` — global toggle (`active_event_slug` +
+  `active_event_name` + `is_live`) for defaulting every `/submit` visitor into in-person mode
   without a booth QR code. Same inline per-page auth pattern as `app/admin/pools/page.tsx`
-  (no shared `layout.tsx`/`requireAdmin()` for pages — that's an API-route-only convention).
-- `app/api/admin/events/route.ts` — admin-only POST to update the singleton row.
-- `app/api/events/active/route.ts` — public GET, read by the `/submit` wizard.
+  (no shared `layout.tsx`/`requireAdmin()` for pages — that's an API-route-only convention). The
+  panel now also has: an Event Name text field; a real shadcn `Switch` (see Shared infra) in place
+  of the earlier radio-dot toggle button; a shareable booth link built from
+  `window.location.origin` (not `siteConfig.domain` — see that field's own comment for why) as
+  `/submit?intake=in-person[&event=<slug>]`; a `QRCodeSVG` rendering of that link; and Copy
+  link / Download QR (SVG → canvas → PNG, `downloadSvgAsPng`) / Print buttons. Print is scoped via
+  Tailwind's `print:` variant classes directly on this panel's own markup (no separate print-only
+  route or window) plus `print:hidden` on `Navbar`/`Footer` so a printed booth flyer shows only the
+  event name, QR, and link.
+- `app/api/admin/events/route.ts` — admin-only POST to update the singleton row; now also accepts
+  and validates `activeEventName` (same `CONTROL_CHARACTERS` check as the slug, plus a 100-char cap).
+- `app/api/events/active/route.ts` — public GET, read by the `/submit` wizard; now also returns
+  `active_event_name`.
 
 ### Admin — pools & logistics
 - `app/admin/pools/page.tsx` + `pools-board.tsx`, `app/api/admin/pools/status/route.ts`, `lib/pools/active-pools.ts`
@@ -213,7 +239,15 @@ up today — not a to-do list.
   codebase (flat `lib/*.ts` files are the convention — see `lib/social-links.ts`,
   `lib/submission-types.ts`), so this lives at `lib/site-config.ts` instead, same reasoning as
   every other requested-but-nonexistent path this session.
-- `components/ui/{button,checkbox,input,label}.tsx`, `lib/utils.ts`
+- `components/ui/{button,checkbox,input,label,switch}.tsx`, `lib/utils.ts` — `switch.tsx` is
+  **new**, a genuine shadcn `Switch` (Radix `@radix-ui/react-switch` primitive under the hood,
+  same pattern as `checkbox.tsx`'s `@radix-ui/react-checkbox`). Added on the user's explicit
+  confirmation before installing the new dependency. Its base Tailwind classes reference shadcn's
+  default `--primary`/`--input` tokens, which this codebase never defined in `globals.css` (every
+  other shadcn primitive here is always paired with an inline `style` override using the vault
+  theme's own tokens instead, e.g. `Button`'s `style={{ background: 'var(--vault)' }}` usage
+  throughout `components/submit/*`) — `events-settings-panel.tsx`'s usage follows that same
+  convention (`style={{ background: isLive ? 'var(--seal)' : 'var(--line)' }}`).
 - `components/{Navbar,Footer,FeaturedCarousel,PoolTracker,SocialIcons,WhatnotBanner,PackagingGuidelines}.tsx`
   — `Navbar.tsx`'s main nav is `Submit` (`/submit`, label simplified from "Submit & Batches") +
   a personalized submissions link (`/dashboard`, added back so logged-in customers still have a
@@ -258,52 +292,60 @@ up today — not a to-do list.
 - **`GradingEmailStage`** (`types/notifications.ts`) — an 8-stage notification-layer lifecycle, intentionally more granular than the DB's `SubmissionStatus` (5 stages) or `shipment_batch_status` (5 stages, migration 0052). Most stages beyond `ORDER_CONFIRMED` have no DB column or call site yet — adding a stage here is a type contract, not a promise it's wired up.
 - **`AceLabelOption`** = `'standard' | 'colour_match' | 'ace_label'` — lives in `lib/submission-types.ts` (with `ACE_LABEL_OPTIONS`/`labelOptionFeeForRegion`), **not** a separate `types/grading.ts` — that path was requested but deliberately not created, to avoid a second, competing home for grading-domain types alongside the existing single source of truth. Same per-submission modeling as `needs_clean_and_polish`/`needs_semi_rigids` (one choice for the whole batch, not per-card) — only ever non-null when `grading_company = 'ACE'` (enforced by `chk_submissions_ace_label_option_valid`, migration 0061). ZAR fees (R25/R75) are ACE's own designated retail prices, not the usual ~18.5 USD/ZAR stand-in conversion; USD is still the derived stand-in.
 - **`IntakeChannel`** = `'online_shipment' | 'in_person_event'` and **`EventSettingsRow`** — `lib/submission-types.ts` (again, not `types/grading.ts` — same reasoning as `AceLabelOption` above; every new domain type this session has gone into the existing file, not a parallel one). "Awaiting Booth Handover" / "Received & Logged" are **UI labels derived from `intake_channel` + `intake_verified_at`**, deliberately not new `SubmissionStatus` enum values — that enum is shared with the customer pipeline stepper (`STATUS_STAGES`/`PipelineProgress`) and `lib/admin/submission-status.ts`'s `changeSubmissionStatus`, which only accepts its fixed 5 values; extending it for a pre-`received` state would mean touching that shared stepper UI for a state most submissions never pass through. Every submission, in-person or not, still gets `status = 'received'` at creation, unchanged.
+`EventSettingsRow` gained `active_event_name: string | null` (migration 0064) — purely a display
+name for the admin panel and the `/submit` wizard's badge; `active_event_slug` remains the only
+field that drives routing/matching logic, never the name.
 - **`event_settings`** is a Postgres singleton-row table (`id boolean primary key default true`, `check(id)`) — the same trick as any single-row settings table; there is deliberately no way to have zero or multiple rows.
 
 ---
 
 ## Uncommitted work in the tree right now
 
-**Committed, pushed, and deployed to production** (alias `website-three-iota-83.vercel.app`,
-deployment `dpl_3YBTks4a4vez2RdYhCfj4WGLETtT`): ACE tier overhaul + ACE Label Options +
-notification system stage 1 (`4026e1d`); In-Person Event Drop-Off (`df13969`); booth-handover
-contact-lookup bug fix (`0de1894`); `ORDER_CONFIRMED` wired into the Payfast webhook (`fb9bb14`);
-grader filter false-positive fix, `products.grading_company` (`8913730`, migration 0063 applied
-to production and click-tested live — see that commit message for full detail); Live Batch
-Tracker extracted to `/batches` (`2c7c9f3`, click-tested live); `/experience` and its exclusive 3D
-hero-reveal component tree + six now-unused npm dependencies removed entirely (`66aae87`); Submit
-Cards + Batches consolidated onto `/submit` (`f796950`); Live Batch Tracker isolated into
-`components/grading/LiveBatchTracker.tsx` and hidden behind `SHOW_BATCH_TRACKER = false`
-(`2249a9f`); site-wide "CuppasCards" brand rename (UI copy) + `/submit` nav label simplified to
-"Submit" (`03c67de`); PROJECT_STATE.md deployment-status update (`451ca05`). Migrations 0059-0063
-all live on production. `RECEIVED_HQ`/`ORDER_CONFIRMED` email delivery is blocked by an unrelated,
-pre-existing Resend domain-verification issue (see Blocked below) — parked at the user's request,
-not being chased further.
+**Committed and pushed to `main`** (`f796950` also **deployed to Vercel production**, alias
+`website-three-iota-83.vercel.app`; everything after it is committed but not yet deployed): ACE
+tier overhaul + ACE Label Options + notification system stage 1 (`4026e1d`); In-Person Event
+Drop-Off (`df13969`); booth-handover contact-lookup bug fix (`0de1894`); `ORDER_CONFIRMED` wired
+into the Payfast webhook (`fb9bb14`); grader filter false-positive fix, `products.grading_company`
+(`8913730`, migration 0063); Live Batch Tracker extracted to `/batches` (`2c7c9f3`); `/experience`
+removed entirely (`66aae87`); Submit Cards + Batches consolidated onto `/submit` (`f796950`, **the
+last one deployed**); Live Batch Tracker isolated + hidden behind a flag (`2249a9f`); site-wide
+"CuppasCards" brand rename + `/submit` nav label simplified (`03c67de`); PROJECT_STATE.md
+deployment-status update (`451ca05`); "My Submissions" nav-link personalization (`3deec54`).
+Migrations 0059-0063 all live on production. `RECEIVED_HQ`/`ORDER_CONFIRMED` email delivery is
+blocked by an unrelated, pre-existing Resend domain-verification issue (see Blocked below) —
+parked at the user's request, not being chased further.
 
-**Uncommitted — personalize the "My Submissions" nav link**:
-- `components/Navbar.tsx` — added a `firstName` state, populated from `profiles.full_name` in the
-  same query the admin-role check already runs (`.select('role, full_name')`, both in the initial
-  `checkUser()` call and the `onAuthStateChange` listener). A local `possessive(firstName)` helper
-  applies standard English possessive grammar (`Mitchell` → `Mitchell's`, `James` → `James'`, via
-  a case-insensitive `/s$/i` test). The `/dashboard` link's text is now a computed
-  `submissionsLabel`: `"{FirstName}'s Submissions"` (or the trailing-apostrophe form for a name
-  ending in s) when resolved, else the original `"My Submissions"` — covering both a logged-out
-  visitor and the brief window before the profile fetch resolves for a logged-in one.
-- No hydration risk introduced: `firstName` initializes to `null` on both the server render and
-  this client component's very first render (no session is resolvable during either), exactly
-  mirroring the pre-existing `user`/`isAdmin` state's timing — there is nothing to reconcile once
-  the post-mount effect updates it, so no separate "mounted" boolean was needed.
-- Referenced by neither: the file paths named in the request (`components/layout/Navbar.tsx`,
-  `Header.tsx`) don't exist in this codebase — edited the real, single nav component at
-  `components/Navbar.tsx` instead, same as every other requested-but-nonexistent path this
-  session.
-- `tsc --noEmit` clean, `eslint` shows the same pre-existing issues confirmed via `git stash` to
-  predate this task, `npm run build` succeeds. Click-tested live in the dev browser as the logged
-  in account owner: nav correctly reads "Mitchell's Submissions"; console showed zero
-  hydration-mismatch warnings on load (only the standard React DevTools/HMR notices). The
-  logged-out fallback path was verified by code review (the `else`/`catch` branches all call
-  `setFirstName(null)`) rather than by an actual browser logout, since the logic is a direct
-  mirror of the already-proven `isAdmin` pattern.
+**Uncommitted — In-Person Event Submissions Admin Control + customer flow**: full detail in the
+Current Milestone and Active File Manifest sections above. In short:
+- `supabase/migrations/0064_add_event_settings_name.sql` — **applied to production and
+  independently re-verified** via `information_schema.columns` (`active_event_name`, `text`,
+  nullable, present on `public.event_settings`).
+- `app/admin/events/events-settings-panel.tsx` — rebuilt: Event Name field, real shadcn `Switch`,
+  shareable booth link (`window.location.origin`-based), `QRCodeSVG` + Copy/Download/Print.
+- `components/ui/switch.tsx` — **new**, plus the new `@radix-ui/react-switch` dependency in
+  `package.json`/`package-lock.json` (installed on the user's explicit confirmation).
+- `app/api/admin/events/route.ts`, `app/api/events/active/route.ts`, `lib/submission-types.ts` —
+  all extended for `active_event_name`.
+- `app/submit/wizard.tsx` — new "Live Intake Active — Handing in at {eventName}" badge, name-
+  matched by slug.
+- `components/Navbar.tsx`, `components/Footer.tsx` — added `print:hidden` so a printed booth
+  flyer excludes site chrome.
+- **A real bug was found and fixed during this task, but it was in my own testing environment,
+  not the app**: repeatedly running `rm -rf .next` while `next dev` (Turbopack) was still running
+  left the dev server in a state where client-side `useEffect`s inside `SubmissionWizard` stopped
+  firing at all (confirmed via a temporary debug instrumentation — zero network requests were even
+  attempted). A clean `npm run build && next start` on a separate port immediately proved the
+  actual code was correct all along. **Lesson recorded for future sessions**: never run
+  `rm -rf .next` while a dev server sharing that directory is running; if `.next` needs clearing
+  for a stale-types issue, stop the dev server first, clear it, then restart.
+- `tsc`/`eslint` (same pre-existing baseline, +1 new `set-state-in-effect` warning for
+  `events-settings-panel.tsx`'s client-only `window.location.origin` read — same legitimate
+  SSR-bridging pattern this codebase already tolerates elsewhere, not a new category of debt) /
+  `npm run build` all clean. Click-tested live end-to-end via a clean production build: admin save
+  flow (name/slug/toggle), booth link + QR rendering, and the wizard badge via both the
+  admin-toggle path and the `?intake=in-person&event=slug` URL path. The admin toggle was switched
+  back off after testing and independently re-verified (`is_live: false`) so production customers
+  aren't defaulted into a fake test event.
 - Untracked, not yet triaged into the repo structure: `Stock photos/`, `TheCardApi.txt`,
   `claude context.txt`, `cuppa cards logo temp logo.jpeg`, `termsofservice.txt`, `zernio.txt`.
 
@@ -318,7 +360,11 @@ not being chased further.
 3. **Return-shipping selector doesn't exist** — the in-person drop-off request assumed Step 3
    already had a "Return Courier to Door" / "Vault / Marketplace Listing" choice to retain.
    It doesn't. Deferred as its own future feature (new column + UI + order-summary wiring)
-   rather than building it as an unplanned side effect of this task.
+   rather than building it as an unplanned side effect of this task. **Re-confirmed still
+   deferred** during the In-Person Event Submissions Admin Control task — that request also
+   assumed this selector existed ("Retain domestic courier selection for the Return phase"); the
+   existing address (used for the return destination) + `interestedInConsignment` opt-in were
+   judged sufficient for now rather than building the dedicated selector as a side effect again.
 4. **Resend domain verification — explicitly parked by the user (2026-09-20).** `cuppacards.com`
    is added in Resend (status "Not Started") but has zero DNS records live yet. The exact
    records needed (DKIM TXT, two SPF CNAMEs, optional DMARC TXT) were pulled directly from the
@@ -335,8 +381,11 @@ not being chased further.
 
 ## Immediate Next Task
 
-The "My Submissions" nav-link personalization (`components/Navbar.tsx`) is code-complete,
-build-verified, and click-tested live — waiting on your go-ahead to commit.
+The In-Person Event Submissions Admin Control + customer flow work (migration 0064, the rebuilt
+`events-settings-panel.tsx` with the shadcn Switch/QR/booth-link, the wizard's "Live Intake
+Active" badge) is code-complete, build-verified, and click-tested live end-to-end — waiting on
+your go-ahead to commit. The "My Submissions" nav-link personalization (`3deec54`) is already
+committed and pushed but not yet deployed.
 
 Legal pages, email templates, and PayFast item descriptors still say "Cuppa's Cards" — deliberately
 deferred; only touch them if the user separately confirms the legal entity name is actually

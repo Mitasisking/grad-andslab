@@ -387,6 +387,8 @@ export const IN_PERSON_DROPOFF_LABEL = 'In-Person Drop-Off (Table Intake)'
 /** Mirrors public.event_settings's single row (0062_add_in_person_event_intake.sql). */
 export interface EventSettingsRow {
   active_event_slug: string | null
+  /** Human-readable display name (e.g. "Comic Con Johannesburg 2026") -- see supabase/migrations/0064_add_event_settings_name.sql. Purely cosmetic; the slug is what drives routing/matching. */
+  active_event_name: string | null
   is_live: boolean
 }
 

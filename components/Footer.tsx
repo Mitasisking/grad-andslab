@@ -6,7 +6,7 @@ import { FacebookIcon, InstagramIcon, TiktokIcon, WhatsappIcon } from './SocialI
 /** Site-wide footer, mounted once in app/layout.tsx (same as Navbar) so every page -- not just the homepage, which used to inline this -- links out to the legal/policy pages and vendor/contact routes. */
 export function Footer() {
   return (
-    <footer className="bg-slate-900 py-12 border-t border-slate-800">
+    <footer className="print:hidden bg-slate-900 py-12 border-t border-slate-800">
       <div className="max-w-6xl mx-auto px-6 flex flex-col md:flex-row justify-between items-center gap-8 md:gap-4 text-sm text-slate-500">
         <p>© {new Date().getFullYear()} {siteConfig.name}. All rights reserved.</p>
         <div className="flex flex-wrap justify-center gap-x-6 gap-y-2">
