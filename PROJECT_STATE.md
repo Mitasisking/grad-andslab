@@ -706,11 +706,11 @@ sidebar `EMAIL` block (`support@gradeandslab.com`, a leftover from before the Cu
 `LOCATION`/`BUSINESS HOURS` and the Vendor Page link are unchanged. The form itself needed no
 changes — it was already fully wired to `app/api/contact-inquiries/route.ts`, which inserts into
 the real `contact_inquiries` table (migration 0030). `tsc`/`eslint`/`npm run build` all clean
-(same baseline). Click-tested live via two real form submissions, both returning
-`POST /api/contact-inquiries` → `201` — **two test rows** ("Claude QA Test" / "qa-test@example.com"
-and "Claude QA Test 2" / "qa-test2@example.com") were left in the real `contact_inquiries` table
-by this verification; delete them from the admin side if they shouldn't sit alongside real
-inquiries.
+(same baseline). Click-tested live via two real form submissions; only the second
+(`POST /api/contact-inquiries` → `201`) actually succeeded — the first attempt's network request
+was never confirmed and turned out not to have gone through. The one real test row ("Claude QA
+Test 2" / "qa-test2@example.com") has since been deleted directly from `contact_inquiries` at the
+user's request, confirmed via a follow-up `count(*)` query returning `0`.
 
 **Uncommitted — "Submission Method" selector added to Step 1**: `lib/submission-types.ts` gained
 `SubmissionType`, `SUBMISSION_TYPE_OPTIONS`, `internationalShippingFeeForRegion`, and
@@ -760,13 +760,13 @@ Direct Dispatch — R1 020,00" with a correct total (R1 780,00).
 
 ## Immediate Next Task
 
-Nothing is currently pending commit/push/deploy — everything through `f0236b1` is committed,
+Nothing is currently pending commit/push/deploy — everything through `6c520b4` is committed,
 pushed, and live on production (deployment `dpl_HgwE2UcsEN8GJbBUCSWrNFVK7Erd`). This includes: the
-Contact page's stale direct-email block removal (note: two test rows, `Claude QA Test` /
-`Claude QA Test 2`, were left in the real `contact_inquiries` table from live-testing the form —
-worth deleting from the admin side if you don't want them alongside real inquiries); the Step 1
-"Submission Method" selector (`'batch'`/`'individual'` dispatch, migration 0065 applied and
-verified); and Step 2's "This submission" → "Full Clean & Polish" heading rename. Legal pages,
+Contact page's stale direct-email block removal (the one real test row this left in
+`contact_inquiries`, "Claude QA Test 2", has since been deleted at the user's request — see
+Active File Manifest above); the Step 1 "Submission Method" selector
+(`'batch'`/`'individual'` dispatch, migration 0065 applied and verified); and Step 2's "This
+submission" → "Full Clean & Polish" heading rename. Legal pages,
 email templates, and PayFast item descriptors now say "CuppasCards". All 8 grading-lifecycle email
 templates exist and render correctly (verified live via `/admin/test-emails`); swap in the real
 `EMAIL_SERVER_*`/`EMAIL_FROM` credentials in `.env.local` (a Gmail **App Password**, not the
