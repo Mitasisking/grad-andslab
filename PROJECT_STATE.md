@@ -15,18 +15,21 @@ This file is updated at the end of every response that builds or modifies a comp
 
 **Phase: launch simplification pass (ACE-only + Pokémon-only + shop filter simplification +
 Add-ons rework) + outbound email moved to Google SMTP/Nodemailer + WhatsApp community link + hero
-copy + brand-name harmonization to "CuppasCards" + full 8-stage grading email lifecycle templates.**
-**Live in production as of `d521c60`** (deployed via `vercel --prod`, deployment
-`dpl_7gWkiTWrotGVNpyhoCzCMgnQfy6c`, aliased to `website-three-iota-83.vercel.app`): the hero copy
-update, the Google SMTP/Nodemailer email migration, the WhatsApp community link, the Step 1
-ACE-only simplification, the Pokémon-only card category lock, the shop filter pill simplification,
-the vendor page's "Where We've Been" hide, the "CuppasCards" brand-name harmonization, and the
-full 8-stage grading email lifecycle templates + `/admin/test-emails` test harness — i.e.
-everything described in items 4-7 below plus the vendor/brand/email-lifecycle work documented
-under Uncommitted work history further down this file. This deploy was built from this project's
-own manual `vercel --prod` CLI workflow (confirmed via `vercel ls`: prior deploys all show as
-CLI/Production, no git-triggered auto-deploy bot), not an automatic git-push trigger — pushing to
-`origin/main` alone does not put changes on production here. Migrations 0059-0064 all live.
+copy + brand-name harmonization to "CuppasCards" + full 8-stage grading email lifecycle templates
++ Submission Method (batch vs individual dispatch) selector.**
+**Live in production as of `f0236b1`** (deployed via `vercel --prod`, deployment
+`dpl_HgwE2UcsEN8GJbBUCSWrNFVK7Erd`, aliased to `website-three-iota-83.vercel.app`): everything
+from the `d521c60` deploy (hero copy, Google SMTP/Nodemailer email migration, WhatsApp community
+link, Step 1 ACE-only simplification, Pokémon-only card category lock, shop filter pill
+simplification, vendor page's "Where We've Been" hide, "CuppasCards" brand-name harmonization, and
+the full 8-stage grading email lifecycle templates + `/admin/test-emails` test harness) **plus**
+the Contact page's stale direct-email block removal, the Step 1 "Submission Method" selector
+(`'batch'`/`'individual'` dispatch, `submissions.submission_type` migration 0065 — applied to
+production and independently re-verified), and Step 2's "This submission" → "Full Clean & Polish"
+heading rename. This deploy was built from this project's own manual `vercel --prod` CLI workflow
+(confirmed via `vercel ls`: prior deploys all show as CLI/Production, no git-triggered auto-deploy
+bot), not an automatic git-push trigger — pushing to `origin/main` alone does not put changes on
+production here. Migrations 0059-0065 all live.
 
 4. **Step 1 (`Grader & tier`) simplified to ACE-only for launch** — `components/submit/
    step-grader-tier.tsx` no longer renders a "Country of origin" or "Grading company" selector;
@@ -524,8 +527,8 @@ field that drives routing/matching logic, never the name.
 ## Uncommitted work in the tree right now
 
 **Nothing is currently uncommitted.** Everything described in this file — through commit
-`d521c60` — is committed, pushed to `origin/main`, and deployed to Vercel production (alias
-`website-three-iota-83.vercel.app`, deployment `dpl_7gWkiTWrotGVNpyhoCzCMgnQfy6c`, deployed via
+`f0236b1` — is committed, pushed to `origin/main`, and deployed to Vercel production (alias
+`website-three-iota-83.vercel.app`, deployment `dpl_HgwE2UcsEN8GJbBUCSWrNFVK7Erd`, deployed via
 `vercel --prod`). The subsections below are kept as a historical record of what shipped in each
 past task/commit, not a list of pending changes — check `git status` if you need to confirm this
 is still true before trusting it blindly.
@@ -757,32 +760,18 @@ Direct Dispatch — R1 020,00" with a correct total (R1 780,00).
 
 ## Immediate Next Task
 
-Everything through `d521c60` is committed, pushed, and live on production (deployment
-`dpl_7gWkiTWrotGVNpyhoCzCMgnQfy6c`); `64195ab` on top of that is a docs-only PROJECT_STATE.md
-commit (no redeploy needed for it). Legal pages, email templates, and PayFast item descriptors now
-say "CuppasCards" (harmonized this session on the user's explicit instruction — the brand name is
-no longer a deferred area). All 8 grading-lifecycle email templates now exist and render correctly
-(verified live via `/admin/test-emails`); swap in the real `EMAIL_SERVER_*`/`EMAIL_FROM`
-credentials in `.env.local` (a Gmail **App Password**, not the account password) before expecting
-any of them to actually land in an inbox rather than fail at Gmail's SMTP auth step.
-
-One more piece of work is code-complete, build-verified, and click-tested live (including a real
-`POST /api/contact-inquiries` → `201` test submission) — waiting on your go-ahead to commit: the
-Contact page's stale direct-email block removed (`app/contact/page.tsx`). Note: this left two test
-rows (`Claude QA Test`, `Claude QA Test 2`) in the production/dev `contact_inquiries` table from
-live-testing the form — worth deleting from the admin side if you don't want them showing up
-alongside real inquiries.
-
-Also code-complete, build-verified, and click-tested (pricing/UI only) — waiting on your go-ahead
-to commit: the Step 1 "Submission Method" selector (`'batch'` vs `'individual'` dispatch, new
-international shipping fee line item). Its migration
-(`supabase/migrations/0065_add_submission_type.sql`) has already been run against production by
-the user and independently re-verified, so this one is actually ready for a real checkout once
-committed/deployed — unlike everything else in this list, it has no outstanding DB blocker.
-
-One more small piece, code-complete and click-tested live: Step 2's "This submission" section
-heading (`components/submit/step-addons.tsx`) is now "Full Clean & Polish" — text only, no
-styling/logic change.
+Nothing is currently pending commit/push/deploy — everything through `f0236b1` is committed,
+pushed, and live on production (deployment `dpl_HgwE2UcsEN8GJbBUCSWrNFVK7Erd`). This includes: the
+Contact page's stale direct-email block removal (note: two test rows, `Claude QA Test` /
+`Claude QA Test 2`, were left in the real `contact_inquiries` table from live-testing the form —
+worth deleting from the admin side if you don't want them alongside real inquiries); the Step 1
+"Submission Method" selector (`'batch'`/`'individual'` dispatch, migration 0065 applied and
+verified); and Step 2's "This submission" → "Full Clean & Polish" heading rename. Legal pages,
+email templates, and PayFast item descriptors now say "CuppasCards". All 8 grading-lifecycle email
+templates exist and render correctly (verified live via `/admin/test-emails`); swap in the real
+`EMAIL_SERVER_*`/`EMAIL_FROM` credentials in `.env.local` (a Gmail **App Password**, not the
+account password) before expecting any of them to actually land in an inbox rather than fail at
+Gmail's SMTP auth step.
 
 **Still genuinely open**:
 - **Resend domain verification** is moot now that Resend itself has been fully replaced by Google
