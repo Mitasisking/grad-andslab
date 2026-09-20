@@ -9,9 +9,22 @@ import { SOCIAL_LINKS } from '../lib/social-links'
 import { siteConfig } from '../lib/site-config'
 import { FacebookIcon, InstagramIcon, TiktokIcon } from './SocialIcons'
 
+/** "Mitchell" -> "Mitchell's", "James" -> "James'" (standard English possessive rule for a name already ending in s). */
+function possessive(firstName: string): string {
+  return /s$/i.test(firstName) ? `${firstName}'` : `${firstName}'s`
+}
+
 export default function Navbar() {
   const [user, setUser] = useState<any>(null)
   const [isAdmin, setIsAdmin] = useState(false)
+  // First name pulled from profiles.full_name (synced from auth signup metadata
+  // by the handle_new_user trigger, supabase/migrations/0040) -- same source
+  // app/dashboard/page.tsx's "Welcome back, {full_name}" already reads.
+  // Starts null on both the server render and this component's first client
+  // render (no session is resolvable during either), so there is nothing to
+  // reconcile once the effect below resolves it -- same pattern `user`/
+  // `isAdmin` already rely on, not a new hydration risk.
+  const [firstName, setFirstName] = useState<string | null>(null)
   const pathname = usePathname()
   const router = useRouter()
 
@@ -25,21 +38,25 @@ export default function Navbar() {
           // Use maybeSingle() instead of single() to prevent 406/400 errors if profile row is missing
           const { data, error } = await supabase
             .from('profiles')
-            .select('role')
+            .select('role, full_name')
             .eq('id', session.user.id)
             .maybeSingle()
 
           if (!error && data) {
             setIsAdmin(data.role === 'admin')
+            setFirstName(data.full_name?.trim().split(/\s+/)[0] || null)
           } else {
             setIsAdmin(false)
+            setFirstName(null)
           }
         } else {
           setIsAdmin(false)
+          setFirstName(null)
         }
       } catch (err) {
         console.error('Error checking user session:', err)
         setIsAdmin(false)
+        setFirstName(null)
       }
     }
 
@@ -53,20 +70,24 @@ export default function Navbar() {
         try {
           const { data, error } = await supabase
             .from('profiles')
-            .select('role')
+            .select('role, full_name')
             .eq('id', session.user.id)
             .maybeSingle()
 
           if (!error && data) {
             setIsAdmin(data.role === 'admin')
+            setFirstName(data.full_name?.trim().split(/\s+/)[0] || null)
           } else {
             setIsAdmin(false)
+            setFirstName(null)
           }
         } catch (err) {
           setIsAdmin(false)
+          setFirstName(null)
         }
       } else {
         setIsAdmin(false)
+        setFirstName(null)
       }
     })
 
@@ -74,6 +95,8 @@ export default function Navbar() {
       authListener?.unsubscribe()
     }
   }, [])
+
+  const submissionsLabel = firstName ? `${possessive(firstName)} Submissions` : 'My Submissions'
 
   const handleLogout = async () => {
     await supabase.auth.signOut()
@@ -98,7 +121,7 @@ export default function Navbar() {
               Submit
             </Link>
             <Link href="/dashboard" className={`hover:text-amber-400 transition ${pathname === '/dashboard' ? 'text-amber-400' : ''}`}>
-              My Submissions
+              {submissionsLabel}
             </Link>
             <Link href="/shop" className={`hover:text-amber-400 transition ${pathname === '/shop' ? 'text-amber-400' : ''}`}>
               Shop

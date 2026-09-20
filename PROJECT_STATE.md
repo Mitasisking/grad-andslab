@@ -13,15 +13,25 @@ This file is updated at the end of every response that builds or modifies a comp
 
 ## Current Milestone
 
-**Phase: idle — everything below is committed, pushed, and deployed to production.** The
-site-wide "CuppasCards" brand rename (UI copy pass) and the `/submit` nav label cleanup
-("Submit & Batches" → "Submit") are done: `lib/site-config.ts` centralizes the brand name and is
-rolled out across all visible UI copy — nav, footer, headings, page titles/metadata — per the
-user's explicit choice to defer legal pages (Terms/Privacy/Refund/Shipping Policy), email
-templates, and PayFast item descriptors to a separate, not-yet-requested pass. Everything is on
-`main` (`4026e1d`, `df13969`, `0de1894`, `fb9bb14`, `8913730`, `2c7c9f3`, `66aae87`, `f796950`,
-`2249a9f`, `03c67de`) and **live on production** (Vercel alias `website-three-iota-83.vercel.app`,
-deployment `dpl_6HpsguvENRUQnLBJ3PjhWZGJsamf`), migrations 0059-0063 all live on production. Email
+**Phase: personalize the "My Submissions" nav link.** Live in production as of `451ca05`: the
+site-wide "CuppasCards" brand rename (UI copy pass), the `/submit` nav label cleanup
+("Submit & Batches" → "Submit"), and the Live Batch Tracker feature flag. Everything through that
+was click-tested directly on production (homepage, `/submit`, `/batches` redirect, `/shop` +
+product detail, `/dashboard`, `/contact`, `/vendor`, `/admin` + `/admin/shop` edit modal) — no
+console errors, no broken images (one apparent broken-image screenshot on the homepage carousel
+was confirmed to be a load-race artifact, not a real bug). Active work: `components/Navbar.tsx`'s
+"My Submissions" link now reads `"{FirstName}'s Submissions"` (or `"{FirstName}' Submissions"` for
+a name already ending in s) for a logged-in customer, pulling the first name from
+`profiles.full_name` — the same column `app/dashboard/page.tsx`'s "Welcome back" greeting already
+reads — falling back to the original "My Submissions" for a logged-out visitor or before the
+profile fetch resolves. No hydration risk: `firstName` starts `null` on both the server render and
+this client component's first render (same as the existing `user`/`isAdmin` state), only changing
+after the post-mount effect resolves — confirmed no hydration-mismatch warnings in the console.
+Code-complete, `tsc`/`eslint`/`npm run build` all clean, click-tested live in the browser
+(**uncommitted**, see below). Everything through the brand rename is on `main` (`4026e1d`,
+`df13969`, `0de1894`, `fb9bb14`, `8913730`, `2c7c9f3`, `66aae87`, `f796950`, `2249a9f`, `03c67de`,
+`451ca05`) and **live on production** (Vercel alias `website-three-iota-83.vercel.app`,
+deployment `dpl_3YBTks4a4vez2RdYhCfj4WGLETtT`), migrations 0059-0063 all live on production. Email
 delivery work (Resend domain verification, the remaining 6 notification stages) is **explicitly
 parked at the user's request** — do not pick it back up unprompted. No uncommitted work is
 outstanding.
@@ -206,11 +216,18 @@ up today — not a to-do list.
 - `components/ui/{button,checkbox,input,label}.tsx`, `lib/utils.ts`
 - `components/{Navbar,Footer,FeaturedCarousel,PoolTracker,SocialIcons,WhatnotBanner,PackagingGuidelines}.tsx`
   — `Navbar.tsx`'s main nav is `Submit` (`/submit`, label simplified from "Submit & Batches") +
-  `My Submissions` (`/dashboard`, added back so logged-in customers still have a path to their own
-  submissions/account now that `Submit Cards` no longer points there) + `Shop`/`Vendor`/`Contact`;
-  the standalone `Batches` link is gone. `Navbar.tsx`/`Footer.tsx` both now read `siteConfig.name`
-  for the logo alt text, footer copyright, and every social-icon `aria-label` instead of a
-  hardcoded `"Cuppa's Cards"` string.
+  a personalized submissions link (`/dashboard`, added back so logged-in customers still have a
+  path to their own submissions/account now that `Submit Cards` no longer points there) +
+  `Shop`/`Vendor`/`Contact`; the standalone `Batches` link is gone. `Navbar.tsx`/`Footer.tsx` both
+  now read `siteConfig.name` for the logo alt text, footer copyright, and every social-icon
+  `aria-label` instead of a hardcoded `"Cuppa's Cards"` string. The `/dashboard` link's label is a
+  `submissionsLabel` computed from a `firstName` state (fetched alongside `role` in the same
+  `profiles` query the admin check already runs, `.select('role, full_name')`): `"{FirstName}'s
+  Submissions"` (or `"{FirstName}' Submissions"` for a name already ending in s, via a local
+  `possessive()` helper) when a session resolves to a profile with a `full_name`, else the
+  original `"My Submissions"` for a logged-out visitor or before the fetch resolves. `firstName`
+  starts `null` on both the server render and the client's first render (identical to the
+  pre-existing `user`/`isAdmin` state), so there is no hydration mismatch to reconcile.
 - `supabase/migrations/0001…0058` (56 files) — full schema history, `supabase/apply-all.sql`
 
 ---
@@ -247,49 +264,46 @@ up today — not a to-do list.
 
 ## Uncommitted work in the tree right now
 
-**None.** Everything is committed, pushed to `main`, and deployed to Vercel production (alias
-`website-three-iota-83.vercel.app`, deployment `dpl_6HpsguvENRUQnLBJ3PjhWZGJsamf`): ACE tier
-overhaul + ACE Label Options + notification system stage 1 (`4026e1d`); In-Person Event Drop-Off
-(`df13969`); booth-handover contact-lookup bug fix (`0de1894`); `ORDER_CONFIRMED` wired into the
-Payfast webhook (`fb9bb14`); grader filter false-positive fix, `products.grading_company`
-(`8913730`, migration 0063 applied to production and click-tested live — see that commit message
-for full detail); Live Batch Tracker extracted to `/batches` (`2c7c9f3`, click-tested live);
-`/experience` and its exclusive 3D hero-reveal component tree + six now-unused npm dependencies
-removed entirely (`66aae87`); Submit Cards + Batches consolidated onto `/submit` (`f796950`); Live
-Batch Tracker isolated into `components/grading/LiveBatchTracker.tsx` and hidden behind
-`SHOW_BATCH_TRACKER = false` (`2249a9f`); site-wide "CuppasCards" brand rename (UI copy) +
-`/submit` nav label simplified to "Submit" (`03c67de`). Migrations 0059-0063 all live on
-production. `RECEIVED_HQ`/`ORDER_CONFIRMED` email delivery is blocked by an unrelated,
+**Committed, pushed, and deployed to production** (alias `website-three-iota-83.vercel.app`,
+deployment `dpl_3YBTks4a4vez2RdYhCfj4WGLETtT`): ACE tier overhaul + ACE Label Options +
+notification system stage 1 (`4026e1d`); In-Person Event Drop-Off (`df13969`); booth-handover
+contact-lookup bug fix (`0de1894`); `ORDER_CONFIRMED` wired into the Payfast webhook (`fb9bb14`);
+grader filter false-positive fix, `products.grading_company` (`8913730`, migration 0063 applied
+to production and click-tested live — see that commit message for full detail); Live Batch
+Tracker extracted to `/batches` (`2c7c9f3`, click-tested live); `/experience` and its exclusive 3D
+hero-reveal component tree + six now-unused npm dependencies removed entirely (`66aae87`); Submit
+Cards + Batches consolidated onto `/submit` (`f796950`); Live Batch Tracker isolated into
+`components/grading/LiveBatchTracker.tsx` and hidden behind `SHOW_BATCH_TRACKER = false`
+(`2249a9f`); site-wide "CuppasCards" brand rename (UI copy) + `/submit` nav label simplified to
+"Submit" (`03c67de`); PROJECT_STATE.md deployment-status update (`451ca05`). Migrations 0059-0063
+all live on production. `RECEIVED_HQ`/`ORDER_CONFIRMED` email delivery is blocked by an unrelated,
 pre-existing Resend domain-verification issue (see Blocked below) — parked at the user's request,
 not being chased further.
 
-**What `03c67de` changed** (for reference — already live):
-- `lib/site-config.ts` — **new**, full detail in the Shared infra and Shared Contracts sections
-  above.
-- Every literal `"Cuppa's Cards"` occurrence in visible UI copy replaced with `{siteConfig.name}`
-  (or a template-string equivalent outside JSX): `components/Navbar.tsx` (logo alt, 3 social
-  aria-labels), `components/Footer.tsx` (copyright line, 4 social aria-labels),
-  `components/FeaturedCarousel.tsx` ("The {name} Vault" heading), `app/layout.tsx` (root metadata
-  title), `app/page.tsx` (hero heading, "Join the {name} Community" heading), `app/contact/page.tsx`,
-  `app/vendor/page.tsx`, `app/auctions/page.tsx`, `app/prepare/page.tsx` (packing-slip copy),
-  `app/my-account/page.tsx`, `app/my-account/reset-password/page.tsx`, `app/shop/[id]/page.tsx`
-  (both `generateMetadata` branches), `app/services/page.tsx` (metadata title), and
-  `app/admin/shop/product-form-modal.tsx` (the admin "Vault carousel" hint text). Confirmed via
-  grep this is now the complete set of UI-facing occurrences.
-- **Explicitly deferred, at the user's own choice** (not touched): `app/terms/page.tsx`,
-  `app/privacy/page.tsx`, `app/refund-policy/page.tsx`, `app/shipping-policy/page.tsx` (legal
-  entity name — `Mitchy Moo (Pty) Ltd t/a Cuppa's Cards SA`), every `lib/email/**` template +
-  sender name + `app/api/notify/route.ts`, and the PayFast `itemName` descriptors in
-  `app/api/{submissions/checkout,shop/checkout,auctions/[id]/pay}/route.ts`. See the new
-  `siteConfig` bullet under Shared Contracts for the "don't migrate these without asking" rule.
-- `components/Navbar.tsx` — separately, the `/submit` nav link's label changed from
-  "Submit & Batches" to "Submit" (destination and active-state styling both unchanged; there is no
-  separate mobile nav menu in this component to also update — `hidden md:flex` is the only nav
-  link block that exists).
+**Uncommitted — personalize the "My Submissions" nav link**:
+- `components/Navbar.tsx` — added a `firstName` state, populated from `profiles.full_name` in the
+  same query the admin-role check already runs (`.select('role, full_name')`, both in the initial
+  `checkUser()` call and the `onAuthStateChange` listener). A local `possessive(firstName)` helper
+  applies standard English possessive grammar (`Mitchell` → `Mitchell's`, `James` → `James'`, via
+  a case-insensitive `/s$/i` test). The `/dashboard` link's text is now a computed
+  `submissionsLabel`: `"{FirstName}'s Submissions"` (or the trailing-apostrophe form for a name
+  ending in s) when resolved, else the original `"My Submissions"` — covering both a logged-out
+  visitor and the brief window before the profile fetch resolves for a logged-in one.
+- No hydration risk introduced: `firstName` initializes to `null` on both the server render and
+  this client component's very first render (no session is resolvable during either), exactly
+  mirroring the pre-existing `user`/`isAdmin` state's timing — there is nothing to reconcile once
+  the post-mount effect updates it, so no separate "mounted" boolean was needed.
+- Referenced by neither: the file paths named in the request (`components/layout/Navbar.tsx`,
+  `Header.tsx`) don't exist in this codebase — edited the real, single nav component at
+  `components/Navbar.tsx` instead, same as every other requested-but-nonexistent path this
+  session.
 - `tsc --noEmit` clean, `eslint` shows the same pre-existing issues confirmed via `git stash` to
-  predate this task, `npm run build` succeeds, click-tested live in the browser before deploying
-  (homepage hero, vault heading, community heading, footer copyright, nav label all confirmed
-  showing "CuppasCards"/"Submit" correctly).
+  predate this task, `npm run build` succeeds. Click-tested live in the dev browser as the logged
+  in account owner: nav correctly reads "Mitchell's Submissions"; console showed zero
+  hydration-mismatch warnings on load (only the standard React DevTools/HMR notices). The
+  logged-out fallback path was verified by code review (the `else`/`catch` branches all call
+  `setFirstName(null)`) rather than by an actual browser logout, since the logic is a direct
+  mirror of the already-proven `isAdmin` pattern.
 - Untracked, not yet triaged into the repo structure: `Stock photos/`, `TheCardApi.txt`,
   `claude context.txt`, `cuppa cards logo temp logo.jpeg`, `termsofservice.txt`, `zernio.txt`.
 
@@ -321,8 +335,8 @@ not being chased further.
 
 ## Immediate Next Task
 
-Nothing outstanding — the brand rename, nav label cleanup, and Live Batch Tracker feature flag are
-all committed, pushed, and deployed to production.
+The "My Submissions" nav-link personalization (`components/Navbar.tsx`) is code-complete,
+build-verified, and click-tested live — waiting on your go-ahead to commit.
 
 Legal pages, email templates, and PayFast item descriptors still say "Cuppa's Cards" — deliberately
 deferred; only touch them if the user separately confirms the legal entity name is actually
