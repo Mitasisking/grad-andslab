@@ -15,10 +15,12 @@ This file is updated at the end of every response that builds or modifies a comp
 
 **Phase: launch simplification pass (ACE-only + Pokémon-only + shop filter simplification +
 Add-ons rework) + outbound email moved to Google SMTP/Nodemailer + WhatsApp community link + hero
-copy.** Live in production as of `648f42d`: In-Person Event Submissions Admin Control + customer
+copy + brand-name harmonization to "CuppasCards" + full 8-stage grading email lifecycle templates.**
+Live in production as of `648f42d`: In-Person Event Submissions Admin Control + customer
 flow, and the earlier "My Submissions" nav-link personalization (`3deec54`) — Vercel alias
 `website-three-iota-83.vercel.app`, deployment `dpl_74cnQGHK5BnVsHTw6sFHj2jvbeSe`. Migrations
-0059-0064 all live. Active work (this task, seven separate pieces):
+0059-0064 all live. Active work (this task, seven separate pieces, plus a vendor-page hide,
+brand-name cleanup, and the email-lifecycle work documented under Uncommitted work below):
 
 4. **Step 1 (`Grader & tier`) simplified to ACE-only for launch** — `components/submit/
    step-grader-tier.tsx` no longer renders a "Country of origin" or "Grading company" selector;
@@ -352,6 +354,41 @@ up today — not a to-do list.
   pipeline end-to-end. Gated because it triggers a real send from the business's mail account to
   an arbitrary address — the request didn't specify auth, but every other outbound-side-effect
   route in this codebase is admin-only, so this follows suit.
+- `lib/email/templates/{collection-booked,dispatched-to-grader,received-by-grader,dispatched-to-sa,
+  landed-at-hq,dispatched-to-customer}.ts` — **new**. Real renderers for the 6
+  `GradingEmailStage` values (`types/notifications.ts`) that previously only threw "not
+  implemented" — all 8 stages now render for real. Same table-based, inline-styled HTML / shared
+  `COLORS`/`escapeHtml` (`order-confirmation.ts`) convention as every other template here. Each
+  computes its own subject from its payload (no caller-supplied subjects), matching
+  `order-confirmed.ts`/`received-hq.ts`'s existing pattern. `landed-at-hq.ts`'s "Deliver to Me"/
+  "List on Marketplace" both link to the same real dashboard submissions page today — there is no
+  dedicated return-shipping-choice route yet (see Blocked #3 below), so this doesn't invent one.
+- `lib/email/send-grading-update.ts` — `renderGradingEmail`'s switch now has a real case for every
+  stage (no more `UNIMPLEMENTED_STAGE_MESSAGE`/throw branch). `sendGradingUpdate`'s return type
+  widened from `Promise<void>` to `Promise<{ messageId?: string }>` — every existing caller just
+  `await`s it without touching the return value, so this is additive; added so
+  `simulate-lifecycle/route.ts` (below) can surface the real Nodemailer `messageId`.
+- `app/api/admin/simulate-lifecycle/route.ts` — **new**. Admin-gated POST (`{stage: 1-8,
+  targetEmail}`) manual test harness for the full 8-stage lifecycle: builds one fixed seed
+  submission (`#CC-ACE-8921`, 2 cards, ACE Standard tier) into the correct `GradingEmailPayload`
+  shape for whichever stage number is requested, and sends it via the real `sendGradingUpdate()`
+  pipeline (not a parallel one) so what this proves is exactly what production would send. `stage`
+  is a plain 1-8 index into a `STAGE_ORDER` array mirroring `GradingEmailStage`'s declared order,
+  so the test-runner UI doesn't need to know the real stage names. Note: `OrderConfirmedPayload`
+  has no separate label-option/add-on breakdown field, so the seed's "Colour Match" label and
+  "Clean & Polish" add-on are folded into `totalPaid` rather than itemized — a real limitation of
+  today's payload shape, not this route.
+- `app/admin/test-emails/{page.tsx,test-emails-panel.tsx}` — **new**. Same inline
+  per-page admin-role gate as `app/admin/events/page.tsx` (no shared `layout.tsx`/`requireAdmin()`
+  for pages). 8 buttons (one per stage) + a "Trigger Full Sequence (5s delay between)" button that
+  calls `simulate-lifecycle` sequentially with a 5s pause between sends, plus a live console log
+  of each response's HTTP status and Nodemailer `messageId`. Click-tested live: stage 1
+  (`ORDER_CONFIRMED`, an existing template) and stage 7 (`LANDED_AT_HQ`, brand-new) both correctly
+  reached Gmail's real SMTP server and failed with Gmail's own "Application-specific password
+  required" error — the same expected placeholder-credential failure as the original
+  `/api/test-email` verification, proving both the pre-existing and the 6 new templates render
+  and dispatch correctly. Real inbox review of formatting still needs the real Gmail App Password
+  swapped into `.env.local` first.
 - `app/api/contact-inquiries/route.ts`, `app/api/vendor-inquiries/route.ts`, `app/api/notify/route.ts`, `app/api/webhooks/pool-milestone/route.ts`
 - `components/auth/turnstile-widget.tsx` — bot protection
 
@@ -396,15 +433,21 @@ up today — not a to-do list.
 ## Shared Contracts (frozen — do not casually change)
 
 - **`siteConfig`** (`lib/site-config.ts`) — the single source of truth for the brand name shown in
-  UI copy. Always read `siteConfig.name` for display text; never hardcode `"Cuppa's Cards"` or
-  `"CuppasCards"` as a literal string in a component. **Not yet the source of truth everywhere**:
-  legal pages (`app/terms`, `app/privacy`, `app/refund-policy`, `app/shipping-policy`), email
-  templates/sender names (`lib/email/**`, `app/api/notify/route.ts`), and PayFast `itemName`
-  descriptors (`app/api/{submissions/checkout,shop/checkout,auctions/[id]/pay}/route.ts`) still
-  hardcode the old name — deliberately deferred at the user's explicit choice, since a legal-entity
-  name change and a payment-descriptor change carry different risk than a UI copy pass. Do not
-  migrate those to `siteConfig.legalName`/`.name` without the user separately confirming the
-  business's actual legal name is changing.
+  UI copy. Always read `siteConfig.name` for display text; never hardcode `"Cuppa's Cards"` as a
+  literal string in a component. **Legal pages, email templates, and PayFast descriptors were
+  harmonized to "CuppasCards" on the user's explicit, detailed instruction** (2026-09-20) — the
+  previous deferral above no longer applies to those three areas; they now read `CuppasCards`
+  (`app/terms`, `app/privacy`, `app/refund-policy`, `app/shipping-policy`'s body copy and
+  `<title>` metadata) or `"CuppasCards SA"` where the legal-entity context requires it (matching
+  the pre-existing, already-correct `"Mitchy Moo (Pty) Ltd t/a Cuppa's Cards SA"` entity line in
+  `app/terms/page.tsx`, just with the brand half renamed). These are still literal strings, not
+  `siteConfig.name` reads — migrating them to read `siteConfig.name`/`.legalName` directly instead
+  of a hardcoded literal was not part of what was asked and remains a separate, smaller follow-up.
+  Internal code comments referencing "Cuppa's Cards" (`lib/admin/product-input.ts`,
+  `app/admin/shop/types.ts`, `lib/shop/featured-products.ts`, `app/globals.css`,
+  `supabase/migrations/0057_add_product_is_vault_grail.sql`) were deliberately left untouched —
+  out of the requested scope (not legal/email/payment text) and, for the migration file,
+  never edited retroactively regardless.
 - **`GradingCompany`** = `'PCG' | 'PSA' | 'ACE'` — `lib/submission-types.ts`
 - **`SubmissionTier`** — union of all three companies' tier slugs (PCG unprefixed, PSA/ACE prefixed) — `lib/submission-types.ts`. ACE's current purchasable tiers: `ace_basic`, `ace_standard`, `ace_premier`, `ace_ultra`, `ace_luxury`. `ace_value` stays in the union (and the DB enum/CHECK constraint) for historical-row typing only — it is retired from `TIER_OPTIONS_BY_COMPANY.ACE` and must never be re-added there.
 - **`TierOption`** gained two optional fields this task: `description` (marketing blurb, rendered under the label) and `group` (subheading key for the tier selector, e.g. ACE's `'Flagship'`/`'Premium'`). Both are optional and additive — PCG/PSA entries omit them and render exactly as before.
@@ -554,6 +597,39 @@ advanced to Step 2, confirmed no Semi-Rigids/Consignment cards, confirmed the OR
 and confirmed toggling batch-level Clean & Polish to "Yes" collapses the per-card toggle into the
 badge.
 
+**Uncommitted — brand name harmonized to "CuppasCards" across legal pages, email templates, and
+payment descriptors**: on the user's explicit, detailed instruction (previously this was a
+deliberately deferred area — see the `siteConfig` Shared Contract entry above), every remaining
+`"Cuppa's Cards"` literal in `app/{terms,privacy,refund-policy,shipping-policy}/page.tsx` (body
+copy and `<title>` metadata), `lib/email/templates/{order-confirmation,order-confirmed,
+received-hq}.ts`, `lib/email/send-order-confirmation.ts`, and the three PayFast `itemName`
+descriptors (`app/api/{submissions/checkout,shop/checkout,auctions/[id]/pay}/route.ts`) is now
+`"CuppasCards"` (or `"CuppasCards SA"` where the legal-entity line requires it). The dead,
+commented-out Resend example in `app/api/notify/route.ts` was updated too for consistency, though
+it's unreferenced code. Internal code comments (not user-facing) and the SQL migration history
+were deliberately left alone — see the Shared Contract entry for exactly which files and why.
+`tsc`/`eslint`/`npm run build` all clean (same baseline).
+
+**Uncommitted — full 8-stage grading email lifecycle now has real templates + a manual test
+harness**: `lib/email/templates/{collection-booked,dispatched-to-grader,received-by-grader,
+dispatched-to-sa,landed-at-hq,dispatched-to-customer}.ts` are new real renderers for the 6 stages
+that previously threw "not implemented"; `lib/email/send-grading-update.ts`'s switch now handles
+all 8, and `sendGradingUpdate()` returns `{messageId?}` instead of `void`. New admin-gated
+`app/api/admin/simulate-lifecycle/route.ts` sends any of the 8 stages (via the real
+`sendGradingUpdate()` pipeline, not a parallel one) against one fixed seed submission
+(`#CC-ACE-8921`); new `app/admin/test-emails/page.tsx` gives it a UI with per-stage buttons, a
+full-sequence runner (5s delay between sends), and a live console log of HTTP status +
+Nodemailer `messageId`. This directly re-opens the "wiring the remaining 6 notification stages"
+item that was previously explicitly parked — the user themselves initiated it this time, the same
+carved-out exception already used for the Resend-to-Nodemailer migration earlier this session.
+Note: this only builds and proves the *templates* — none of the 6 new stages have a real DB
+trigger/call site yet (still true per `types/notifications.ts`'s header comment); wiring an actual
+production trigger for any of them is separate, not-yet-requested work. `tsc`/`eslint`/
+`npm run build` all clean (same baseline). Click-tested live: stage 1 and stage 7 both correctly
+reached Gmail's real SMTP server via the admin test-runner UI, each failing with Gmail's own
+"Application-specific password required" error against the still-placeholder `.env.local`
+credentials — the same proof-of-correctness pattern as the original `/api/test-email` verification.
+
 **Uncommitted — vendor page "Where We've Been" hidden until real event content exists**:
 `app/vendor/page.tsx` gained a `SHOW_PAST_EVENTS = false` module-level flag; `NAV_SECTIONS` only
 includes the "Where We've Been" hero button when it's `true`, and the whole event-gallery
@@ -599,14 +675,19 @@ baseline). Click-tested live: `/vendor`'s hero CTA row now shows only "In-Person
 ## Immediate Next Task
 
 The homepage hero copy, the Google SMTP/Nodemailer email migration, the WhatsApp community link,
-the Step 1 ACE-only simplification, the Pokémon-only card category lock, and the shop filter pill
-simplification are all **committed and pushed to `origin/main`** (commits `df3fe4b`, `6372a6c`,
-`709257a`, `cd5cc9f`, `67edb39`) — not yet deployed to production. Swap in the real
-`EMAIL_SERVER_*`/`EMAIL_FROM` credentials in `.env.local` before expecting real sends to succeed
-(Gmail requires an **App Password** for SMTP, not the account password).
+the Step 1 ACE-only simplification, the Pokémon-only card category lock, the shop filter pill
+simplification, and the vendor page's "Where We've Been" hide are all **committed and pushed to
+`origin/main`** (commits `df3fe4b`, `6372a6c`, `709257a`, `cd5cc9f`, `67edb39`, `cf845e5`) — not
+yet deployed to production.
 
-One piece of work is code-complete, build-verified, and click-tested live — waiting on your
-go-ahead to commit: the vendor page's "Where We've Been" section hidden via `SHOW_PAST_EVENTS`.
+Two more pieces of work are code-complete, build-verified, and click-tested live — waiting on your
+go-ahead to commit: the "CuppasCards" brand-name harmonization across legal pages/email
+templates/PayFast descriptors, and the full 8-stage grading email lifecycle templates + admin test
+harness (`/admin/test-emails`).
+
+Swap in the real `EMAIL_SERVER_*`/`EMAIL_FROM` credentials in `.env.local` before expecting any
+real send (including the new lifecycle test harness) to actually land in an inbox — Gmail requires
+an **App Password** for SMTP, not the account password.
 
 Legal pages, email templates, and PayFast item descriptors still say "Cuppa's Cards" — deliberately
 deferred; only touch them if the user separately confirms the legal entity name is actually
