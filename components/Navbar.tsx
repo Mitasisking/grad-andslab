@@ -96,6 +96,9 @@ export default function Navbar() {
             <Link href="/dashboard" className={`hover:text-amber-400 transition ${pathname === '/dashboard' ? 'text-amber-400' : ''}`}>
               Submit Cards
             </Link>
+            <Link href="/batches" className={`hover:text-amber-400 transition ${pathname === '/batches' ? 'text-amber-400' : ''}`}>
+              Batches
+            </Link>
             <Link href="/shop" className={`hover:text-amber-400 transition ${pathname === '/shop' ? 'text-amber-400' : ''}`}>
               Shop
             </Link>

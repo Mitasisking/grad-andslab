@@ -13,13 +13,15 @@ This file is updated at the end of every response that builds or modifies a comp
 
 ## Current Milestone
 
-**Phase: grading-notification call sites.** ACE tier overhaul + Label Options + notification
-system stage 1 (`4026e1d`), In-Person Event Drop-Off (`df13969`), and the booth-handover
-contact-lookup bug fix found via this session's click-testing (`0de1894`) are all **committed
-and pushed** to `main`, migrations 0059-0062 all live on production. Active work: wiring real
-call sites for the notification system — `ORDER_CONFIRMED` now fires from the Payfast webhook
-on successful grading payment (**uncommitted**, see below). Two older audit items remain open
-product/schema decisions — see **Blocked / Needs a Decision** below.
+**Phase: homepage cleanup — extract Live Batch Tracker to `/batches`.** Everything through
+wiring `ORDER_CONFIRMED` into the Payfast webhook is **committed and pushed** to `main`
+(`4026e1d`, `df13969`, `0de1894`, `fb9bb14`), migrations 0059-0062 all live on production. Email
+delivery work (Resend domain verification, the remaining 6 notification stages) is **explicitly
+parked at the user's request** — do not pick it back up unprompted. The grader filter
+false-positive fix (`products.grading_company`, migration 0063) is code-complete, migration
+applied to production, click-tested live — **uncommitted**, see below. Active work: a new
+`/batches` page holding the Live Batch Tracker previously embedded on the homepage
+(**uncommitted**, see below) — pure frontend, no schema change, no migration needed.
 
 ---
 
@@ -30,6 +32,12 @@ up today — not a to-do list.
 
 ### App routes — public
 - `app/page.tsx`, `app/layout.tsx`, `app/experience/page.tsx` (+ `components/experience/*`)
+- `app/batches/page.tsx` — standalone Live Batch Tracker, extracted off the homepage. Reuses
+  `components/LivePools.tsx` as-is (server-rendered snapshot via `lib/pools/active-pools.ts`);
+  adds its own empty state (a "no batches filling" message + Start a Submission CTA) for when
+  `LivePools` would otherwise render nothing. "Join Batch" deep-links to
+  `/submit?company=...&tier=...`, which `app/submit/wizard.tsx` already reads on mount — no
+  changes needed there.
 - `app/services/page.tsx`, `app/prepare/page.tsx`, `app/contact/page.tsx`, `app/vendor/page.tsx`
 - `app/terms/page.tsx`, `app/privacy/page.tsx`, `app/refund-policy/page.tsx`, `app/shipping-policy/page.tsx` (+ `components/legal/legal-page.tsx`)
 - `app/login/page.tsx`, `app/signup/page.tsx`, `app/my-account/page.tsx`, `app/my-account/reset-password/page.tsx`
@@ -183,38 +191,67 @@ up today — not a to-do list.
 
 ## Uncommitted work in the tree right now
 
-**Committed and pushed**: ACE tier overhaul + ACE Label Options + notification system stage 1
-(`4026e1d`); In-Person Event Drop-Off (`df13969`); booth-handover contact-lookup bug fix
-(`0de1894`), found via this session's click-testing of the admin events toggle and
-booth-handover flow (both confirmed working live via real test submissions on production,
-since cleaned up and independently re-verified — full detail is in that commit's history, not
-repeated here). Migrations 0059-0062 all live on production.
+**Committed and pushed** (all on `main`): ACE tier overhaul + ACE Label Options + notification
+system stage 1 (`4026e1d`); In-Person Event Drop-Off (`df13969`); booth-handover contact-lookup
+bug fix (`0de1894`); `ORDER_CONFIRMED` wired into the Payfast webhook (`fb9bb14`). Migrations
+0059-0062 all live on production. `RECEIVED_HQ`/`ORDER_CONFIRMED` email delivery is blocked by
+an unrelated, pre-existing Resend domain-verification issue (see Blocked below) — parked at the
+user's request, not being chased further.
 
-**Uncommitted — `ORDER_CONFIRMED` call site wired**:
-- `lib/email/send-grading-update.ts` — new `sendOrderConfirmedEmail(submissionId)`: fetches the
-  submission + items + contact (via the now-exported `getContact`, using the service-role
-  client — same lesson as the booth-handover fix, `getContact`'s `auth.admin.getUserById` needs
-  it), builds the `OrderConfirmedPayload`, and calls `sendGradingUpdate`. Skips entirely for
-  `intake_channel = 'in_person_event'` — that customer already has their PIN/QR on the dashboard
-  and has nothing to ship, so a "here's your packing slip" email would be actively confusing.
-  `packingSlipUrl` points at the existing `/dashboard/submissions/[id]` page, not a dedicated
-  packing-slip route — `components/submit/packing-slip.tsx` is still unwired to any route (see
-  its earlier note above); building that route is separate future work, not done here.
-- `app/api/webhooks/payfast/route.ts` — calls `sendOrderConfirmedEmail(mPaymentId)` alongside
-  the existing `sendSubmissionConfirmationEmail` call, both independently best-effort
-  (`.catch()`-wrapped, matching the file's existing pattern exactly). **Note**: a customer now
-  gets two emails on successful grading payment — the existing line-item receipt and this new
-  pipeline-stage email. Whether to merge them is a product decision, not made here.
-- `tsc`/`eslint`/`npm run build` all clean. **Not click-tested live** — doing so would require
-  either faking a real signed Payfast ITN callback (its own `/validate` round-trip makes that
-  hard to do authentically) or a full real sandbox payment; either way, actual email delivery is
-  blocked regardless by the pre-existing Resend domain-verification issue noted below, so a live
-  test wouldn't prove more than the code review + build already have. Verified by careful reading
-  against the same patterns already live-tested in `RECEIVED_HQ`'s call site.
-- **`RECEIVED_HQ` email delivery is still blocked** by an unrelated, pre-existing account issue:
-  Resend rejects sends with "The cuppacards.com domain is not verified" (403). This affects every
-  email this app sends, including this new `ORDER_CONFIRMED` call site — an account/DNS setup
-  task, not something a code fix can resolve.
+**Uncommitted — grader filter false-positive fix**:
+- `supabase/migrations/0063_add_product_grading_company.sql` — **applied to production,
+  independently re-verified**: `information_schema.columns` confirms `grading_company` exists
+  (`text`, nullable); both `chk_products_grading_company_valid` and
+  `chk_products_grading_company_matches_category` confirmed live via `pg_get_constraintdef`,
+  definitions matching the migration exactly. Adds `products.grading_company` (nullable text,
+  CHECK'd to `PCG`/`ACE`/`PSA`, CHECK'd to only ever be set when `category = 'graded'`), plus a
+  one-time backfill for existing graded rows matched against the exact `" — <GRADER> <grade>"`
+  suffix every bulk-import tool already appends (anchored, not a bare substring check — using a
+  bare check here would just reintroduce the exact bug this migration fixes). The ordering risk
+  this note used to warn about (`toProductRow` sends `grading_company` on every single product
+  create/update, not just graded ones, so deploying this before the migration ran would have
+  broken all product admin operations) no longer applies now that the migration is live.
+- `lib/shop/grader.ts` — `matchesGrader`/`detectGrader` (the title-substring heuristic) deleted
+  entirely, now fully unused. Only the `Grader` type remains.
+- `components/shop/product-filters.tsx` — `applyShopFilters`'s grader check now reads
+  `p.grading_company` directly instead of scanning the title text.
+- `components/experience/chase-cards.ts` — same swap, for the hero shatter-fan's grader-scheme
+  pick.
+- `lib/admin/product-input.ts`, `app/admin/shop/types.ts`, `components/shop/product-grid.tsx` —
+  `gradingCompany`/`grading_company` added to the shared product input/row types, validated
+  (required when `category === 'graded'`, forbidden otherwise — same pairing pattern as
+  `sport`/`cardType`).
+- `app/admin/shop/product-form-modal.tsx` — new "Grading company" select, shown only when
+  Category = Graded, cleared automatically when switching away (mirrors the existing
+  `selectCardType`/sport-clearing pattern).
+- All three bulk import tools (`bulk-ace-import.tsx`, `bulk-pcg-import.tsx`,
+  `bulk-psa-import.tsx`) now set `gradingCompany` explicitly on every row instead of relying on
+  the grader name being baked into the title (the title suffix is kept for readability, but is
+  no longer what the filter actually checks) — their doc comments and on-page copy updated to
+  match.
+- `app/shop/page.tsx`'s `PRODUCT_COLUMNS` now selects `grading_company` so the client-side
+  filter actually has the data to check.
+- `tsc`/`eslint`/`npm run build` all clean. **Click-tested live against real production data**:
+  the admin edit form for a real PSA-graded product ("Galarian Moltres V — PSA 10 GEM MT")
+  correctly shows the new Grading company select pre-filled to "PSA" (confirms the migration's
+  backfill worked); the public shop's Grader filter, checking "PSA", correctly narrows the
+  Graded category down to just that one card, excluding six real ACE-graded cards that were
+  previously miscategorized by the old title-substring check.
+
+**Uncommitted — extract Live Batch Tracker to `/batches`**:
+- `app/batches/page.tsx` — new, reuses `components/LivePools.tsx` unchanged, adds an empty-state
+  block for when no pools are active.
+- `app/page.tsx` — the embedded `<LivePools pools={activePools} />` section, its `getActiveLivePools`
+  call, and both now-unused imports removed.
+- `components/Navbar.tsx` — new "Batches" link (`/batches`) between "Submit Cards" and "Shop".
+- `tsc`/`eslint`/`npm run build` all clean (two pre-existing lint issues in `app/page.tsx` and
+  `components/Navbar.tsx`, confirmed via `git stash` to predate this session, left untouched).
+  **Click-tested live**: homepage no longer shows the tracker (goes straight from hero to "The
+  Cuppa's Cards Vault"); `/batches` renders all 7 real active pools correctly, including "ACE
+  Basic" showing 18/20 (confirms the earlier grader-fix-testing pool cleanup held); clicking
+  "Join Batch" on it correctly navigated to `/submit?company=ACE&tier=ace_basic` with Step 1
+  pre-selecting ACE Grading + Basic tier automatically — the existing `wizard.tsx` URL-param
+  handling needed no changes for this.
 - **Not built, by design** (see Blocked / Needs a Decision below): a return-shipping selector
   ("Return Courier to Door" / "Vault / Marketplace Listing") — the original request said to
   "retain" this, but no such selector exists anywhere in the codebase to retain. Flagged and
@@ -224,27 +261,31 @@ repeated here). Migrations 0059-0062 all live on production.
 
 ## Blocked / Needs a Decision
 
-1. **Grader filter false-positive** (`components/shop/product-filters.tsx`'s `matchesGrader`) —
-   bare title-substring match misclassifies a PCG card titled "ACE SPEC" as ACE-graded. Real
-   fix is a `products.grading_company` column + migration, not a smarter regex.
-2. **Currency-display policy scope** — ZAR-primary/GBP-bracket is confirmed correct for admin
+1. **Currency-display policy scope** — ZAR-primary/GBP-bracket is confirmed correct for admin
    Financials. Open question: should that pattern extend anywhere in the public shop or
    customer emails, or stay admin-only?
-3. **PayFast sandbox walkthrough** — IP allowlisting unimplemented; intermediate payment
+2. **PayFast sandbox walkthrough** — IP allowlisting unimplemented; intermediate payment
    statuses (e.g. EFT) unconfirmed against PayFast's real sandbox. Needs someone with PayFast
    sandbox credentials, not another code pass.
-4. **Return-shipping selector doesn't exist** — the in-person drop-off request assumed Step 3
+3. **Return-shipping selector doesn't exist** — the in-person drop-off request assumed Step 3
    already had a "Return Courier to Door" / "Vault / Marketplace Listing" choice to retain.
    It doesn't. Deferred as its own future feature (new column + UI + order-summary wiring)
    rather than building it as an unplanned side effect of this task.
+4. **Resend domain verification — explicitly parked by the user (2026-09-20).** `cuppacards.com`
+   is added in Resend (status "Not Started") but has zero DNS records live yet. The exact
+   records needed (DKIM TXT, two SPF CNAMEs, optional DMARC TXT) were pulled directly from the
+   Resend dashboard and are recorded in this session's history — ask if you need them again
+   rather than re-fetching. DNS lives at **Spaceship**, which this session has no access to.
+   User is waiting on more details before adding them. **Do not chase this further until the
+   user brings it back up** — every email this app sends (`RECEIVED_HQ`, `ORDER_CONFIRMED`, the
+   older payment-receipt emails) is blocked on this, but that's accepted as a known, deliberate
+   gap for now, not something to keep flagging every session.
 
 ## Immediate Next Task
 
-`ORDER_CONFIRMED` call site is wired and locally verified (`tsc`/`eslint`/build), waiting on your
-go-ahead to commit. After that: fix the Resend domain-verification issue (account/DNS task, not
-code) — nothing this app sends can actually deliver until that's resolved, which now includes
-both `RECEIVED_HQ` and `ORDER_CONFIRMED`; the remaining 6 notification stages still have no call
-site (`COLLECTION_BOOKED`, `DISPATCHED_TO_GRADER`, `RECEIVED_BY_GRADER`, `DISPATCHED_TO_SA`,
-`LANDED_AT_HQ`, `DISPATCHED_TO_CUSTOMER` all still throw "not implemented" — none have a DB
-trigger point yet, per `types/notifications.ts`'s header comment); the remaining older audit
-items and the deferred return-shipping selector above.
+Both the grader filter fix and the `/batches` extraction are code-complete and click-tested
+live — waiting on your go-ahead to commit (together or separately, your call).
+
+Email delivery work (Resend domain verification, wiring the remaining 6 notification stages) is
+**parked at the user's request** — do not pick this back up unprompted. Other open items:
+the currency-display policy scope decision, or the deferred return-shipping selector.
