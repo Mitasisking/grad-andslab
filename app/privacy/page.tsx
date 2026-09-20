@@ -7,7 +7,7 @@ export default function PrivacyPage() {
     <LegalPageLayout title="Privacy Policy" lastUpdated={LAST_UPDATED}>
       <Section number="1" title="Introduction">
         <P>
-          Cuppa&apos;s Cards SA is committed to protecting your privacy in compliance with the Protection of Personal
+          CuppasCards SA is committed to protecting your privacy in compliance with the Protection of Personal
           Information Act (POPIA). This policy explains how we collect, use, and safeguard your personal
           information.
         </P>

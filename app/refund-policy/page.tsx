@@ -3,7 +3,7 @@ import { LegalPageLayout, Section, P } from '@/components/legal/legal-page'
 const LAST_UPDATED = '16/09/2026'
 
 export const metadata = {
-  title: "Refund & Return Policy | Cuppa's Cards",
+  title: 'Refund & Return Policy | CuppasCards',
 }
 
 export default function RefundPolicyPage() {

@@ -57,7 +57,7 @@ export function renderOrderConfirmedEmail(
             <tr>
               <td style="padding:32px 32px 0;text-align:center;">
                 <p style="margin:0;font-family:Arial,Helvetica,sans-serif;font-size:11px;letter-spacing:0.18em;color:${COLORS.gold};text-transform:uppercase;">
-                  Cuppa's Cards
+                  CuppasCards
                 </p>
                 <h1 style="margin:12px 0 0;font-family:Georgia,'Times New Roman',serif;font-size:24px;color:${COLORS.ink};font-weight:normal;">
                   Your submission is confirmed
@@ -120,7 +120,7 @@ export function renderOrderConfirmedEmail(
             <tr>
               <td style="padding:0 32px 32px;text-align:center;border-top:1px solid ${COLORS.line};">
                 <p style="margin:20px 0 0;font-family:Arial,Helvetica,sans-serif;font-size:11px;color:${COLORS.inkMuted};">
-                  Cuppa's Cards · this is an automated notification, no reply needed.
+                  CuppasCards · this is an automated notification, no reply needed.
                 </p>
               </td>
             </tr>
@@ -131,5 +131,5 @@ export function renderOrderConfirmedEmail(
   </body>
 </html>`
 
-  return { subject: `Cuppa's Cards — submission confirmed (${submissionLabel})`, html }
+  return { subject: `CuppasCards — submission confirmed (${submissionLabel})`, html }
 }

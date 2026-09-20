@@ -7,7 +7,7 @@ export default function TermsPage() {
     <LegalPageLayout title="Terms & Conditions" lastUpdated={LAST_UPDATED}>
       <Section number="1" title="Introduction">
         <P>
-          Welcome to Cuppa&apos;s Cards SA, operated by Mitchy Moo (Pty) Ltd (Registration Number: 2025/318120/07).
+          Welcome to CuppasCards SA, operated by Mitchy Moo (Pty) Ltd (Registration Number: 2025/318120/07).
           These Terms and Conditions govern your use of our website and the purchase of goods and services,
           including sealed products, single cards, card cleaning, and middleman grading submissions. By using our
           website, you agree to be bound by these terms.
@@ -24,14 +24,14 @@ export default function TermsPage() {
 
       <Section number="3" title="Grading Submission Services">
         <P>
-          When utilizing our middleman grading services to third-party grading companies (e.g., PCG), Cuppa&apos;s
-          Cards SA acts only as a facilitator for shipping and logistics.
+          When utilizing our middleman grading services to third-party grading companies (e.g., PCG), CuppasCards
+          SA acts only as a facilitator for shipping and logistics.
         </P>
         <Bullets>
           <li>We do not guarantee specific grades.</li>
           <li>Turnaround times are estimates based on international shipping and the grading company&apos;s current volume.</li>
           <li>
-            Cuppa&apos;s Cards SA is not liable for loss or damage of items while in the custody of international
+            CuppasCards SA is not liable for loss or damage of items while in the custody of international
             couriers or the grading company, though we will facilitate insurance claims where applicable.
           </li>
         </Bullets>
@@ -46,7 +46,7 @@ export default function TermsPage() {
       </Section>
 
       <Section number="5" title="Company Contact Details">
-        <Item label="Company">Mitchy Moo (Pty) Ltd t/a Cuppa&apos;s Cards SA</Item>
+        <Item label="Company">Mitchy Moo (Pty) Ltd t/a CuppasCards SA</Item>
         <Item label="Email">
           <a href="mailto:mitchell@cuppascards.com" className="text-amber-400 hover:text-amber-300 transition">
             mitchell@cuppascards.com

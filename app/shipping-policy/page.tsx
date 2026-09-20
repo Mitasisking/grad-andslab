@@ -3,7 +3,7 @@ import { LegalPageLayout, Section, P, Item } from '@/components/legal/legal-page
 const LAST_UPDATED = '16/09/2026'
 
 export const metadata = {
-  title: "Shipping & Delivery Policy | Cuppa's Cards",
+  title: 'Shipping & Delivery Policy | CuppasCards',
 }
 
 export default function ShippingPolicyPage() {
@@ -21,7 +21,7 @@ export default function ShippingPolicyPage() {
 
       <Section number="3" title="Grading Submission Logistics">
         <P>
-          Cards submitted to Cuppa&apos;s Cards SA for grading follow a specific international shipping cycle. Due
+          Cards submitted to CuppasCards SA for grading follow a specific international shipping cycle. Due
           to the multiple courier legs required for international transit, standard domestic delivery timeframes do
           not apply to these services. Clients will be updated via email when their cards depart South Africa,
           arrive at the grading facility, and return to our Swellendam location for final dispatch.
@@ -30,7 +30,7 @@ export default function ShippingPolicyPage() {
 
       <Section number="4" title="Lost or Damaged Parcels">
         <P>
-          Please ensure your delivery address is accurate. Cuppa&apos;s Cards SA is not responsible for packages
+          Please ensure your delivery address is accurate. CuppasCards SA is not responsible for packages
           delivered to an incorrectly supplied address. If a parcel is lost or damaged in transit, please contact us
           immediately so we can lodge an inquiry with the courier.
         </P>
