@@ -13,10 +13,12 @@ This file is updated at the end of every response that builds or modifies a comp
 
 ## Current Milestone
 
-**Phase: In-Person Event Submissions — Admin Control + customer flow, built out fully.** Committed
-locally as of `3deec54` (Navbar personalization, pushed) — everything through `451ca05` is **live
-on production** (Vercel alias `website-three-iota-83.vercel.app`), migrations 0059-0063 live.
-Active work (this task): the request asked for a brand-new `platform_settings` table, but that
+**Phase: idle — everything below is committed, pushed, and deployed to production.** In-Person
+Event Submissions Admin Control + customer flow (this task) is **live on production** as of
+`648f42d` (Vercel alias `website-three-iota-83.vercel.app`, deployment
+`dpl_74cnQGHK5BnVsHTw6sFHj2jvbeSe`), which also brought the earlier "My Submissions" nav-link
+personalization (`3deec54`) live. Migrations 0059-0064 all live. What shipped: the request asked
+for a brand-new `platform_settings` table, but that
 duplicates the existing `event_settings` singleton (migration 0062, already RLS'd public-read /
 admin-write, already wired end-to-end via `app/admin/events`, `app/api/events/active`, and
 `app/submit/wizard.tsx`) — **per the user's explicit choice, extended the existing system instead
@@ -40,10 +42,11 @@ future feature already tracked in Blocked below; do not build it as an unplanned
 `tsc`/`eslint`/`npm run build` all clean; click-tested live end-to-end in the browser (admin panel
 save flow, QR/booth link, the wizard badge via both the admin-toggle path and the `?intake=in-
 person&event=slug` URL-param path) after tracking down and ruling out a **dev-server-only**
-Turbopack quirk (see Uncommitted work below) via a clean production build. Migration 0064 is live
-on production Supabase; the admin toggle was reset back to off after testing, confirmed via a
-fresh read. Email delivery work (Resend domain verification, the remaining 6 notification stages)
-is **explicitly parked at the user's request** — do not pick it back up unprompted.
+Turbopack quirk (see the note under "What `648f42d` changed" below) via a clean production build.
+Migration 0064 is live on production Supabase; the admin toggle was reset back to off after
+testing, confirmed via a fresh read. Email delivery work (Resend domain verification, the
+remaining 6 notification stages) is **explicitly parked at the user's request** — do not pick it
+back up unprompted. No uncommitted work is outstanding.
 
 ---
 
@@ -301,22 +304,22 @@ field that drives routing/matching logic, never the name.
 
 ## Uncommitted work in the tree right now
 
-**Committed and pushed to `main`** (`f796950` also **deployed to Vercel production**, alias
-`website-three-iota-83.vercel.app`; everything after it is committed but not yet deployed): ACE
-tier overhaul + ACE Label Options + notification system stage 1 (`4026e1d`); In-Person Event
-Drop-Off (`df13969`); booth-handover contact-lookup bug fix (`0de1894`); `ORDER_CONFIRMED` wired
-into the Payfast webhook (`fb9bb14`); grader filter false-positive fix, `products.grading_company`
+**None.** Everything is committed, pushed to `main`, and deployed to Vercel production (alias
+`website-three-iota-83.vercel.app`, deployment `dpl_74cnQGHK5BnVsHTw6sFHj2jvbeSe`): ACE tier
+overhaul + ACE Label Options + notification system stage 1 (`4026e1d`); In-Person Event Drop-Off
+(`df13969`); booth-handover contact-lookup bug fix (`0de1894`); `ORDER_CONFIRMED` wired into the
+Payfast webhook (`fb9bb14`); grader filter false-positive fix, `products.grading_company`
 (`8913730`, migration 0063); Live Batch Tracker extracted to `/batches` (`2c7c9f3`); `/experience`
-removed entirely (`66aae87`); Submit Cards + Batches consolidated onto `/submit` (`f796950`, **the
-last one deployed**); Live Batch Tracker isolated + hidden behind a flag (`2249a9f`); site-wide
-"CuppasCards" brand rename + `/submit` nav label simplified (`03c67de`); PROJECT_STATE.md
-deployment-status update (`451ca05`); "My Submissions" nav-link personalization (`3deec54`).
-Migrations 0059-0063 all live on production. `RECEIVED_HQ`/`ORDER_CONFIRMED` email delivery is
-blocked by an unrelated, pre-existing Resend domain-verification issue (see Blocked below) —
-parked at the user's request, not being chased further.
+removed entirely (`66aae87`); Submit Cards + Batches consolidated onto `/submit` (`f796950`); Live
+Batch Tracker isolated + hidden behind a flag (`2249a9f`); site-wide "CuppasCards" brand rename +
+`/submit` nav label simplified (`03c67de`); PROJECT_STATE.md deployment-status update (`451ca05`);
+"My Submissions" nav-link personalization (`3deec54`); In-Person Event Submissions Admin Control +
+customer flow (`648f42d`). Migrations 0059-0064 all live on production.
+`RECEIVED_HQ`/`ORDER_CONFIRMED` email delivery is blocked by an unrelated, pre-existing Resend
+domain-verification issue (see Blocked below) — parked at the user's request, not being chased
+further.
 
-**Uncommitted — In-Person Event Submissions Admin Control + customer flow**: full detail in the
-Current Milestone and Active File Manifest sections above. In short:
+**What `648f42d` changed** (for reference — already live):
 - `supabase/migrations/0064_add_event_settings_name.sql` — **applied to production and
   independently re-verified** via `information_schema.columns` (`active_event_name`, `text`,
   nullable, present on `public.event_settings`).
@@ -381,11 +384,8 @@ Current Milestone and Active File Manifest sections above. In short:
 
 ## Immediate Next Task
 
-The In-Person Event Submissions Admin Control + customer flow work (migration 0064, the rebuilt
-`events-settings-panel.tsx` with the shadcn Switch/QR/booth-link, the wizard's "Live Intake
-Active" badge) is code-complete, build-verified, and click-tested live end-to-end — waiting on
-your go-ahead to commit. The "My Submissions" nav-link personalization (`3deec54`) is already
-committed and pushed but not yet deployed.
+Nothing outstanding — the In-Person Event Submissions Admin Control + customer flow work and the
+"My Submissions" nav-link personalization are both committed, pushed, and deployed to production.
 
 Legal pages, email templates, and PayFast item descriptors still say "Cuppa's Cards" — deliberately
 deferred; only touch them if the user separately confirms the legal entity name is actually
