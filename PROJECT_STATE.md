@@ -13,40 +13,91 @@ This file is updated at the end of every response that builds or modifies a comp
 
 ## Current Milestone
 
-**Phase: idle — everything below is committed, pushed, and deployed to production.** In-Person
-Event Submissions Admin Control + customer flow (this task) is **live on production** as of
-`648f42d` (Vercel alias `website-three-iota-83.vercel.app`, deployment
-`dpl_74cnQGHK5BnVsHTw6sFHj2jvbeSe`), which also brought the earlier "My Submissions" nav-link
-personalization (`3deec54`) live. Migrations 0059-0064 all live. What shipped: the request asked
-for a brand-new `platform_settings` table, but that
-duplicates the existing `event_settings` singleton (migration 0062, already RLS'd public-read /
-admin-write, already wired end-to-end via `app/admin/events`, `app/api/events/active`, and
-`app/submit/wizard.tsx`) — **per the user's explicit choice, extended the existing system instead
-of building a parallel one.** Concretely: (1) migration `0064_add_event_settings_name.sql` adds
-`active_event_name` (nullable text) to `event_settings`, applied to production and independently
-re-verified via `information_schema.columns`; (2) `app/admin/events/events-settings-panel.tsx`
-rebuilt with an Event Name field, a real shadcn `Switch` (new `components/ui/switch.tsx`, backed by
-the newly-installed `@radix-ui/react-switch` — confirmed with the user before adding the
-dependency), a shareable booth link, a `QRCodeSVG`-rendered QR code, and Copy/Download/Print
-actions (print scoped via Tailwind's `print:` variant, with `print:hidden` added to `Navbar.tsx`/
-`Footer.tsx` so a printed booth flyer excludes site chrome); (3) `app/submit/wizard.tsx` gained a
-"Live Intake Active — Handing in at {event name}" badge, name-matched by slug so a stale/old booth
-QR code can't show the wrong current event's name; (4) the "Zero-Paper Intake Handshake" (unique
-4-digit `handover_pin`, the confirmation-screen PIN display, and `/admin/intake`'s "Booth handover"
-PIN-verify box that marks the submission received and fires `RECEIVED_HQ`) **already existed
-end-to-end** from the earlier In-Person Event Drop-Off task — audited, confirmed correct, left
-untouched. **Explicitly not built**: a dedicated return-shipping courier/Vault-Consignment
-selector — the existing address (used for the return destination) + `interestedInConsignment`
-opt-in already cover this reasonably, and a dedicated selector remains the separately-deferred
-future feature already tracked in Blocked below; do not build it as an unplanned side effect here.
-`tsc`/`eslint`/`npm run build` all clean; click-tested live end-to-end in the browser (admin panel
-save flow, QR/booth link, the wizard badge via both the admin-toggle path and the `?intake=in-
-person&event=slug` URL-param path) after tracking down and ruling out a **dev-server-only**
-Turbopack quirk (see the note under "What `648f42d` changed" below) via a clean production build.
-Migration 0064 is live on production Supabase; the admin toggle was reset back to off after
-testing, confirmed via a fresh read. Email delivery work (Resend domain verification, the
-remaining 6 notification stages) is **explicitly parked at the user's request** — do not pick it
-back up unprompted. No uncommitted work is outstanding.
+**Phase: launch simplification pass (ACE-only + Pokémon-only + shop filter simplification +
+Add-ons rework) + outbound email moved to Google SMTP/Nodemailer + WhatsApp community link + hero
+copy.** Live in production as of `648f42d`: In-Person Event Submissions Admin Control + customer
+flow, and the earlier "My Submissions" nav-link personalization (`3deec54`) — Vercel alias
+`website-three-iota-83.vercel.app`, deployment `dpl_74cnQGHK5BnVsHTw6sFHj2jvbeSe`. Migrations
+0059-0064 all live. Active work (this task, seven separate pieces):
+
+4. **Step 1 (`Grader & tier`) simplified to ACE-only for launch** — `components/submit/
+   step-grader-tier.tsx` no longer renders a "Country of origin" or "Grading company" selector;
+   `app/submit/wizard.tsx`'s `region`/`company` are now plain `'sa'`/`'ACE'` constants (not
+   `useState`) rather than deleted, since every downstream consumer (`PoolTracker`,
+   `StepAddOns`, `StepReviewPay`) still needs them. Only ACE's 5 real tiers
+   (`ace_basic`/`ace_standard`/`ace_premier`/`ace_ultra`/`ace_luxury`) are reachable. Click-tested
+   live end-to-end through Steps 1→2 with a real TCGdex search-and-select.
+
+5. **Card category locked to Pokémon for launch** — `components/submit/card-shipment-row.tsx`
+   fully rewritten: the Pokémon/Sports Cards toggle pills, the Sport dropdown, and
+   `SportsCardSearch` are removed from this row entirely (not just hidden) since there is no
+   longer any UI path to reach them; `card.cardType` stays `'pokemon'` always (its existing
+   `createEmptyCard()` default). `components/submit/sports-card-search.tsx` and the
+   `'sports_card'` `CardType` value are untouched for a future re-enablement.
+
+6. **Shop filter pills simplified for launch** — `/shop` now shows only `All`/`Graded`/`Raw
+   Cards`/`Accessories` (Pokémon Center and Sealed pills hidden, not deleted, in
+   `components/shop/category-tabs.tsx`); the Pokémon/Sports Cards game-selector toggle
+   (`ProductTypeToggle`) is unmounted in `app/shop/page.tsx`, `activeType` hardcoded to
+   `'pokemon'`; selecting `Graded` locks results to ACE only, enforced at both the Supabase query
+   level (`app/shop/page.tsx`) and the client-side filter level
+   (`components/shop/shop-browser.tsx`'s `effectiveFilters`, computed inside the `useMemo` itself
+   to satisfy `react-hooks/exhaustive-deps`) — the PCG/ACE/PSA sub-pill row in
+   `components/shop/subcategory-pills.tsx` and the sidebar Grader checkboxes are both hidden.
+   Click-tested live: `/shop?category=graded` returned 8 products, all ACE-graded, no PSA/PCG.
+
+7. **Step 2 (`Add-ons`) simplified and refined** — the Semi-Rigids and Consignment toggle cards
+   are removed from `components/submit/step-addons.tsx` entirely; `app/submit/wizard.tsx`'s
+   `needsSemiRigids`/`interestedInConsignment` are now hardcoded `false` constants (not
+   `useState`) rather than deleted, since `app/api/submissions/route.ts` and the
+   `submissions.needs_semi_rigids`/`interested_in_consignment` columns are unchanged. Copy
+   updated: Pre-grading preparation's description now mentions the new sleeve + semi rigid are
+   included standard; the Clean & Polish question's subtext was rewritten to match. A gold "OR"
+   divider (pill badge, dark/gold aesthetic) now sits between the per-card list and "This
+   submission". Mutual exclusivity (already implemented pre-existing logic in this file) is now
+   also visually reinforced: turning on the batch-level Clean & Polish collapses every per-card
+   toggle into a "Full submission Clean and Polish active" gold badge instead of just disabling
+   the buttons in place. Click-tested live: toggling batch-level Clean & Polish to "Yes" correctly
+   collapsed the per-card toggle into the badge.
+
+1. **Hero copy** (`app/page.tsx`) — pill badge now reads "Everything should be made as simple as
+   possible, but not simpler." (was "Official PCG and ACE Middleman"); subheading now reads
+   "South Africa's premier grading service. Making it easy to grade your cards." (was "...premier
+   middleman service..."). Pill padding/font-size nudged down (`px-4 py-1.5`, `text-[11px]`) so
+   the longer quote fits on one line; everything else on the page unchanged.
+
+2. **Email delivery switched from Resend to Google SMTP/Nodemailer** — this **directly re-opened
+   work the user had explicitly parked**, but the user themselves initiated it this time, which is
+   the carved-out exception ("do not pick it back up unprompted"). Two architectural conflicts
+   were flagged and resolved by asking rather than guessing: the request asked for a brand-new
+   `lib/mail/`/`emails/templates/` tree, which would have created a second, competing home for
+   email code alongside the existing, explicitly-frozen `lib/email/` convention — **the user chose
+   to fully replace Resend inside the existing `lib/email/` files instead of building a parallel
+   tree**; the request's `EMAIL_FROM` domain (`cuppascards.com`) was a third domain variant this
+   session has seen (after `cuppacards.com` and `cuppascards.co.za`) — **the user confirmed it's a
+   real, ready Google Workspace mailbox.** `resend` was uninstalled, `nodemailer` +
+   `@types/nodemailer` installed. Full file-level detail in Active File Manifest below. Note:
+   `.env.local`'s actual `EMAIL_SERVER_*` values are still placeholders (`yourbrandemail@gmail.com`),
+   not the real `mitchell@cuppascards.com` credentials described in the request — swap in the real
+   values (a Gmail **App Password**, not the account password — Gmail SMTP requires one) before
+   expecting real sends to succeed. Confirmed live: the whole pipeline (admin-gated route → payload
+   → template → real SMTP attempt) works end-to-end against the placeholder creds, failing exactly
+   where expected (Gmail's own "Application-specific password required" error), which independently
+   proves the code path is correct.
+
+3. **WhatsApp community link** — `lib/social-links.ts`'s `SOCIAL_LINKS.whatsapp` (previously a
+   placeholder) is now the real link, which automatically fixed both of its existing usages
+   (`app/page.tsx`'s "Join the WhatsApp Group" CTA, `components/Footer.tsx`'s "Follow Us" icon) —
+   confirmed live via both links resolving to the new URL. The request asked to add
+   `whatsappCommunity` directly into `config/site.ts`'s `links` with the URL inlined a second time;
+   instead `siteConfig.links.whatsappCommunity` re-exports `SOCIAL_LINKS.whatsapp`, same
+   single-source-of-truth reasoning as the existing `instagram`/`tiktok` re-exports — avoids
+   recreating the exact "second home for the same URL" problem `siteConfig.links` was already
+   designed to avoid.
+
+`tsc`/`eslint`/`npm run build` all clean (same pre-existing baseline, no new issues) for all three
+pieces. Remaining email delivery work (the other 6 notification stages) stays **explicitly parked
+at the user's request** — do not pick it back up unprompted.
 
 ---
 
@@ -56,7 +107,12 @@ Grouped by subsystem. Paths are relative to repo root. This lists what exists an
 up today — not a to-do list.
 
 ### App routes — public
-- `app/page.tsx`, `app/layout.tsx`
+- `app/page.tsx`, `app/layout.tsx` — `app/page.tsx`'s hero has no separate `components/home/Hero.tsx`
+  (a requested-but-nonexistent path — everything is inline in the page itself). Hero pill badge:
+  "Everything should be made as simple as possible, but not simpler." (padding/font-size nudged
+  down — `px-4 py-1.5`, `text-[11px]` — so the longer quote fits on one line; every other pill
+  style, and every button/layout/import elsewhere on the page, unchanged). Hero subheading:
+  "South Africa's premier grading service. Making it easy to grade your cards."
 - `app/batches/page.tsx` — **removed**. The standalone Live Batch Tracker route (and
   `components/LivePools.tsx`, its exclusive slate/amber-themed renderer) is gone; `/batches` now
   308-redirects to `/submit` via `next.config.js`'s `redirects()`. Its content lives on `/submit`
@@ -107,9 +163,30 @@ up today — not a to-do list.
   companies without groups (PCG, PSA) render as a flat list, unchanged. Also renders
   `TierOption.description` under the tier label. Gained an optional `cardsSectionRef` prop
   (`RefObject<HTMLDivElement | null>`), attached to the "Cards in this shipment" wrapper — the
-  batch panel's "Join Batch" scroll target.
-- `step-addons.tsx`, `step-review-pay.tsx`
-- `components/submit/card-shipment-row.tsx`, `sports-card-search.tsx`, `manifest-rail.tsx`, `packing-slip.tsx`, `add-address-form.tsx`
+  batch panel's "Join Batch" scroll target. **Launch rollout**: no longer renders a "Country of
+  origin" or "Grading company" selector, and dropped the `region`/`onSelectRegion`/`onSelectCompany`
+  props entirely — `app/submit/wizard.tsx` now passes a fixed `company="ACE"` and no region prop.
+  Only ACE's 5 tiers are reachable; Label options (ACE-only) render unconditionally since ACE is
+  now always the active company.
+- `step-addons.tsx` — **launch rollout**: Semi-Rigids and Consignment toggle cards removed
+  entirely (props `needsSemiRigids`/`onToggleSemiRigids`/`interestedInConsignment`/
+  `onToggleConsignment` dropped from `Props`); copy updated for Pre-grading preparation and the
+  Clean & Polish question; a new `OrDivider` component renders a gold pill "Or" badge between the
+  per-card list and "This submission"; when the batch-level Clean & Polish is on, each per-card
+  row now collapses its Yes/No toggle into a "Full submission Clean and Polish active" badge
+  (previously just disabled the buttons in place) via `needsCleanAndPolish` inside the `cards.map`.
+  The pre-existing `handleToggleCleanAndPolish`/`handleTogglePerCardPrep` mutual-exclusivity logic
+  is unchanged.
+- `step-review-pay.tsx` — unchanged; still receives `needsSemiRigids`/`interestedInConsignment`
+  props, now always `false` from `app/submit/wizard.tsx`'s hardcoded constants instead of user
+  toggles, and still forwards them to `app/api/submissions/route.ts`'s checkout payload unchanged.
+- `components/submit/card-shipment-row.tsx` — **launch rollout, fully rewritten**: the
+  Pokémon/Sports Cards toggle pills, Sport `<select>`, and `SportsCardSearch` import/usage are
+  removed entirely (not just hidden) — every card is always the Pokémon search UI now. `sports-
+  card-search.tsx` and the `'sports_card'` `CardType` value are untouched/unreferenced, kept for a
+  future re-enablement.
+- `sports-card-search.tsx` (unreferenced since the above, kept for future re-enablement),
+  `manifest-rail.tsx`, `packing-slip.tsx`, `add-address-form.tsx`
 - `app/api/submissions/route.ts`, `app/api/submissions/checkout/route.ts`
 - `lib/submission-types.ts` (shared contract, see below), `lib/addresses-client.ts`
 - `supabase/migrations/0059_add_ace_flagship_premium_tiers.sql`, `0060_allow_ace_flagship_premium_tiers.sql`
@@ -176,7 +253,23 @@ up today — not a to-do list.
 
 ### Shop
 - `app/shop/page.tsx`, `app/shop/[id]/page.tsx`, `app/shop/checkout/page.tsx`, `app/shop/layout.tsx`
-- `components/shop/*` (browser, grid, filters, sports-card-filters, category-tabs, subcategory-pills, region-toggle, product-type-toggle, cart-button, add-to-cart-button)
+  — **launch rollout**: `activeType` hardcoded to `'pokemon' as ProductType` (the `as` cast is
+  required — a plain `: ProductType` annotation gets narrowed to the literal `'pokemon'` and
+  breaks the file's own pre-existing `activeType === 'sports_card'` checks with `TS2367`);
+  `ProductTypeToggle` import/usage commented out (component itself untouched); the `Graded`
+  category's Supabase query now adds `.eq('grading_company', 'ACE')` in both the main and
+  (now-dead-but-preserved) sports-card query branches.
+- `components/shop/*` (browser, grid, filters, sports-card-filters, category-tabs,
+  subcategory-pills, region-toggle, product-type-toggle, cart-button, add-to-cart-button) —
+  **launch rollout, "hide not delete"**: `category-tabs.tsx`'s `CATEGORIES` array has "Pokémon
+  Center" and "Sealed" commented out (their query logic in `app/shop/page.tsx` is untouched and
+  still reachable via a direct `?category=` link); `subcategory-pills.tsx`'s Graded sub-filter row
+  (`GRADER_OPTIONS` + its render branch) is commented out; `shop-browser.tsx` computes
+  `effectiveFilters` (forcing `graders: ['ACE']` when `activeCategory === 'graded'`) inside its
+  `filteredProducts` `useMemo` callback and hardcodes `showGraderFilter={false}` on
+  `ProductFilters` — `product-filters.tsx`'s Grader checkbox capability itself is untouched, just
+  never invoked with `true` anymore. `product-type-toggle.tsx` is untouched but unmounted (see
+  `app/shop/page.tsx` above).
 - `lib/shop/{availability,featured-products,grader,product-type,shop-url}.ts`
 - `lib/cart/cart-context.tsx`
 - `app/api/shop/checkout/route.ts`, `app/api/shop/orders/route.ts`, `app/api/shop/orders/release-stale/route.ts`
@@ -208,26 +301,52 @@ up today — not a to-do list.
 
 ### Misc integrations
 - `lib/tcgdex.ts`, `app/api/sports-cards/{brands,search}/route.ts` — sports-card catalog
-- `lib/email/resend-client.ts`, `send-order-confirmation.ts`, `templates/order-confirmation.ts` —
-  existing payment-receipt emails (unchanged)
+- `lib/email/transporter.ts` — **new**. `getTransporter()`, a lazily-constructed, pooled Nodemailer
+  transporter over Google SMTP (`EMAIL_SERVER_HOST`/`PORT`/`USER`/`PASSWORD` env vars, `secure:
+  true`), replacing the old `resend-client.ts` (deleted). `verifyConnection()` calls
+  `transporter.verify()` for a health check without sending a real email.
+- `lib/email/send-email.ts` — **new**. `sendEmail({to, subject, html, text?})`, the single entry
+  point every sender in `lib/email/` now calls instead of touching the transporter directly.
+  Unlike the old Resend call sites, this never throws — it returns `{success, messageId?,
+  error?}` — so `lib/email/send-grading-update.ts` and `send-order-confirmation.ts`'s four `send-*`
+  functions each re-throw on `success: false` to preserve their existing "caller wraps in
+  try/catch" contract for callers like the Payfast webhook and `booth-handover/route.ts` that
+  already do `.catch(...)` on them. Defaults `from` to `EMAIL_FROM`, falling back to
+  `'CuppasCards <noreply@cuppascards.com>'`.
+- `lib/email/send-order-confirmation.ts`, `templates/order-confirmation.ts` — existing
+  payment-receipt emails, now sent via `sendEmail()` instead of Resend; template content
+  unchanged.
 - `types/notifications.ts` — `GradingEmailStage` (8-stage union) + per-stage payload interfaces
   (`OrderConfirmedPayload`, `CollectionBookedPayload`, `ReceivedHqPayload`,
   `DispatchedToGraderPayload`, `ReceivedByGraderPayload`, `DispatchedToSaPayload`,
-  `LandedAtHqPayload`, `DispatchedToCustomerPayload`), discriminated union `GradingEmailPayload`
-- `lib/email/send-grading-update.ts` — `sendGradingUpdate(payload)`, dispatches by `payload.stage`;
-  only `ORDER_CONFIRMED` has a real renderer today, the other 7 throw a named "not implemented"
-  error (no silent no-op). Best-effort contract like the existing `send-*` functions — does not
-  catch its own errors, callers must wrap in try/catch.
+  `LandedAtHqPayload`, `DispatchedToCustomerPayload`), discriminated union `GradingEmailPayload`.
+  `GradingEmailCard` (the shared `cards` field every stage payload carries) gained
+  `declaredValue: number` — always ZAR regardless of the submission's region, matching
+  `submission_items.declared_value`'s own unit (see `components/submit/card-shipment-row.tsx`'s
+  "Declared value (R)" input) — both real call sites that build this array
+  (`send-grading-update.ts`'s `sendOrderConfirmedEmail`, `booth-handover/route.ts`) now also
+  select/map `declared_value`.
+- `lib/email/send-grading-update.ts` — `sendGradingUpdate(payload)`, dispatches by `payload.stage`,
+  now sent via `sendEmail()`; only `ORDER_CONFIRMED` has a real renderer today, the other 7 throw a
+  named "not implemented" error (no silent no-op).
 - `lib/email/templates/order-confirmed.ts` — `renderOrderConfirmedEmail`, the `ORDER_CONFIRMED`
   template. Reuses `order-confirmation.ts`'s `COLORS`/`escapeHtml` (same dark/gold palette, same
-  hand-rolled inline-styled HTML approach — see Shared Contracts below for why). No call site
-  wires this to a real trigger yet — nothing currently invokes it for this stage.
+  hand-rolled inline-styled HTML approach — see Shared Contracts below for why). Its cards table
+  now has a second, right-aligned "Declared Value" column (`formatZAR`, always ZAR). No call site
+  wires this to a real trigger yet — nothing currently invokes it for this stage in the real
+  pipeline (the new `/api/test-email` route below does, for testing).
 - `lib/email/templates/received-hq.ts` — `renderReceivedHqEmail`, the `RECEIVED_HQ` template.
   Wired to a real trigger: `app/api/admin/intake/booth-handover/route.ts` calls it on every
   verified PIN. Renders gracefully with an empty `inspectionPhotos` (true at booth-handover time,
   since dual-surface photos come from a later, separate step) vs. a real photo grid when populated.
 - `getContact` in `lib/email/send-order-confirmation.ts` is now exported (was module-private) so
   `booth-handover/route.ts` can reuse the same profile+auth-email lookup instead of duplicating it.
+- `app/api/test-email/route.ts` — **new**. Admin-gated (`requireAdmin()`) POST (`{targetEmail}`
+  JSON body) and GET (`?targetEmail=`) diagnostic route: builds a representative sample
+  `OrderConfirmedPayload`, renders it, and sends it via `sendEmail()` to confirm the SMTP
+  pipeline end-to-end. Gated because it triggers a real send from the business's mail account to
+  an arbitrary address — the request didn't specify auth, but every other outbound-side-effect
+  route in this codebase is admin-only, so this follows suit.
 - `app/api/contact-inquiries/route.ts`, `app/api/vendor-inquiries/route.ts`, `app/api/notify/route.ts`, `app/api/webhooks/pool-milestone/route.ts`
 - `components/auth/turnstile-widget.tsx` — bot protection
 
@@ -291,7 +410,7 @@ up today — not a to-do list.
 - **DB row shapes**: `SubmissionRow`, `PoolRow`, `SubmissionItemRow`, `SubmissionStatusLogRow` (`lib/submission-types.ts`) mirror `supabase/migrations/0001_init_schema.sql`, `0004_status_history.sql`, `0035_submission_pools.sql` — no generated `database.types.ts` exists; these are hand-maintained and must be kept in sync with migrations manually.
 - **Route conventions**: admin API routes under `app/api/admin/**` gate on `lib/require-admin.ts`; client-facing DB errors must be generic with raw errors logged server-side only (pattern established in `app/api/submissions/route.ts`, since applied to `app/api/admin/products/*`).
 - **PayFast webhook idempotency**: every branch in `app/api/webhooks/payfast/route.ts` gates its DB update on `payment_status = 'pending'` via an atomic `UPDATE ... WHERE`, and only fires its side effect when a row actually changed. Do not reintroduce read-then-write here.
-- **Email templating convention (decided explicitly, do not revisit without asking)**: all transactional emails are hand-rolled HTML strings with inline styles in `lib/email/templates/*.ts`, never JSX/React Email — most email clients (Outlook especially) ignore `<style>`/CSS-in-JS. Every interpolated user-entered value MUST go through `escapeHtml` (`lib/email/templates/order-confirmation.ts`) — a real stored-XSS was fixed here before. `@react-email/*` is deliberately not a dependency. Senders live in `lib/email/send-*.ts` (not `lib/mail/`), take a payload, call `getResendClient().emails.send()` directly, and do not catch their own errors — the caller wraps in try/catch and only logs, since a notification failure must never fail the pipeline event that triggered it.
+- **Email templating convention (decided explicitly, do not revisit without asking)**: all transactional emails are hand-rolled HTML strings with inline styles in `lib/email/templates/*.ts`, never JSX/React Email — most email clients (Outlook especially) ignore `<style>`/CSS-in-JS. Every interpolated user-entered value MUST go through `escapeHtml` (`lib/email/templates/order-confirmation.ts`) — a real stored-XSS was fixed here before. `@react-email/*` is deliberately not a dependency. Senders live in `lib/email/send-*.ts` (not `lib/mail/`), take a payload, and call `sendEmail()` (`lib/email/send-email.ts`) rather than touching the mail transport directly. **Transport**: Google SMTP via Nodemailer (`lib/email/transporter.ts`) as of this session — replaced Resend entirely (`resend` uninstalled, `lib/email/resend-client.ts` deleted) on the user's explicit choice, rather than adding a second parallel email pipeline. `sendEmail()` itself never throws (`{success, messageId?, error?}`); the four `send-*` functions each re-throw on failure so existing callers' `.catch()` blocks keep working unchanged — a notification failure must never fail the pipeline event that triggered it.
 - **`GradingEmailStage`** (`types/notifications.ts`) — an 8-stage notification-layer lifecycle, intentionally more granular than the DB's `SubmissionStatus` (5 stages) or `shipment_batch_status` (5 stages, migration 0052). Most stages beyond `ORDER_CONFIRMED` have no DB column or call site yet — adding a stage here is a type contract, not a promise it's wired up.
 - **`AceLabelOption`** = `'standard' | 'colour_match' | 'ace_label'` — lives in `lib/submission-types.ts` (with `ACE_LABEL_OPTIONS`/`labelOptionFeeForRegion`), **not** a separate `types/grading.ts` — that path was requested but deliberately not created, to avoid a second, competing home for grading-domain types alongside the existing single source of truth. Same per-submission modeling as `needs_clean_and_polish`/`needs_semi_rigids` (one choice for the whole batch, not per-card) — only ever non-null when `grading_company = 'ACE'` (enforced by `chk_submissions_ace_label_option_valid`, migration 0061). ZAR fees (R25/R75) are ACE's own designated retail prices, not the usual ~18.5 USD/ZAR stand-in conversion; USD is still the derived stand-in.
 - **`IntakeChannel`** = `'online_shipment' | 'in_person_event'` and **`EventSettingsRow`** — `lib/submission-types.ts` (again, not `types/grading.ts` — same reasoning as `AceLabelOption` above; every new domain type this session has gone into the existing file, not a parallel one). "Awaiting Booth Handover" / "Received & Logged" are **UI labels derived from `intake_channel` + `intake_verified_at`**, deliberately not new `SubmissionStatus` enum values — that enum is shared with the customer pipeline stepper (`STATUS_STAGES`/`PipelineProgress`) and `lib/admin/submission-status.ts`'s `changeSubmissionStatus`, which only accepts its fixed 5 values; extending it for a pre-`received` state would mean touching that shared stepper UI for a state most submissions never pass through. Every submission, in-person or not, still gets `status = 'received'` at creation, unchanged.
@@ -304,7 +423,8 @@ field that drives routing/matching logic, never the name.
 
 ## Uncommitted work in the tree right now
 
-**None.** Everything is committed, pushed to `main`, and deployed to Vercel production (alias
+**Committed, pushed, and deployed to production through `648f42d`** (see below for what's newly
+uncommitted). Everything through `648f42d` is on `main` and live on Vercel production (alias
 `website-three-iota-83.vercel.app`, deployment `dpl_74cnQGHK5BnVsHTw6sFHj2jvbeSe`): ACE tier
 overhaul + ACE Label Options + notification system stage 1 (`4026e1d`); In-Person Event Drop-Off
 (`df13969`); booth-handover contact-lookup bug fix (`0de1894`); `ORDER_CONFIRMED` wired into the
@@ -349,6 +469,86 @@ further.
   admin-toggle path and the `?intake=in-person&event=slug` URL path. The admin toggle was switched
   back off after testing and independently re-verified (`is_live: false`) so production customers
   aren't defaulted into a fake test event.
+
+**Uncommitted — homepage hero copy update**:
+- `app/page.tsx` — hero pill badge text changed to "Everything should be made as simple as
+  possible, but not simpler." (was "Official PCG and ACE Middleman"); hero subheading changed to
+  "South Africa's premier grading service. Making it easy to grade your cards." (was "...premier
+  middleman service..."). Pill padding (`px-3 py-1` → `px-4 py-1.5`) and font size (`text-xs` →
+  `text-[11px]`) nudged down slightly, per the request's own note, so the much longer quote fits
+  on one line without cramping; `rounded-full`/`uppercase`/`tracking-wide`, every button style,
+  and every import were left exactly as they were.
+- Requested path `components/home/Hero.tsx` doesn't exist in this codebase (the homepage hero is
+  inline in `app/page.tsx`, no separate hero component) — edited the real file, same as every
+  other requested-but-nonexistent path this session.
+- `tsc`/`eslint`/`npm run build` all clean (same pre-existing baseline, no new issues). Click-tested
+  live: the pill renders on a single line at desktop width with no visual cramping.
+
+**Uncommitted — outbound email switched to Google SMTP/Nodemailer**: full detail in the Current
+Milestone and Active File Manifest ("Misc integrations") sections above. In short: `resend`
+uninstalled, `nodemailer` + `@types/nodemailer` installed; `lib/email/resend-client.ts` deleted,
+replaced by `lib/email/transporter.ts` (pooled transporter + `verifyConnection()`) and
+`lib/email/send-email.ts` (the new single `sendEmail()` entry point, returns `{success,
+messageId?, error?}` instead of throwing); all four existing `send-*` functions in
+`lib/email/send-grading-update.ts`/`send-order-confirmation.ts` now call `sendEmail()` and
+re-throw on failure to preserve their callers' existing `.catch()` contracts; `GradingEmailCard`
+(`types/notifications.ts`) gained `declaredValue: number` (always ZAR), threaded through both real
+construction sites and rendered as a new column in `lib/email/templates/order-confirmed.ts`; new
+admin-gated `app/api/test-email/route.ts` for end-to-end diagnostics. Confirmed live against the
+placeholder `.env.local` credentials — the pipeline correctly reaches Gmail and fails with Gmail's
+own "Application-specific password required" error, proving the code path itself is correct;
+real sends need the real credentials swapped in first (see Current Milestone for detail).
+`tsc`/`eslint`/`npm run build` all clean (same pre-existing baseline).
+
+**Uncommitted — WhatsApp community link**: `lib/social-links.ts`'s `SOCIAL_LINKS.whatsapp` is now
+`https://chat.whatsapp.com/LRxadKeTEFV5DCRWArxHAe?s=cl&p=a&mlu=4&ilr=4` (was a placeholder);
+`lib/site-config.ts`'s `siteConfig.links` gained `whatsappCommunity`, re-exporting the same value
+rather than duplicating the URL. Confirmed live: both existing usages (`app/page.tsx`'s "Join the
+WhatsApp Group" CTA, `components/Footer.tsx`'s "Follow Us" icon) now resolve to the real link.
+
+**Uncommitted — Step 1 (`Grader & tier`) simplified to ACE-only for launch**:
+`components/submit/step-grader-tier.tsx` fully rewritten (Country of origin + Grading company
+selectors removed, `region`/`onSelectRegion`/`onSelectCompany` props dropped); `app/submit/
+wizard.tsx`'s `region`/`company` changed from `useState` to plain `'sa'`/`'ACE'` constants,
+`selectCompany` callback removed, `joinBatch` simplified to a same-company-only no-op (harmless
+today since `LiveBatchTracker` is hidden). `tsc`/`eslint`/`npm run build` all clean (same
+pre-existing baseline). Click-tested live end-to-end through Steps 1→2 with a real TCGdex
+search-and-select of a Pikachu card.
+
+**Uncommitted — card category locked to Pokémon for launch**: `components/submit/
+card-shipment-row.tsx` fully rewritten — the Pokémon/Sports Cards toggle, Sport dropdown, and
+`SportsCardSearch` usage removed entirely; `card.cardType` stays `'pokemon'` always.
+`sports-card-search.tsx` and the `'sports_card'` `CardType` value are untouched/unreferenced for a
+future re-enablement. `tsc`/`eslint` clean (same baseline).
+
+**Uncommitted — shop filter pills simplified for launch**: `app/shop/page.tsx`'s `activeType`
+hardcoded to `'pokemon' as ProductType`; `ProductTypeToggle` unmounted; `Graded` category query
+gained `.eq('grading_company', 'ACE')`. `components/shop/category-tabs.tsx` hides Pokémon
+Center/Sealed pills; `subcategory-pills.tsx` hides the Graded grader sub-filter row;
+`shop-browser.tsx` computes `effectiveFilters` (ACE-only when Graded) inside its `useMemo`
+callback and hardcodes `showGraderFilter={false}`. All hidden via comments, not deletions — every
+underlying query/component capability stays intact for a future re-enable. `tsc`/`eslint`/
+`npm run build` all clean (back to the same 49-problem pre-existing baseline after fixing one
+`react-hooks/exhaustive-deps` warning the first draft introduced). Click-tested live: `/shop`
+shows no game-selector toggle and only `All`/`Graded`/`Raw Cards`/`Accessories`;
+`/shop?category=graded` returned 8 products, all ACE-graded (no PSA/PCG), with no sub-pills or
+sidebar Grader checkboxes rendered.
+
+**Uncommitted — Step 2 (`Add-ons`) simplified and refined**: `components/submit/step-addons.tsx`
+— Semi-Rigids and Consignment toggle cards removed entirely; `app/submit/wizard.tsx`'s
+`needsSemiRigids`/`interestedInConsignment` changed from `useState` to hardcoded `false`
+constants (still forwarded unchanged to `step-review-pay.tsx` and the checkout payload, since
+`app/api/submissions/route.ts`'s columns are untouched). Copy updated on both the Pre-grading
+preparation description and the Clean & Polish subtext to mention the included sleeve + semi
+rigid; a new gold "Or" pill-badge divider sits between the per-card list and "This submission";
+per-card toggles now collapse into a "Full submission Clean and Polish active" badge (rather than
+just disabling in place) when the batch-level option is on — the pre-existing mutual-exclusivity
+logic itself (`handleToggleCleanAndPolish`/`handleTogglePerCardPrep`) was untouched.
+`tsc`/`eslint`/`npm run build` all clean (same baseline). Click-tested live: selected a card,
+advanced to Step 2, confirmed no Semi-Rigids/Consignment cards, confirmed the OR divider renders,
+and confirmed toggling batch-level Clean & Polish to "Yes" collapses the per-card toggle into the
+badge.
+
 - Untracked, not yet triaged into the repo structure: `Stock photos/`, `TheCardApi.txt`,
   `claude context.txt`, `cuppa cards logo temp logo.jpeg`, `termsofservice.txt`, `zernio.txt`.
 
@@ -384,8 +584,13 @@ further.
 
 ## Immediate Next Task
 
-Nothing outstanding — the In-Person Event Submissions Admin Control + customer flow work and the
-"My Submissions" nav-link personalization are both committed, pushed, and deployed to production.
+Seven pieces of work are code-complete, build-verified, and click-tested live — waiting on your
+go-ahead to commit: the homepage hero copy update, the Google SMTP/Nodemailer email migration
+(swap in the real `EMAIL_SERVER_*`/`EMAIL_FROM` credentials in `.env.local` before expecting real
+sends to succeed — Gmail requires an **App Password** for SMTP, not the account password), the
+WhatsApp community link, the Step 1 ACE-only simplification, the Pokémon-only card category lock,
+the shop filter pill simplification, and the Step 2 Add-ons rework (removed Semi-Rigids/
+Consignment, new copy, OR divider, collapsing per-card indicator).
 
 Legal pages, email templates, and PayFast item descriptors still say "Cuppa's Cards" — deliberately
 deferred; only touch them if the user separately confirms the legal entity name is actually
