@@ -16,5 +16,6 @@ export const siteConfig = {
   links: {
     instagram: SOCIAL_LINKS.instagram,
     tiktok: SOCIAL_LINKS.tiktok,
+    whatsappCommunity: SOCIAL_LINKS.whatsapp,
   },
 } as const
