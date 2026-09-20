@@ -2,37 +2,42 @@ import { sendEmail } from '@/lib/email/send-email'
 import { getSupabaseServerClient } from '@/lib/supabase-server'
 import { getContact } from '@/lib/email/send-order-confirmation'
 import { renderOrderConfirmedEmail } from '@/lib/email/templates/order-confirmed'
+import { renderCollectionBookedEmail } from '@/lib/email/templates/collection-booked'
 import { renderReceivedHqEmail } from '@/lib/email/templates/received-hq'
+import { renderDispatchedToGraderEmail } from '@/lib/email/templates/dispatched-to-grader'
+import { renderReceivedByGraderEmail } from '@/lib/email/templates/received-by-grader'
+import { renderDispatchedToSaEmail } from '@/lib/email/templates/dispatched-to-sa'
+import { renderLandedAtHqEmail } from '@/lib/email/templates/landed-at-hq'
+import { renderDispatchedToCustomerEmail } from '@/lib/email/templates/dispatched-to-customer'
 import type { GradingCompany, ProductRegion, SubmissionTier } from '@/lib/submission-types'
 import type { GradingEmailPayload } from '@/types/notifications'
 
-const UNIMPLEMENTED_STAGE_MESSAGE =
-  'sendGradingUpdate: no email template implemented yet for stage'
-
 /**
  * Dispatches a GradingEmailPayload (types/notifications.ts) to its stage's
- * template. ORDER_CONFIRMED and RECEIVED_HQ have real templates -- the
- * remaining 6 stages are typed and routable today so future work only has
- * to add a `case` + a renderer, but each currently throws rather than
- * silently sending nothing, since there's no current call site for them
- * anyway (see types/notifications.ts's header comment on why most stages
- * have no DB trigger yet).
+ * template. All 8 stages now have real renderers -- most still have no DB
+ * trigger/call site (see types/notifications.ts's header comment on why),
+ * but sendGradingUpdate can be called for any of them today, including from
+ * app/api/admin/simulate-lifecycle/route.ts's manual test harness.
  */
 function renderGradingEmail(payload: GradingEmailPayload): { subject: string; html: string } {
+  const appBaseUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://website-three-iota-83.vercel.app'
   switch (payload.stage) {
-    case 'ORDER_CONFIRMED': {
-      const appBaseUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://website-three-iota-83.vercel.app'
+    case 'ORDER_CONFIRMED':
       return renderOrderConfirmedEmail(payload, appBaseUrl)
-    }
+    case 'COLLECTION_BOOKED':
+      return renderCollectionBookedEmail(payload)
     case 'RECEIVED_HQ':
       return renderReceivedHqEmail(payload)
-    case 'COLLECTION_BOOKED':
     case 'DISPATCHED_TO_GRADER':
+      return renderDispatchedToGraderEmail(payload)
     case 'RECEIVED_BY_GRADER':
+      return renderReceivedByGraderEmail(payload)
     case 'DISPATCHED_TO_SA':
+      return renderDispatchedToSaEmail(payload)
     case 'LANDED_AT_HQ':
+      return renderLandedAtHqEmail(payload, appBaseUrl)
     case 'DISPATCHED_TO_CUSTOMER':
-      throw new Error(`${UNIMPLEMENTED_STAGE_MESSAGE} "${payload.stage}"`)
+      return renderDispatchedToCustomerEmail(payload)
   }
 }
 
@@ -45,8 +50,15 @@ function renderGradingEmail(payload: GradingEmailPayload): { subject: string; ht
  * Payfast webhook, booth-handover route) keeps working unchanged. A
  * notification failure must never take down whatever pipeline event
  * triggered it, so every call site is responsible for catching this.
+ *
+ * Returns the Nodemailer messageId on success -- existing callers
+ * (sendOrderConfirmedEmail below, the Payfast webhook, booth-handover
+ * route) all just `await` this without touching the return value, so widening
+ * it from `void` doesn't change anything for them; added for
+ * app/api/admin/simulate-lifecycle/route.ts's test harness, which surfaces
+ * it in its response for the admin test-runner UI's console log.
  */
-export async function sendGradingUpdate(payload: GradingEmailPayload): Promise<void> {
+export async function sendGradingUpdate(payload: GradingEmailPayload): Promise<{ messageId?: string }> {
   const { subject, html } = renderGradingEmail(payload)
   const result = await sendEmail({
     to: payload.customer.email,
@@ -56,6 +68,7 @@ export async function sendGradingUpdate(payload: GradingEmailPayload): Promise<v
   if (!result.success) {
     throw new Error(result.error ?? 'sendGradingUpdate: sendEmail failed')
   }
+  return { messageId: result.messageId }
 }
 
 /**
