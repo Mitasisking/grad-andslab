@@ -68,6 +68,22 @@ CLI/Production, no git-triggered auto-deploy bot), not an automatic git-push tri
    the buttons in place. Click-tested live: toggling batch-level Clean & Polish to "Yes" correctly
    collapsed the per-card toggle into the badge.
 
+8. **"Submission Method" selector added to Step 1** — customers now choose between `'batch'`
+   (Pooled Batch, the default) and `'individual'` (Individual Direct Dispatch) for how their
+   submission is freighted to ACE Grading's UK facility. Migration
+   `supabase/migrations/0065_add_submission_type.sql` was run by the user directly against
+   production after Claude Code's own auto-mode classifier blocked an assistant-run attempt as a
+   production-affecting action — **independently re-verified** via `information_schema.columns`
+   (`submission_type`, `text`, `NOT NULL`, default `'batch'::text`) and `pg_get_constraintdef`
+   (`CHECK ((submission_type = ANY (ARRAY['batch'::text, 'individual'::text])))`), both matching
+   the migration file exactly. Full detail in Active File Manifest and Shared Contracts below.
+   **This is deliberately a different concept from `pool_id`/`pool_status`** (the existing,
+   currently-hidden `LiveBatchTracker`/`public.pools` system) — see the Shared Contracts entry for
+   why they don't overlap. Click-tested live (UI/pricing only — a real checkout with payment was
+   not attempted): selecting "Individual Direct Dispatch" and completing Steps 1→3 showed
+   "International Shipping: Dedicated Direct Dispatch — R1 020,00" and a correct total (R1 780,00
+   = R760 grading + R1 020 shipping) on the Review & Pay screen.
+
 1. **Hero copy** (`app/page.tsx`) — pill badge now reads "Everything should be made as simple as
    possible, but not simpler." (was "Official PCG and ACE Middleman"); subheading now reads
    "South Africa's premier grading service. Making it easy to grade your cards." (was "...premier
@@ -125,7 +141,13 @@ up today — not a to-do list.
   `components/LivePools.tsx`, its exclusive slate/amber-themed renderer) is gone; `/batches` now
   308-redirects to `/submit` via `next.config.js`'s `redirects()`. Its content lives on `/submit`
   itself now — see the Submission flow section below.
-- `app/services/page.tsx`, `app/prepare/page.tsx`, `app/contact/page.tsx`
+- `app/services/page.tsx`, `app/prepare/page.tsx`
+- `app/contact/page.tsx` — the sidebar's direct `EMAIL` block (`support@gradeandslab.com`, a stale
+  domain from before the CuppasCards rebrand) is removed entirely; `LOCATION`/`BUSINESS HOURS` and
+  the Vendor Page link below are unchanged. The form itself was already fully wired (`onSubmit` →
+  `/api/contact-inquiries` → `contact_inquiries` table, migration 0030) and needed no changes —
+  confirmed still working post-edit via a live test submission (`POST /api/contact-inquiries` →
+  `201`).
 - `app/vendor/page.tsx` — `SHOW_PAST_EVENTS = false` module-level flag hides the "Where We've
   Been" hero nav button and its whole event-gallery section (real `PAST_EVENTS` are still
   placeholders — no live event photos exist yet). `NAV_SECTIONS` conditionally includes the
@@ -180,7 +202,10 @@ up today — not a to-do list.
   origin" or "Grading company" selector, and dropped the `region`/`onSelectRegion`/`onSelectCompany`
   props entirely — `app/submit/wizard.tsx` now passes a fixed `company="ACE"` and no region prop.
   Only ACE's 5 tiers are reachable; Label options (ACE-only) render unconditionally since ACE is
-  now always the active company.
+  now always the active company. **New**: a "Submission Method" section now renders above
+  "Turnaround" — two selectable cards (`SUBMISSION_TYPE_OPTIONS`, `lib/submission-types.ts`) for
+  `'batch'` (Pooled Batch, default) vs `'individual'` (Individual Direct Dispatch), driven by new
+  `submissionType`/`onSelectSubmissionType` props.
 - `step-addons.tsx` — **launch rollout**: Semi-Rigids and Consignment toggle cards removed
   entirely (props `needsSemiRigids`/`onToggleSemiRigids`/`interestedInConsignment`/
   `onToggleConsignment` dropped from `Props`); copy updated for Pre-grading preparation and the
@@ -190,9 +215,14 @@ up today — not a to-do list.
   (previously just disabled the buttons in place) via `needsCleanAndPolish` inside the `cards.map`.
   The pre-existing `handleToggleCleanAndPolish`/`handleTogglePerCardPrep` mutual-exclusivity logic
   is unchanged.
-- `step-review-pay.tsx` — unchanged; still receives `needsSemiRigids`/`interestedInConsignment`
-  props, now always `false` from `app/submit/wizard.tsx`'s hardcoded constants instead of user
-  toggles, and still forwards them to `app/api/submissions/route.ts`'s checkout payload unchanged.
+- `step-review-pay.tsx` — still receives `needsSemiRigids`/`interestedInConsignment` props, now
+  always `false` from `app/submit/wizard.tsx`'s hardcoded constants instead of user toggles, and
+  still forwards them to `app/api/submissions/route.ts`'s checkout payload unchanged. **New**:
+  gained a `submissionType` prop; computes `internationalShippingSubtotal` via
+  `internationalShippingFeeForRegion` and adds it into `serviceFee`; renders a new Order Summary
+  line item using `SUBMISSION_TYPE_LINE_ITEM_LABEL[submissionType]` ("International Shipping:
+  Shared Batch Pool" / "...Dedicated Direct Dispatch"); forwards `submissionType` in the
+  `/api/submissions` POST body.
 - `components/submit/card-shipment-row.tsx` — **launch rollout, fully rewritten**: the
   Pokémon/Sports Cards toggle pills, Sport `<select>`, and `SportsCardSearch` import/usage are
   removed entirely (not just hidden) — every card is always the Pokémon search UI now. `sports-
@@ -200,7 +230,11 @@ up today — not a to-do list.
   future re-enablement.
 - `sports-card-search.tsx` (unreferenced since the above, kept for future re-enablement),
   `manifest-rail.tsx`, `packing-slip.tsx`, `add-address-form.tsx`
-- `app/api/submissions/route.ts`, `app/api/submissions/checkout/route.ts`
+- `app/api/submissions/route.ts` — accepts `submissionType` in `CreateSubmissionBody`, validates
+  against `VALID_SUBMISSION_TYPES`, defaults to `'batch'` on anything invalid/missing (same
+  defensive-default pattern as `aceLabelOption`/`intakeChannel` in this file), and inserts it as
+  `submission_type`.
+- `app/api/submissions/checkout/route.ts`
 - `lib/submission-types.ts` (shared contract, see below), `lib/addresses-client.ts`
 - `supabase/migrations/0059_add_ace_flagship_premium_tiers.sql`, `0060_allow_ace_flagship_premium_tiers.sql`
   — add `ace_premier`/`ace_ultra`/`ace_luxury` to the `submission_tier` enum and widen
@@ -223,6 +257,11 @@ up today — not a to-do list.
   `event_settings` table. Click-tested live through Step 3 — Inbound correctly shows R0,00 and the
   Pay button enables without a courier selection; checkout itself (the actual DB insert) was **not**
   exercised since migration 0062 isn't applied to production yet.
+- `supabase/migrations/0065_add_submission_type.sql` — adds `submissions.submission_type`
+  (`text not null default 'batch'` + CHECK `in ('batch', 'individual')`). **Applied to production
+  by the user directly** (an assistant-run attempt was blocked by Claude Code's own auto-mode
+  classifier as a production-affecting action) and **independently re-verified** via
+  `information_schema.columns`/`pg_get_constraintdef` — both match the migration file exactly.
 
 ### Customer dashboard
 - `app/dashboard/page.tsx`, `app/dashboard/submissions/page.tsx`, `app/dashboard/submissions/[id]/page.tsx` + `submission-detail.tsx`
@@ -232,7 +271,11 @@ up today — not a to-do list.
 ### Admin — grading intake & pipeline
 - `app/admin/intake/*` (`intake-portal.tsx` — now also has a "Booth handover" PIN input below the
   existing QR-scan/manual-token flow), `app/admin/grading/*` (`grading-portal.tsx`)
-- `components/admin/intake-order-panel.tsx`, `grade-entry-panel.tsx`, `qr-scanner.tsx`
+- `components/admin/intake-order-panel.tsx` — gained a `SUBMISSION_TYPE_TAG` badge under the
+  header title, always visible (`submission_type` is never null), tagging a submission "Pooled
+  Batch" (muted) or "Individual Direct Dispatch" (in the business's `--seal` accent color, so it
+  stands out scanning down a queue of otherwise-identical pooled submissions).
+  `grade-entry-panel.tsx`, `qr-scanner.tsx`
 - `app/api/admin/intake/{lookup,photo,photo-confirm,status}/route.ts`
 - `app/api/admin/intake/booth-handover/route.ts` — verifies a 4-digit PIN against submissions where
   `intake_channel = 'in_person_event' and intake_verified_at is null`, atomically sets
@@ -459,6 +502,7 @@ up today — not a to-do list.
 - **`TierOption`** gained two optional fields this task: `description` (marketing blurb, rendered under the label) and `group` (subheading key for the tier selector, e.g. ACE's `'Flagship'`/`'Premium'`). Both are optional and additive — PCG/PSA entries omit them and render exactly as before.
 - **`SubmissionStatus`** = `'received' | 'inspected' | 'shipped' | 'graded' | 'returned'` (5-stage pipeline, `STATUS_STAGES`) — `lib/submission-types.ts`
 - **`PoolStatus`** = `'open' | 'closed' | 'shipped' | 'completed'` — `lib/submission-types.ts`, table `public.pools` (migration 0035)
+- **`SubmissionType`** = `'batch' | 'individual'` — `lib/submission-types.ts`, column `submissions.submission_type` (migration 0065, **applied to production and independently re-verified**). Customer's choice of international dispatch method to ACE Grading's UK facility, surfaced in Step 1's "Submission Method" section and priced in Step 3's Order Summary via `internationalShippingFeeForRegion`/`SUBMISSION_TYPE_LINE_ITEM_LABEL`. **Deliberately not the same concept as `pool_id`/`pool_status`**: those track membership in one specific, real `public.pools` row (a tier-scoped batch with capacity, joined via the currently-hidden `LiveBatchTracker` UI, `SHOW_BATCH_TRACKER = false`); `submission_type` is a much simpler standing customer preference that exists independently of whether a real pool is currently open to join — a `'batch'` submission_type never requires or implies a non-null `pool_id`. Do not conflate the two, and do not wire `submission_type = 'batch'` to automatically assign a `pool_id` without a separate, explicit decision to do so.
 - **`ProductRegion`** = `'usa' | 'uk' | 'sa'` — `lib/shop/product-type.ts` — drives `tierPriceForRegion`, `cleanAndPolishFeeForRegion`, `inspectionFeeForRegion`, and shop currency display. **Policy**: USD/GBP/ZAR are independently-priced per region, never converted from one another at checkout time.
 - **Currency display policy**: admin Financials dashboard is ZAR-primary with GBP bracket, deliberately. Public/customer-facing surfaces price natively per region (see above). Do not force ZAR-primary onto customer-facing pages — flagged explicitly in `launch_readiness_report.md` as a deliberate distinction, not a bug.
 - **DB row shapes**: `SubmissionRow`, `PoolRow`, `SubmissionItemRow`, `SubmissionStatusLogRow` (`lib/submission-types.ts`) mirror `supabase/migrations/0001_init_schema.sql`, `0004_status_history.sql`, `0035_submission_pools.sql` — no generated `database.types.ts` exists; these are hand-maintained and must be kept in sync with migrations manually.
@@ -651,6 +695,35 @@ exist is the only change needed to restore it. `tsc`/`eslint`/`npm run build` al
 baseline). Click-tested live: `/vendor`'s hero CTA row now shows only "In-Person Submissions" and
 "Book Us", and the history section itself no longer renders.
 
+**Uncommitted — Contact page's stale direct-email block removed**: `app/contact/page.tsx`'s
+sidebar `EMAIL` block (`support@gradeandslab.com`, a leftover from before the CuppasCards rebrand
+— note the old `gradeandslab` domain, not even `cuppascards`/`cuppacards`) is removed entirely;
+`LOCATION`/`BUSINESS HOURS` and the Vendor Page link are unchanged. The form itself needed no
+changes — it was already fully wired to `app/api/contact-inquiries/route.ts`, which inserts into
+the real `contact_inquiries` table (migration 0030). `tsc`/`eslint`/`npm run build` all clean
+(same baseline). Click-tested live via two real form submissions, both returning
+`POST /api/contact-inquiries` → `201` — **two test rows** ("Claude QA Test" / "qa-test@example.com"
+and "Claude QA Test 2" / "qa-test2@example.com") were left in the real `contact_inquiries` table
+by this verification; delete them from the admin side if they shouldn't sit alongside real
+inquiries.
+
+**Uncommitted — "Submission Method" selector added to Step 1**: `lib/submission-types.ts` gained
+`SubmissionType`, `SUBMISSION_TYPE_OPTIONS`, `internationalShippingFeeForRegion`, and
+`SUBMISSION_TYPE_LINE_ITEM_LABEL`; `SubmissionRow` gained `submission_type`.
+`components/submit/step-grader-tier.tsx` renders a new "Submission Method" section above
+"Turnaround"; `app/submit/wizard.tsx` owns `submissionType` state (default `'batch'`);
+`components/submit/step-review-pay.tsx` prices the international shipping line item and forwards
+`submissionType` to checkout; `app/api/submissions/route.ts` validates and inserts it;
+`components/admin/intake-order-panel.tsx` tags each submission by type.
+`supabase/migrations/0065_add_submission_type.sql` was run by the user directly against
+production (an assistant-run attempt was blocked by Claude Code's own permission system as a
+production-affecting action) and independently re-verified via
+`information_schema.columns`/`pg_get_constraintdef`, both matching the migration exactly.
+`tsc`/`eslint`/`npm run build` all clean (same baseline). Click-tested live (UI/pricing only — a
+real checkout with payment was not attempted): selected "Individual Direct Dispatch", progressed
+through Steps 1→3, and confirmed the Order Summary showed "International Shipping: Dedicated
+Direct Dispatch — R1 020,00" with a correct total (R1 780,00).
+
 - Untracked, not yet triaged into the repo structure: `Stock photos/`, `TheCardApi.txt`,
   `claude context.txt`, `cuppa cards logo temp logo.jpeg`, `termsofservice.txt`, `zernio.txt`.
 
@@ -682,14 +755,28 @@ baseline). Click-tested live: `/vendor`'s hero CTA row now shows only "In-Person
 
 ## Immediate Next Task
 
-Nothing is currently pending commit/push/deploy — everything through `d521c60` is live on
-production (see "Uncommitted work" section above). Legal pages, email templates, and PayFast item
-descriptors now say "CuppasCards" (harmonized this session on the user's explicit instruction —
-the brand name is no longer a deferred area). All 8 grading-lifecycle email templates now exist
-and render correctly (verified live via `/admin/test-emails`); swap in the real
-`EMAIL_SERVER_*`/`EMAIL_FROM` credentials in `.env.local` (a Gmail **App Password**, not the
-account password) before expecting any of them to actually land in an inbox rather than fail at
-Gmail's SMTP auth step.
+Everything through `d521c60` is committed, pushed, and live on production (deployment
+`dpl_7gWkiTWrotGVNpyhoCzCMgnQfy6c`); `64195ab` on top of that is a docs-only PROJECT_STATE.md
+commit (no redeploy needed for it). Legal pages, email templates, and PayFast item descriptors now
+say "CuppasCards" (harmonized this session on the user's explicit instruction — the brand name is
+no longer a deferred area). All 8 grading-lifecycle email templates now exist and render correctly
+(verified live via `/admin/test-emails`); swap in the real `EMAIL_SERVER_*`/`EMAIL_FROM`
+credentials in `.env.local` (a Gmail **App Password**, not the account password) before expecting
+any of them to actually land in an inbox rather than fail at Gmail's SMTP auth step.
+
+One more piece of work is code-complete, build-verified, and click-tested live (including a real
+`POST /api/contact-inquiries` → `201` test submission) — waiting on your go-ahead to commit: the
+Contact page's stale direct-email block removed (`app/contact/page.tsx`). Note: this left two test
+rows (`Claude QA Test`, `Claude QA Test 2`) in the production/dev `contact_inquiries` table from
+live-testing the form — worth deleting from the admin side if you don't want them showing up
+alongside real inquiries.
+
+Also code-complete, build-verified, and click-tested (pricing/UI only) — waiting on your go-ahead
+to commit: the Step 1 "Submission Method" selector (`'batch'` vs `'individual'` dispatch, new
+international shipping fee line item). Its migration
+(`supabase/migrations/0065_add_submission_type.sql`) has already been run against production by
+the user and independently re-verified, so this one is actually ready for a real checkout once
+committed/deployed — unlike everything else in this list, it has no outstanding DB blocker.
 
 **Still genuinely open**:
 - **Resend domain verification** is moot now that Resend itself has been fully replaced by Google
