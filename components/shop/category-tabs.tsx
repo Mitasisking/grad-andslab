@@ -9,12 +9,17 @@ import { buildShopUrl, type ShopUrlParams } from '@/lib/shop/shop-url'
 // param rather than a products.category value.
 export const POKEMON_CENTER_CATEGORY = 'pokemon-center'
 
+// Launch rollout: only these four categories are linked from the tab bar.
+// "Pokémon Center" and "Sealed" are hidden (not removed) -- their query
+// logic in app/shop/page.tsx (isPokemonCenterView, the sealed time-gate)
+// stays fully intact and still reachable via a direct ?category= link, so
+// restoring the pills later is just uncommenting these two lines.
 const CATEGORIES: { value: string | null; label: string }[] = [
   { value: null, label: 'All' },
   { value: 'graded', label: 'Graded' },
   { value: 'cards', label: 'Raw Cards' },
-  { value: POKEMON_CENTER_CATEGORY, label: 'Pokémon Center' },
-  { value: 'sealed', label: 'Sealed' },
+  // { value: POKEMON_CENTER_CATEGORY, label: 'Pokémon Center' },
+  // { value: 'sealed', label: 'Sealed' },
   { value: 'accessories', label: 'Accessories' },
 ]
 

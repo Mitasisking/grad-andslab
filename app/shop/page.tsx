@@ -1,6 +1,11 @@
 import { getSupabaseRouteClient } from '@/lib/supabase-route-client'
 import { CategoryTabs, POKEMON_CENTER_CATEGORY } from '@/components/shop/category-tabs'
-import { ProductTypeToggle } from '@/components/shop/product-type-toggle'
+// Launch rollout: Pokémon is the sole active game category -- the toggle
+// that switches to Sports Cards is unmounted below (activeType is now a
+// fixed constant, never 'sports_card'), so this import is hidden rather
+// than deleted. Uncomment alongside re-enabling activeType's URL-param
+// parsing to bring the toggle back.
+// import { ProductTypeToggle } from '@/components/shop/product-type-toggle'
 import { SportsCardFilters } from '@/components/shop/sports-card-filters'
 import { ShopBrowser } from '@/components/shop/shop-browser'
 import { ProductGrid } from '@/components/shop/product-grid'
@@ -27,8 +32,12 @@ interface ShopSearchParams {
 }
 
 export default async function ShopPage({ searchParams }: { searchParams: Promise<ShopSearchParams> }) {
-  const { category, productType, sport, brand, cardVariant, player, region } = await searchParams
-  const activeType: ProductType = productType === 'sports_card' ? 'sports_card' : 'pokemon'
+  const { category, sport, brand, cardVariant, player, region } = await searchParams
+  // Launch rollout: Pokémon is the sole active game category -- ?productType=
+  // is ignored rather than removed from ShopSearchParams/ShopUrlParams, so
+  // re-enabling the toggle later (components/shop/product-type-toggle.tsx,
+  // currently unmounted below) needs no query-parsing changes here.
+  const activeType = 'pokemon' as ProductType
   const activeRegion: ProductRegion = region && VALID_REGIONS.has(region as ProductRegion) ? (region as ProductRegion) : 'sa'
 
   const sports = splitParam(sport)
@@ -99,6 +108,11 @@ export default async function ShopPage({ searchParams }: { searchParams: Promise
   } else {
     if (category) baseQuery = baseQuery.eq('category', category)
     baseQuery = baseQuery.or(sealedGateFilter)
+    // Launch rollout: Graded inventory is ACE-only -- filtered at the query
+    // itself (not just client-side, see components/shop/shop-browser.tsx's
+    // effectiveFilters) so a PCG/PSA slab is never even fetched for this
+    // category, let alone shown. Remove this line to bring PCG/PSA back.
+    if (category === 'graded') baseQuery = baseQuery.eq('grading_company', 'ACE')
   }
 
   // Fetched with only card_type + category applied — this is what the
@@ -134,6 +148,7 @@ export default async function ShopPage({ searchParams }: { searchParams: Promise
     } else {
       if (category) filteredQuery = filteredQuery.eq('category', category)
       filteredQuery = filteredQuery.or(sealedGateFilter)
+      if (category === 'graded') filteredQuery = filteredQuery.eq('grading_company', 'ACE')
       if (sports.length > 0) filteredQuery = filteredQuery.in('sport', sports)
       if (brands.length > 0) filteredQuery = filteredQuery.in('brand', brands)
       if (cardVariants.length > 0) filteredQuery = filteredQuery.in('card_variant', cardVariants)
@@ -161,7 +176,9 @@ export default async function ShopPage({ searchParams }: { searchParams: Promise
           app/admin/shop/product-form-modal.tsx still needs all three
           regions to categorize a new product. */}
       <div className="flex flex-col items-center w-full gap-5 pb-8 mb-8 border-b" style={{ borderColor: 'var(--line)' }}>
-        <ProductTypeToggle active={activeType} current={currentParams} />
+        {/* Launch rollout: Pokémon is the sole active game category -- see
+            the ProductTypeToggle import comment above for how to restore this. */}
+        {/* <ProductTypeToggle active={activeType} current={currentParams} /> */}
         <CategoryTabs active={category ?? null} current={currentParams} />
       </div>
 

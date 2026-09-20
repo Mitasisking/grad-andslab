@@ -4,23 +4,15 @@ import type { RefObject } from 'react'
 import { Button } from '@/components/ui/button'
 import { CardShipmentRow } from '@/components/submit/card-shipment-row'
 import { formatGBP, formatZAR } from '@/lib/currency'
-import { ACE_LABEL_OPTIONS, GRADING_COMPANY_OPTIONS, TIER_OPTIONS_BY_COMPANY } from '@/lib/submission-types'
-import type { AceLabelOption, CardEntry, GradingCompany, ProductRegion, SubmissionTier } from '@/lib/submission-types'
-
-const COUNTRY_OPTIONS: { value: ProductRegion; label: string }[] = [
-  { value: 'sa', label: 'South Africa' },
-  { value: 'usa', label: 'United States' },
-  { value: 'uk', label: 'United Kingdom' },
-]
+import { ACE_LABEL_OPTIONS, TIER_OPTIONS_BY_COMPANY } from '@/lib/submission-types'
+import type { AceLabelOption, CardEntry, GradingCompany, SubmissionTier } from '@/lib/submission-types'
 
 interface Props {
-  region: ProductRegion
+  /** Fixed to 'ACE' by app/submit/wizard.tsx for the launch rollout -- still a real prop (rather than hardcoded in this component) so the tier lookup/label-options logic below stays company-driven instead of ACE-specific. */
   company: GradingCompany
   tier: SubmissionTier | null
   labelOption: AceLabelOption
   cards: CardEntry[]
-  onSelectRegion: (region: ProductRegion) => void
-  onSelectCompany: (company: GradingCompany) => void
   onSelectTier: (tier: SubmissionTier) => void
   onSelectLabelOption: (option: AceLabelOption) => void
   onUpdateCard: (id: string, patch: Partial<CardEntry>) => void
@@ -33,13 +25,10 @@ interface Props {
 }
 
 export function StepGraderTier({
-  region,
   company,
   tier,
   labelOption,
   cards,
-  onSelectRegion,
-  onSelectCompany,
   onSelectTier,
   onSelectLabelOption,
   onUpdateCard,
@@ -49,7 +38,6 @@ export function StepGraderTier({
   canAdvance,
   cardsSectionRef,
 }: Props) {
-  const selectedCompanyMeta = GRADING_COMPANY_OPTIONS.find((c) => c.value === company)!
   const tierOptions = TIER_OPTIONS_BY_COMPANY[company]
   // Distinct group labels in first-seen order (e.g. ACE's "Flagship"/"Premium").
   // A company with no grouped tiers (PCG, PSA) collapses to a single `null`
@@ -61,144 +49,6 @@ export function StepGraderTier({
 
   return (
     <section className="space-y-10">
-      <div>
-        <h2 className="text-[22px]" style={{ fontFamily: 'var(--font-display)', color: 'var(--ink)' }}>
-          Country of origin
-        </h2>
-        <p className="text-[13.5px] mt-1" style={{ color: 'var(--ink-muted)' }}>
-          Sets the currency for grading fees and shipping below.
-        </p>
-        <div className="flex flex-col mt-4 border-t" style={{ borderColor: 'var(--line)' }}>
-          {COUNTRY_OPTIONS.map((c) => {
-            // Temporarily hidden: United States and United Kingdom. To reinstate,
-            // delete this guard and uncomment the rendering block below it.
-            if (c.value === 'usa' || c.value === 'uk') {
-              return null
-              /*
-              const selected = region === c.value
-              return (
-                <button
-                  key={c.value}
-                  type="button"
-                  onClick={() => onSelectRegion(c.value)}
-                  className="flex items-center gap-3 py-3.5 border-b text-left"
-                  style={{ borderColor: 'var(--line)' }}
-                >
-                  <span
-                    className="w-3.5 h-3.5 rounded-full border shrink-0"
-                    style={{
-                      borderColor: selected ? 'var(--seal)' : 'var(--line)',
-                      background: selected ? 'var(--seal)' : 'transparent',
-                    }}
-                  />
-                  <span className="text-[15px]" style={{ color: 'var(--ink)' }}>
-                    {c.label}
-                  </span>
-                </button>
-              )
-              */
-            }
-
-            const selected = region === c.value
-            return (
-              <button
-                key={c.value}
-                type="button"
-                onClick={() => onSelectRegion(c.value)}
-                className="flex items-center gap-3 py-3.5 border-b text-left"
-                style={{ borderColor: 'var(--line)' }}
-              >
-                <span
-                  className="w-3.5 h-3.5 rounded-full border shrink-0"
-                  style={{
-                    borderColor: selected ? 'var(--seal)' : 'var(--line)',
-                    background: selected ? 'var(--seal)' : 'transparent',
-                  }}
-                />
-                <span className="text-[15px]" style={{ color: 'var(--ink)' }}>
-                  {c.label}
-                </span>
-              </button>
-            )
-          })}
-        </div>
-      </div>
-
-      <div>
-        <h2 className="text-[22px]" style={{ fontFamily: 'var(--font-display)', color: 'var(--ink)' }}>
-          Grading company
-        </h2>
-        <div className="flex flex-col mt-4 border-t" style={{ borderColor: 'var(--line)' }}>
-          {GRADING_COMPANY_OPTIONS.map((c) => {
-            // Temporarily hidden: PSA. To reinstate, delete this guard and
-            // uncomment the rendering block below it.
-            if (c.value === 'PSA') {
-              return null
-              /*
-              const selected = company === c.value
-              return (
-                <button
-                  key={c.value}
-                  type="button"
-                  onClick={() => onSelectCompany(c.value)}
-                  className="flex items-center gap-3 py-3.5 border-b text-left"
-                  style={{ borderColor: 'var(--line)' }}
-                >
-                  <span
-                    className="w-3.5 h-3.5 rounded-full border shrink-0"
-                    style={{
-                      borderColor: selected ? 'var(--seal)' : 'var(--line)',
-                      background: selected ? 'var(--seal)' : 'transparent',
-                    }}
-                  />
-                  <span className="text-[15px]" style={{ color: 'var(--ink)' }}>
-                    {c.label}
-                  </span>
-                </button>
-              )
-              */
-            }
-
-            const selected = company === c.value
-            return (
-              <button
-                key={c.value}
-                type="button"
-                onClick={() => onSelectCompany(c.value)}
-                className="flex items-center gap-3 py-3.5 border-b text-left"
-                style={{ borderColor: 'var(--line)' }}
-              >
-                <span
-                  className="w-3.5 h-3.5 rounded-full border shrink-0"
-                  style={{
-                    borderColor: selected ? 'var(--seal)' : 'var(--line)',
-                    background: selected ? 'var(--seal)' : 'transparent',
-                  }}
-                />
-                <span className="text-[15px]" style={{ color: 'var(--ink)' }}>
-                  {c.label}
-                </span>
-              </button>
-            )
-          })}
-        </div>
-        {selectedCompanyMeta.url && (
-          <p className="text-[13.5px] mt-2" style={{ color: 'var(--ink-muted)' }}>
-            Learn more about{' '}
-            <a
-              href={selectedCompanyMeta.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="underline underline-offset-2"
-              style={{ color: 'var(--ink)' }}
-            >
-              {selectedCompanyMeta.label}
-            </a>
-            .
-          </p>
-        )}
-      </div>
-
       <div>
         <h2 className="text-[22px]" style={{ fontFamily: 'var(--font-display)', color: 'var(--ink)' }}>
           Turnaround

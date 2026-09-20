@@ -65,15 +65,27 @@ function YesNoQuestion({ question, subtext, priceLabel, value, onChange }: YesNo
   )
 }
 
+/** The gold "OR" badge between the per-card and submission-level service tiers -- signals the mutual exclusivity enforced by handleToggleCleanAndPolish/handleTogglePerCardPrep below, not just two unrelated sections stacked together. */
+function OrDivider() {
+  return (
+    <div className="relative flex items-center py-1" aria-hidden="true">
+      <div className="flex-1 border-t" style={{ borderColor: 'var(--line)' }} />
+      <span
+        className="mx-3 px-3.5 py-1 rounded-full text-[11px] font-semibold tracking-wide uppercase"
+        style={{ background: 'var(--seal)', color: 'var(--seal-ink)' }}
+      >
+        Or
+      </span>
+      <div className="flex-1 border-t" style={{ borderColor: 'var(--line)' }} />
+    </div>
+  )
+}
+
 interface Props {
   cards: CardEntry[]
   onUpdateCard: (id: string, patch: Partial<CardEntry>) => void
   needsCleanAndPolish: boolean
   onToggleCleanAndPolish: (value: boolean) => void
-  needsSemiRigids: boolean
-  onToggleSemiRigids: (value: boolean) => void
-  interestedInConsignment: boolean
-  onToggleConsignment: (value: boolean) => void
   region: ProductRegion
   onNext: () => void
   onBack: () => void
@@ -84,10 +96,6 @@ export function StepAddOns({
   onUpdateCard,
   needsCleanAndPolish,
   onToggleCleanAndPolish,
-  needsSemiRigids,
-  onToggleSemiRigids,
-  interestedInConsignment,
-  onToggleConsignment,
   region,
   onNext,
   onBack,
@@ -121,13 +129,9 @@ export function StepAddOns({
           Pre-grading preparation
         </h2>
         <p className="text-[14px] mt-2 max-w-lg leading-relaxed" style={{ color: 'var(--ink-muted)' }}>
-          Our team inspects and lightly cleans surface debris before shipment to the grader — priced per card.
+          Our team inspects and lightly cleans surface debris, placed in a new sleeve and semi rigid before shipment
+          to the grader — priced per card.
         </p>
-        {needsCleanAndPolish && (
-          <p className="text-[12px] mt-2" style={{ color: 'var(--ink-muted)' }}>
-            Overridden by full submission Clean and Polish.
-          </p>
-        )}
       </div>
 
       <div className="space-y-4">
@@ -153,34 +157,44 @@ export function StepAddOns({
                 {formatByRegion(inspectionFee, region)}
               </span>
             </div>
-            <div className="flex gap-5 mt-3">
-              {([true, false] as const).map((option) => {
-                const selected = card.preCheckOptIn === option
-                return (
-                  <button
-                    key={String(option)}
-                    type="button"
-                    disabled={needsCleanAndPolish}
-                    onClick={() => handleTogglePerCardPrep(card.id, option)}
-                    className="flex items-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
-                  >
-                    <span
-                      className="w-3.5 h-3.5 rounded-full border shrink-0"
-                      style={{
-                        borderColor: selected ? 'var(--seal)' : 'var(--line)',
-                        background: selected ? 'var(--seal)' : 'transparent',
-                      }}
-                    />
-                    <span className="text-[13.5px]" style={{ color: 'var(--ink)' }}>
-                      {option ? 'Yes' : 'No'}
-                    </span>
-                  </button>
-                )
-              })}
-            </div>
+            {needsCleanAndPolish ? (
+              <p
+                className="text-[12.5px] mt-3 px-2.5 py-1.5 rounded-[3px] inline-block"
+                style={{ color: 'var(--seal-ink)', background: 'var(--seal)' }}
+              >
+                Full submission Clean and Polish active
+              </p>
+            ) : (
+              <div className="flex gap-5 mt-3">
+                {([true, false] as const).map((option) => {
+                  const selected = card.preCheckOptIn === option
+                  return (
+                    <button
+                      key={String(option)}
+                      type="button"
+                      onClick={() => handleTogglePerCardPrep(card.id, option)}
+                      className="flex items-center gap-2"
+                    >
+                      <span
+                        className="w-3.5 h-3.5 rounded-full border shrink-0"
+                        style={{
+                          borderColor: selected ? 'var(--seal)' : 'var(--line)',
+                          background: selected ? 'var(--seal)' : 'transparent',
+                        }}
+                      />
+                      <span className="text-[13.5px]" style={{ color: 'var(--ink)' }}>
+                        {option ? 'Yes' : 'No'}
+                      </span>
+                    </button>
+                  )
+                })}
+              </div>
+            )}
           </div>
         ))}
       </div>
+
+      <OrDivider />
 
       <div>
         <h2 className="text-[22px]" style={{ fontFamily: 'var(--font-display)', color: 'var(--ink)' }}>
@@ -190,22 +204,10 @@ export function StepAddOns({
         <div className="mt-4 space-y-3">
           <YesNoQuestion
             question="Do you require a full Clean and Polish service for this submission?"
-            subtext="A deeper surface clean and polish pass across your entire submission — replaces per-card preparation below, so both are never charged together."
+            subtext="A deeper surface clean and polish pass, with a new sleeve and semi rigid"
             priceLabel={formatByRegion(cleanAndPolishFee, region)}
             value={needsCleanAndPolish}
             onChange={handleToggleCleanAndPolish}
-          />
-          <YesNoQuestion
-            question="Do you require semi-rigids to be added to this order?"
-            subtext="Semi-rigids are required for grading"
-            value={needsSemiRigids}
-            onChange={onToggleSemiRigids}
-          />
-          <YesNoQuestion
-            question="Are you interested in consigning cards from this order when they return?"
-            subtext="Our team will reach out to you upon their return"
-            value={interestedInConsignment}
-            onChange={onToggleConsignment}
           />
         </div>
       </div>

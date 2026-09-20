@@ -6,9 +6,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { formatZAR } from '@/lib/currency'
 import { fetchMarketValue } from '@/lib/pricing-client'
-import { SportsCardSearch, type SportsCardResult } from '@/components/submit/sports-card-search'
-import { SPORT_OPTIONS } from '@/lib/submission-types'
-import type { CardEntry, CardType } from '@/lib/submission-types'
+import type { CardEntry } from '@/lib/submission-types'
 import { searchTcgdexCards, fetchTcgdexSetName, TCGDEX_UNSPECIFIED_SET, type TcgdexCard } from '@/lib/tcgdex'
 
 /**
@@ -116,6 +114,16 @@ interface Props {
   onRemoveCard: (id: string) => void
 }
 
+/**
+ * Launch rollout: Pokémon is the sole active card category, so this row no
+ * longer offers the Pokémon/Sports Cards toggle -- every card is a Pokémon
+ * card (CardEntry.cardType stays 'pokemon', its createEmptyCard() default in
+ * app/submit/wizard.tsx). The sports-card search path (SportsCardSearch,
+ * the sport dropdown, selectSportsCard) is removed from this row entirely
+ * rather than left unreachable-but-present, since there's no UI left to
+ * reach it; components/submit/sports-card-search.tsx and the 'sports_card'
+ * CardType value are untouched for a future re-enablement.
+ */
 export function CardShipmentRow({ card, index, canRemove, onUpdateCard, onRemoveCard }: Props) {
   const [pokemonResults, setPokemonResults] = useState<PokemonSetCard[]>([])
   const [isSearchingPokemon, setIsSearchingPokemon] = useState(false)
@@ -123,7 +131,6 @@ export function CardShipmentRow({ card, index, canRemove, onUpdateCard, onRemove
   const [selectedCardImage, setSelectedCardImage] = useState<string | null>(null)
 
   useEffect(() => {
-    if (card.cardType !== 'pokemon') return
     const query = card.cardName.trim()
     // No setState here for the too-short case (react-hooks/set-state-in-effect
     // flags a synchronous setState directly in an effect body) -- it isn't
@@ -144,14 +151,12 @@ export function CardShipmentRow({ card, index, canRemove, onUpdateCard, onRemove
       cancelled = true
       clearTimeout(t)
     }
-  }, [card.cardType, card.cardName])
+  }, [card.cardName])
 
   const pokemonQueryLongEnough = card.cardName.trim().length >= MIN_QUERY_LENGTH
   // Genuinely searched, came back empty -- expected and fine-to-proceed, not
-  // a broken search (components/submit/sports-card-search.tsx has the
-  // identical treatment for the sports-card side).
-  const pokemonNoResults =
-    card.cardType === 'pokemon' && pokemonQueryLongEnough && !isSearchingPokemon && pokemonResults.length === 0
+  // a broken search.
+  const pokemonNoResults = pokemonQueryLongEnough && !isSearchingPokemon && pokemonResults.length === 0
 
   async function selectPokemonCard(result: PokemonSetCard) {
     setFocused(false)
@@ -189,46 +194,7 @@ export function CardShipmentRow({ card, index, canRemove, onUpdateCard, onRemove
     })
   }
 
-  function selectCardType(cardType: CardType) {
-    if (cardType === card.cardType) return
-    // Fields are provider-specific (TCGdex ids vs. a catalog product id), so
-    // switching flows starts the row's card fields clean rather than mixing
-    // half-Pokemon, half-sports-card state.
-    setSelectedCardImage(null)
-    setPokemonResults([])
-    onUpdateCard(card.id, {
-      cardType,
-      sport: null,
-      cardName: '',
-      setName: '',
-      externalCardId: null,
-      externalSource: null,
-      marketValueEstimate: null,
-      marketValueSource: null,
-    })
-  }
-
-  function selectSportsCard(result: SportsCardResult) {
-    const setName = result.brandSet?.trim() || UNSPECIFIED_SET
-    onUpdateCard(card.id, {
-      sport: result.sport,
-      cardName: result.playerName,
-      setName,
-      externalCardId: result.id,
-      externalSource: 'catalog',
-      isFetchingValue: true,
-    })
-    fetchMarketValue(result.playerName, setName).then((estimate) => {
-      onUpdateCard(card.id, {
-        isFetchingValue: false,
-        marketValueEstimate: estimate?.estimate ?? null,
-        marketValueSource: estimate?.source ?? null,
-        declaredValue: card.declaredValue || estimate?.estimate || 0,
-      })
-    })
-  }
-
-  const showPokemonDropdown = card.cardType === 'pokemon' && focused && pokemonQueryLongEnough && (isSearchingPokemon || pokemonResults.length > 0)
+  const showPokemonDropdown = focused && pokemonQueryLongEnough && (isSearchingPokemon || pokemonResults.length > 0)
 
   return (
     <div className="border rounded-[3px] p-4" style={{ borderColor: 'var(--line)' }}>
@@ -248,48 +214,7 @@ export function CardShipmentRow({ card, index, canRemove, onUpdateCard, onRemove
         )}
       </div>
 
-      <div className="flex gap-2 mb-3">
-        {(['pokemon', 'sports_card'] as CardType[]).map((type) => (
-          <button
-            key={type}
-            type="button"
-            onClick={() => selectCardType(type)}
-            className="px-3 py-1.5 text-[12.5px] rounded-[3px] border"
-            style={{
-              borderColor: card.cardType === type ? 'var(--seal)' : 'var(--line)',
-              background: card.cardType === type ? 'var(--seal)' : 'transparent',
-              color: card.cardType === type ? 'var(--seal-ink)' : 'var(--ink-muted)',
-            }}
-          >
-            {type === 'pokemon' ? 'Pokémon' : 'Sports Cards'}
-          </button>
-        ))}
-      </div>
-
-      {card.cardType === 'sports_card' && (
-        <div className="mb-4">
-          <Label className="text-[12.5px]" style={{ color: 'var(--ink-muted)' }}>
-            Sport
-          </Label>
-          <select
-            value={card.sport ?? ''}
-            onChange={(e) => onUpdateCard(card.id, { sport: (e.target.value || null) as CardEntry['sport'] })}
-            className="w-full border rounded-[3px] px-3 py-2 text-[14px] bg-transparent"
-            style={{ borderColor: 'var(--line)', color: 'var(--ink)' }}
-          >
-            <option value="" disabled>
-              Choose a sport…
-            </option>
-            {SPORT_OPTIONS.map((s) => (
-              <option key={s.value} value={s.value}>
-                {s.label}
-              </option>
-            ))}
-          </select>
-        </div>
-      )}
-
-      {card.cardType === 'pokemon' && selectedCardImage && (
+      {selectedCardImage && (
         <div className="flex justify-center mb-3">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
@@ -301,54 +226,39 @@ export function CardShipmentRow({ card, index, canRemove, onUpdateCard, onRemove
         </div>
       )}
 
-      {card.cardType === 'pokemon' ? (
-        <div>
-          <Label className="text-[12.5px]" style={{ color: 'var(--ink-muted)' }}>
-            Search card
-          </Label>
-          <div className="relative">
-            <Input
-              value={card.cardName}
-              onChange={(e) => onUpdateCard(card.id, { cardName: e.target.value })}
-              onFocus={() => setFocused(true)}
-              onBlur={() => {
-                setTimeout(() => setFocused(false), 150)
-                lookupValue()
-              }}
-              placeholder={`Search by card name or number (e.g. "Charizard 004")`}
-              className={pokemonNoResults ? 'pr-9' : undefined}
-            />
-            {pokemonNoResults && (
-              <Check
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 size-4"
-                style={{ color: '#4ade80' }}
-                aria-label="Not in our catalog — your typed entry will be used as-is"
-              />
-            )}
-            {showPokemonDropdown && (
-              <ResultsDropdown results={pokemonResults} isSearching={isSearchingPokemon} onSelect={selectPokemonCard} />
-            )}
-          </div>
+      <div>
+        <Label className="text-[12.5px]" style={{ color: 'var(--ink-muted)' }}>
+          Search card
+        </Label>
+        <div className="relative">
+          <Input
+            value={card.cardName}
+            onChange={(e) => onUpdateCard(card.id, { cardName: e.target.value })}
+            onFocus={() => setFocused(true)}
+            onBlur={() => {
+              setTimeout(() => setFocused(false), 150)
+              lookupValue()
+            }}
+            placeholder={`Search by card name or number (e.g. "Charizard 004")`}
+            className={pokemonNoResults ? 'pr-9' : undefined}
+          />
           {pokemonNoResults && (
-            <p className="text-[12px] mt-1.5" style={{ color: 'var(--ink-muted)' }}>
-              Card not found in database. Please type the full card name and details above to proceed.
-            </p>
+            <Check
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 size-4"
+              style={{ color: '#4ade80' }}
+              aria-label="Not in our catalog — your typed entry will be used as-is"
+            />
+          )}
+          {showPokemonDropdown && (
+            <ResultsDropdown results={pokemonResults} isSearching={isSearchingPokemon} onSelect={selectPokemonCard} />
           )}
         </div>
-      ) : (
-        <div>
-          <Label className="text-[12.5px]" style={{ color: 'var(--ink-muted)' }}>
-            Search card
-          </Label>
-          <SportsCardSearch
-            value={card.cardName}
-            onChange={(value) => onUpdateCard(card.id, { cardName: value })}
-            onSelect={selectSportsCard}
-            onBlur={lookupValue}
-            placeholder="Search by card name or number..."
-          />
-        </div>
-      )}
+        {pokemonNoResults && (
+          <p className="text-[12px] mt-1.5" style={{ color: 'var(--ink-muted)' }}>
+            Card not found in database. Please type the full card name and details above to proceed.
+          </p>
+        )}
+      </div>
 
       <div className="mt-3 max-w-[220px]">
         <Label className="text-[12.5px]" style={{ color: 'var(--ink-muted)' }}>

@@ -29,12 +29,6 @@ interface Props {
   showBatchTracker: boolean
 }
 
-const VALID_COMPANIES = new Set<GradingCompany>(['PCG', 'PSA', 'ACE'])
-
-function isValidCompany(value: string | null): value is GradingCompany {
-  return value !== null && VALID_COMPANIES.has(value as GradingCompany)
-}
-
 const STEP_COUNT = 3
 
 function createEmptyCard(): CardEntry {
@@ -57,17 +51,19 @@ function createEmptyCard(): CardEntry {
 }
 
 export function SubmissionWizard({ activePools, showBatchTracker }: Props) {
-  // Pre-selects grader + tier when arriving from a link that already knows
-  // which batch a customer wants to join -- e.g. an old bookmarked
-  // /submit?company=PCG&tier=standard link (the same deep-link the
-  // in-page "Join Batch" panel below now sets directly instead). Falls
-  // back to this wizard's own defaults for a plain /submit visit with no
-  // query string.
+  // Launch rollout: ACE Grading is the sole active service, and every
+  // submission ships from South Africa -- Step 1's "Country of origin" and
+  // "Grading company" selectors are gone (components/submit/step-grader-tier.tsx),
+  // so these are fixed constants rather than state. A ?tier= deep link (e.g.
+  // an old bookmark, or the in-page "Join Batch" panel below) can still
+  // pre-select one of ACE's own tiers.
+  const region: ProductRegion = 'sa'
+  const company: GradingCompany = 'ACE'
+
   const searchParams = useSearchParams()
-  const initialCompany: GradingCompany = isValidCompany(searchParams.get('company')) ? (searchParams.get('company') as GradingCompany) : 'PCG'
   const initialTierParam = searchParams.get('tier')
   const initialTier: SubmissionTier | null =
-    initialTierParam && TIER_OPTIONS_BY_COMPANY[initialCompany].some((t) => t.value === initialTierParam)
+    initialTierParam && TIER_OPTIONS_BY_COMPANY[company].some((t) => t.value === initialTierParam)
       ? (initialTierParam as SubmissionTier)
       : null
 
@@ -117,8 +113,6 @@ export function SubmissionWizard({ activePools, showBatchTracker }: Props) {
   }, [urlIntakeIsInPerson, urlEventSlug])
 
   const [step, setStep] = useState(0)
-  const [region, setRegion] = useState<ProductRegion>('sa')
-  const [company, setCompany] = useState<GradingCompany>(initialCompany)
   const [tier, setTier] = useState<SubmissionTier | null>(initialTier)
   const [labelOption, setLabelOption] = useState<AceLabelOption>('standard')
   const [cards, setCards] = useState<CardEntry[]>([createEmptyCard()])
@@ -127,15 +121,27 @@ export function SubmissionWizard({ activePools, showBatchTracker }: Props) {
   const [addressId, setAddressId] = useState<string | null>(null)
   const [courier, setCourier] = useState<string | null>(null)
   const [needsCleanAndPolish, setNeedsCleanAndPolish] = useState(false)
-  const [needsSemiRigids, setNeedsSemiRigids] = useState(false)
-  const [interestedInConsignment, setInterestedInConsignment] = useState(false)
+  // Launch rollout: Step 2 no longer offers a Semi-Rigids or Consignment
+  // toggle (components/submit/step-addons.tsx) -- semi-rigids are now
+  // standard on every card (see that file's Pre-grading preparation copy),
+  // and consignment interest isn't collected at submission time. Kept as
+  // hardcoded false rather than deleted since app/api/submissions/route.ts
+  // and its submissions.needs_semi_rigids/interested_in_consignment columns
+  // are unchanged, so re-adding either toggle later is just restoring the
+  // useState + StepAddOns props.
+  const needsSemiRigids = false
+  const interestedInConsignment = false
 
   const cardsSectionRef = useRef<HTMLDivElement>(null)
 
   const joinBatch = useCallback((nextCompany: GradingCompany, nextTier: SubmissionTier) => {
-    setCompany(nextCompany)
+    // ACE is the only active grading company for launch -- a batch for any
+    // other company can't be joined here (there's no selector left to switch
+    // to it). Harmless no-op today since LiveBatchTracker is hidden
+    // (SHOW_BATCH_TRACKER = false); reconcile this if that flag is ever
+    // flipped back on for a multi-company batch tracker.
+    if (nextCompany !== company) return
     setTier(nextTier)
-    if (nextCompany !== 'ACE') setLabelOption('standard')
     // Deferred a frame so the (possibly newly-rendered) cards section exists
     // to scroll to before we measure its position.
     requestAnimationFrame(() => {
@@ -159,18 +165,6 @@ export function SubmissionWizard({ activePools, showBatchTracker }: Props) {
   const handleAddressCreated = useCallback((address: ShippingAddress) => {
     setAddresses((prev) => [...prev, address])
     setAddressId(address.id)
-  }, [])
-
-  const selectCompany = useCallback((next: GradingCompany) => {
-    setCompany(next)
-    // Tiers are company-specific (lib/submission-types.ts TIER_OPTIONS_BY_COMPANY),
-    // so a tier chosen under one company is never valid under another.
-    setTier(null)
-    // Label options only exist for ACE (components/submit/step-grader-tier.tsx
-    // hides the selector for every other company) -- reset to the free
-    // default so a stale non-standard choice can't silently carry over if
-    // the customer switches away from ACE and back.
-    if (next !== 'ACE') setLabelOption('standard')
   }, [])
 
   const updateCard = useCallback((id: string, patch: Partial<CardEntry>) => {
@@ -237,13 +231,10 @@ export function SubmissionWizard({ activePools, showBatchTracker }: Props) {
             >
               {step === 0 && (
                 <StepGraderTier
-                  region={region}
                   company={company}
                   tier={tier}
                   labelOption={labelOption}
                   cards={cards}
-                  onSelectRegion={setRegion}
-                  onSelectCompany={selectCompany}
                   onSelectTier={setTier}
                   onSelectLabelOption={setLabelOption}
                   onUpdateCard={updateCard}
@@ -261,10 +252,6 @@ export function SubmissionWizard({ activePools, showBatchTracker }: Props) {
                   onUpdateCard={updateCard}
                   needsCleanAndPolish={needsCleanAndPolish}
                   onToggleCleanAndPolish={setNeedsCleanAndPolish}
-                  needsSemiRigids={needsSemiRigids}
-                  onToggleSemiRigids={setNeedsSemiRigids}
-                  interestedInConsignment={interestedInConsignment}
-                  onToggleConsignment={setInterestedInConsignment}
                   region={region}
                   onNext={goNext}
                   onBack={goBack}
