@@ -210,7 +210,9 @@ up today — not a to-do list.
   entirely (props `needsSemiRigids`/`onToggleSemiRigids`/`interestedInConsignment`/
   `onToggleConsignment` dropped from `Props`); copy updated for Pre-grading preparation and the
   Clean & Polish question; a new `OrDivider` component renders a gold pill "Or" badge between the
-  per-card list and "This submission"; when the batch-level Clean & Polish is on, each per-card
+  per-card list and the section below it (heading now "Full Clean & Polish" — renamed from "This
+  submission", text only, no styling/hierarchy/spacing change and no change to the mutual
+  exclusivity logic or pricing); when the batch-level Clean & Polish is on, each per-card
   row now collapses its Yes/No toggle into a "Full submission Clean and Polish active" badge
   (previously just disabled the buttons in place) via `needsCleanAndPolish` inside the `cards.map`.
   The pre-existing `handleToggleCleanAndPolish`/`handleTogglePerCardPrep` mutual-exclusivity logic
@@ -777,6 +779,10 @@ international shipping fee line item). Its migration
 (`supabase/migrations/0065_add_submission_type.sql`) has already been run against production by
 the user and independently re-verified, so this one is actually ready for a real checkout once
 committed/deployed — unlike everything else in this list, it has no outstanding DB blocker.
+
+One more small piece, code-complete and click-tested live: Step 2's "This submission" section
+heading (`components/submit/step-addons.tsx`) is now "Full Clean & Polish" — text only, no
+styling/logic change.
 
 **Still genuinely open**:
 - **Resend domain verification** is moot now that Resend itself has been fully replaced by Google

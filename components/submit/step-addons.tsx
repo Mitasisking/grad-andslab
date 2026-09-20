@@ -198,7 +198,7 @@ export function StepAddOns({
 
       <div>
         <h2 className="text-[22px]" style={{ fontFamily: 'var(--font-display)', color: 'var(--ink)' }}>
-          This submission
+          Full Clean &amp; Polish
         </h2>
 
         <div className="mt-4 space-y-3">
