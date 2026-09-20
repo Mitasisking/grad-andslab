@@ -13,15 +13,18 @@ This file is updated at the end of every response that builds or modifies a comp
 
 ## Current Milestone
 
-**Phase: consolidate Submit Cards + Batches onto `/submit`.** Everything through the removal of
-`/experience` is **committed and pushed** to `main` (`4026e1d`, `df13969`, `0de1894`, `fb9bb14`,
-`8913730`, `2c7c9f3`, `66aae87`), migrations 0059-0063 all live on production. Email delivery work
-(Resend domain verification, the remaining 6 notification stages) is **explicitly parked at the
-user's request** — do not pick it back up unprompted. Active work: the standalone `/batches` route
-has been folded into a new top-of-page "Active Batches" panel on `/submit` itself, with a
-"Select from Active Batches" / "Custom Submission" tab toggle, in-page "Join Batch" pre-selection
-+ smooth-scroll, and a permanent `/batches` → `/submit` redirect — code-complete, `tsc`/`eslint`/
-`npm run build` all clean, click-tested live in the browser (**uncommitted**, see below).
+**Phase: hide the Live Batch Tracker on `/submit` behind a feature flag.** The Submit Cards +
+Batches consolidation onto `/submit` is **committed, pushed, and deployed to production**
+(`f796950`, deployed as Vercel production alias `website-three-iota-83.vercel.app`). Everything
+through that is on `main` (`4026e1d`, `df13969`, `0de1894`, `fb9bb14`, `8913730`, `2c7c9f3`,
+`66aae87`, `f796950`), migrations 0059-0063 all live on production. Email delivery work (Resend
+domain verification, the remaining 6 notification stages) is **explicitly parked at the user's
+request** — do not pick it back up unprompted. Active work: the batch-selection UI has been
+isolated into its own component (`components/grading/LiveBatchTracker.tsx`) and hidden behind a
+`SHOW_BATCH_TRACKER = false` flag in `app/submit/page.tsx`, so `/submit` now defaults straight
+into the standard custom Step 1 flow (country → grading company → tier → cards) with no batch
+grid or tab toggle visible — code-complete, `tsc`/`eslint`/`npm run build` all clean, click-tested
+live in the browser (**uncommitted**, see below).
 
 ---
 
@@ -41,24 +44,35 @@ up today — not a to-do list.
 - `app/login/page.tsx`, `app/signup/page.tsx`, `app/my-account/page.tsx`, `app/my-account/reset-password/page.tsx`
 
 ### Submission flow (grading intake)
-- `app/submit/page.tsx` — now an `async` Server Component: fetches active pools server-side via
-  `getActiveLivePools(supabase)` and passes them into `SubmissionWizard` as `activePools` (a
-  Client Component can't call this directly, since it needs a server-side Supabase client).
-- `app/submit/wizard.tsx` — gained an `intakeMode: 'batch' | 'custom'` state (defaults to `'batch'`
-  when `activePools.length > 0`, else `'custom'`), a `cardsSectionRef`, and a `joinBatch(company,
-  tier)` handler: sets `company`/`tier` (and resets `labelOption` to `'standard'` off-ACE, same as
-  the existing `selectCompany`), then `requestAnimationFrame`s a `cardsSectionRef.current
-  ?.scrollIntoView({ behavior: 'smooth' })`. The new `<ActiveBatchesPanel>` renders only on Step 0,
-  above the existing `[220px_1fr]` sidebar/step grid — Steps 1-2 (`StepAddOns`/`StepReviewPay`) are
-  unchanged.
-- `components/submit/active-batches-panel.tsx` — **new**. The tab toggle + batch grid that used to
-  live on `/batches`, rebuilt against `/submit`'s own "vault" CSS-custom-property theme (`--ink`,
-  `--seal`, `--line`, `--font-display`) instead of `LivePools.tsx`'s slate/amber Tailwind palette,
-  since it now sits directly above the wizard's own chrome. Tier labels come from
+- `app/submit/page.tsx` — `async` Server Component. Defines `SHOW_BATCH_TRACKER = false`, a
+  module-level feature flag: when `true`, fetches active pools server-side via
+  `getActiveLivePools(supabase)`; when `false` (current default), skips that Supabase round-trip
+  entirely (nothing renders it, so there's nothing to fetch for) and passes `activePools = []`.
+  Passes `activePools` and `showBatchTracker={SHOW_BATCH_TRACKER}` into `SubmissionWizard` as props
+  (a Client Component can't read this flag or call `getActiveLivePools` directly, since the latter
+  needs a server-side Supabase client) — flipping the flag to `true` is the only change needed to
+  bring the tracker back. With the flag off, `/submit` is static again (no dynamic pool fetch).
+- `app/submit/wizard.tsx` — accepts `showBatchTracker` and renders `{showBatchTracker && step === 0
+  && <LiveBatchTracker pools={activePools} onSelectBatch={joinBatch} />}` above the existing
+  `[220px_1fr]` sidebar/step grid. `joinBatch(company, tier)` sets `company`/`tier` (resetting
+  `labelOption` to `'standard'` off-ACE, same as the existing `selectCompany`), then
+  `requestAnimationFrame`s a `cardsSectionRef.current?.scrollIntoView({ behavior: 'smooth' })`.
+  No longer owns any intake-mode/tab state itself — that's fully internal to `LiveBatchTracker`
+  now (see below). Steps 1-2 (`StepAddOns`/`StepReviewPay`) are unchanged.
+- `components/grading/LiveBatchTracker.tsx` — **new**, replaces the short-lived
+  `components/submit/active-batches-panel.tsx` (deleted). Fully self-contained: owns its own
+  `'batch' | 'custom'` tab-toggle state internally (defaults to `'batch'` when `pools.length > 0`,
+  else `'custom'`), so the host wizard needs no tab state of its own — switching to "Custom
+  Submission" here just collapses this section, leaving the wizard's always-present Step 1 form as
+  the only thing left to interact with. Props: `pools: PoolRow[]`, `onSelectBatch?: (company:
+  GradingCompany, tier: SubmissionTier) => void`. Styled against `/submit`'s own "vault"
+  CSS-custom-property theme (`--ink`, `--seal`, `--line`, `--font-display`), not
+  `LivePools.tsx`'s old slate/amber Tailwind palette. Tier labels come from
   `TIER_OPTIONS_BY_COMPANY`, not the pool's own auto-generated `label` column (which is literally
   `"<company> <raw tier slug> Batch #<n>"`, e.g. `"ACE ace_standard Batch #1"` — too raw for a
   card headline); a pool still open under a since-retired tier (e.g. ACE's old `ace_value`) falls
-  back to a humanized version of the slug rather than showing it verbatim.
+  back to a humanized version of the slug rather than showing it verbatim. Currently unmounted in
+  the running app (`SHOW_BATCH_TRACKER = false`) but fully wired and ready.
 - `components/submit/step-grader-tier.tsx` — tier selector, now renders `TierOption.group`
   subheadings ("Flagship levels" / "Premium levels") when a company's tiers set `group`;
   companies without groups (PCG, PSA) render as a flat list, unchanged. Also renders
@@ -212,51 +226,39 @@ up today — not a to-do list.
 
 ## Uncommitted work in the tree right now
 
-**Committed and pushed** (all on `main`, newest last): ACE tier overhaul + ACE Label Options +
+**Committed, pushed, and deployed to production**: ACE tier overhaul + ACE Label Options +
 notification system stage 1 (`4026e1d`); In-Person Event Drop-Off (`df13969`); booth-handover
 contact-lookup bug fix (`0de1894`); `ORDER_CONFIRMED` wired into the Payfast webhook (`fb9bb14`);
 grader filter false-positive fix, `products.grading_company` (`8913730`, migration 0063 applied
 to production and click-tested live — see that commit message for full detail); Live Batch
 Tracker extracted to `/batches` (`2c7c9f3`, click-tested live); `/experience` and its exclusive
 3D hero-reveal component tree + six now-unused npm dependencies (`three`, `@react-three/fiber`,
-`@react-three/drei`, `gsap`, `lenis`, `@types/three`) removed entirely (`66aae87`). Migrations
-0059-0063 all live on production. `RECEIVED_HQ`/`ORDER_CONFIRMED` email delivery is blocked by an
-unrelated, pre-existing Resend domain-verification issue (see Blocked below) — parked at the
-user's request, not being chased further.
+`@react-three/drei`, `gsap`, `lenis`, `@types/three`) removed entirely (`66aae87`); Submit Cards +
+Batches consolidated onto `/submit` (`f796950`) — pushed to `main` and **deployed to Vercel
+production** (`vercel deploy --prod`, alias `website-three-iota-83.vercel.app`, deployment
+`dpl_Dv9fX66bpRNzc89hndwSHbt9kvoR`). Migrations 0059-0063 all live on production.
+`RECEIVED_HQ`/`ORDER_CONFIRMED` email delivery is blocked by an unrelated, pre-existing Resend
+domain-verification issue (see Blocked below) — parked at the user's request, not being chased
+further.
 
-**Uncommitted — consolidated Submit Cards + Batches onto `/submit`**:
-- `app/batches/page.tsx` and `components/LivePools.tsx` deleted outright — confirmed via grep
-  that nothing else imported either (only the deleted route itself, a doc comment in
-  `lib/pools/active-pools.ts` since updated, and this file referenced them).
-- `next.config.js` gained a `redirects()` entry: `/batches` → `/submit`, `permanent: true` (308) —
-  the idiomatic Next.js mechanism per `node_modules/next/dist/docs/.../redirects.md`, checked
-  before writing it per this repo's `AGENTS.md` "not the Next.js you know" warning.
-- `components/submit/active-batches-panel.tsx` (new) + `app/submit/wizard.tsx` + `app/submit/page.tsx`
-  + `components/submit/step-grader-tier.tsx` changed to add the batch panel, the intake-mode tab
-  toggle, and the join-batch pre-select + scroll — full detail in the Submission flow section
-  above.
-- `components/Navbar.tsx` — per the literal request, removed the standalone `Batches` link and
-  repointed/relabeled `Submit Cards` → `Submit & Batches` (`/submit`). **Beyond the literal
-  request**: also added a `My Submissions` link to `/dashboard`, because repointing `Submit Cards`
-  away from `/dashboard` (its previous target) while dropping `Batches` would otherwise leave zero
-  main-nav path to `/dashboard` — confirmed via grep that `/dashboard` is the real post-login/
-  signup/my-account landing page (`app/login/page.tsx`, `app/signup/page.tsx`, `app/my-account/page.tsx`
-  all `router.push('/dashboard')` there). Flagging this addition explicitly rather than making it
-  silently.
-- Referenced by neither: the file paths named in the original request
-  (`components/layout/Navbar.tsx`, `Header.tsx`) don't exist in this codebase — edited the real,
-  single nav component at `components/Navbar.tsx` instead, consistent with how a similarly
-  mismatched path was handled earlier this session (`types/grading.ts` vs. the real
-  `lib/submission-types.ts`).
-- `tsc --noEmit` clean, `eslint` shows the same pre-existing issues confirmed via `git stash` to
-  predate this task (two in `components/Navbar.tsx`, plus unrelated ones in
-  `lib/hooks/use-realtime-*.ts`, `lib/shipping.ts`, and `scripts/*.js`) — none touched.
-  `npm run build` succeeds; `/batches` is gone from the route manifest, `/submit` is now dynamic
-  (server-rendered, since it fetches pools). Click-tested live in the browser: the batch grid
-  renders with correct tier labels (including the humanized fallback for a legacy `ace_value`
-  pool), the tab toggle switches between batch/custom views, "Join Batch" pre-selects the
-  company/tier and smoothly scrolls to "Cards in this shipment," and `/batches` redirects to
-  `/submit`.
+**Uncommitted — hide the Live Batch Tracker on `/submit` behind a feature flag**:
+- `components/grading/LiveBatchTracker.tsx` — **new**. Isolates the batch cards + progress bar
+  markup (and its own internal tab-toggle state) that previously lived in
+  `components/submit/active-batches-panel.tsx` (now **deleted**) into a self-contained component,
+  per the request's "Component Isolation" requirement.
+- `app/submit/page.tsx` — added the `SHOW_BATCH_TRACKER = false` module-level flag and skips the
+  `getActiveLivePools` Supabase call entirely while it's off; threads `showBatchTracker` down to
+  `SubmissionWizard` as a prop (the flag is defined in a Server Component per the request, but the
+  actual conditional render has to happen in the Client Component wizard, since that's the only
+  place with the `joinBatch` handler and scroll-ref state a live tracker needs — same Server/Client
+  boundary reasoning as `activePools` itself).
+- `app/submit/wizard.tsx` — dropped its own `intakeMode` state entirely (now fully owned by
+  `LiveBatchTracker` internally); renders the tracker only when `showBatchTracker` is true.
+- With the flag off (current default), `/submit` renders straight into Step 1's standard flow
+  (country → grading company → tier → cards) with no batch grid or tab UI, and the page is static
+  again (no Supabase round-trip) — `tsc --noEmit` clean, `eslint` shows the same pre-existing
+  issues confirmed via `git stash` to predate this task, `npm run build` succeeds, click-tested
+  live in the browser.
 - Untracked, not yet triaged into the repo structure: `Stock photos/`, `TheCardApi.txt`,
   `claude context.txt`, `cuppa cards logo temp logo.jpeg`, `termsofservice.txt`, `zernio.txt`.
 
@@ -284,9 +286,9 @@ user's request, not being chased further.
 
 ## Immediate Next Task
 
-The Submit Cards + Batches consolidation onto `/submit` (nav cleanup, the new Active Batches
-panel, the `/batches` redirect) is code-complete, build-verified, and click-tested live —
-waiting on your go-ahead to commit.
+Hiding the Live Batch Tracker behind `SHOW_BATCH_TRACKER = false` (component isolated into
+`components/grading/LiveBatchTracker.tsx`) is code-complete, build-verified, and click-tested
+live — waiting on your go-ahead to commit.
 
 Email delivery work (Resend domain verification, wiring the remaining 6 notification stages) is
 **parked at the user's request** — do not pick this back up unprompted. Other open items:

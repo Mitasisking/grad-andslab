@@ -1,15 +1,16 @@
 'use client'
 
+import { useState } from 'react'
 import { TIER_OPTIONS_BY_COMPANY } from '@/lib/submission-types'
 import type { GradingCompany, PoolRow, SubmissionTier } from '@/lib/submission-types'
 
-export type IntakeMode = 'batch' | 'custom'
+type TrackerMode = 'batch' | 'custom'
 
 interface Props {
+  /** Currently-filling PCG/ACE batches (see lib/pools/active-pools.ts). */
   pools: PoolRow[]
-  mode: IntakeMode
-  onModeChange: (mode: IntakeMode) => void
-  onJoinBatch: (company: GradingCompany, tier: SubmissionTier) => void
+  /** Fires when the customer picks a batch to join, so the host wizard can pre-select its form state. */
+  onSelectBatch?: (company: GradingCompany, tier: SubmissionTier) => void
 }
 
 // pools.label (0035_submission_pools.sql's assign_submission_pool()) is
@@ -26,20 +27,23 @@ function tierLabel(pool: PoolRow): string {
 }
 
 /**
- * Top-of-/submit batch browser -- replaces the standalone /batches route
- * (removed alongside this) now that joining a batch and filling out the
- * submission form happen on the same page. Styled to match /submit's own
- * "vault" theme (CSS custom properties) rather than the slate/amber
- * Tailwind palette components/LivePools.tsx used, since that component's
- * marketing-page styling never has to sit next to the wizard's own chrome.
+ * Self-contained "Select from Active Batches" / "Custom Submission" section
+ * for /submit's top-of-page batch browser. Fully isolated on purpose --
+ * app/submit/page.tsx's SHOW_BATCH_TRACKER feature flag can mount or omit
+ * this component entirely without app/submit/wizard.tsx needing any tab
+ * state of its own: switching to "Custom Submission" here just collapses
+ * this section, leaving the wizard's own always-present Step 1 form as the
+ * only thing left to interact with.
  */
-export function ActiveBatchesPanel({ pools, mode, onModeChange, onJoinBatch }: Props) {
+export function LiveBatchTracker({ pools, onSelectBatch }: Props) {
+  const [mode, setMode] = useState<TrackerMode>(pools.length > 0 ? 'batch' : 'custom')
+
   return (
     <section className="mb-12">
       <div className="flex gap-1 border-b" style={{ borderColor: 'var(--line)' }}>
         <button
           type="button"
-          onClick={() => onModeChange('batch')}
+          onClick={() => setMode('batch')}
           className="px-4 py-2.5 text-[13.5px] -mb-px border-b-2 transition"
           style={{
             borderColor: mode === 'batch' ? 'var(--seal)' : 'transparent',
@@ -50,7 +54,7 @@ export function ActiveBatchesPanel({ pools, mode, onModeChange, onJoinBatch }: P
         </button>
         <button
           type="button"
-          onClick={() => onModeChange('custom')}
+          onClick={() => setMode('custom')}
           className="px-4 py-2.5 text-[13.5px] -mb-px border-b-2 transition"
           style={{
             borderColor: mode === 'custom' ? 'var(--seal)' : 'transparent',
@@ -88,7 +92,7 @@ export function ActiveBatchesPanel({ pools, mode, onModeChange, onJoinBatch }: P
                   </div>
                   <button
                     type="button"
-                    onClick={() => onJoinBatch(pool.grading_company, pool.tier)}
+                    onClick={() => onSelectBatch?.(pool.grading_company, pool.tier)}
                     className="mt-4 py-2.5 text-[13px] rounded-[3px]"
                     style={{ background: 'var(--seal)', color: 'var(--seal-ink)' }}
                   >

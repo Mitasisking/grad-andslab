@@ -9,9 +9,16 @@ export const metadata: Metadata = {
   description: 'Send cards to Premier Card Grading (PCG) through our grading pipeline.',
 }
 
+// Feature flag: components/grading/LiveBatchTracker.tsx is complete and
+// wired up (see app/submit/wizard.tsx), but hidden for now so /submit's
+// first screen stays focused on the standard custom submission flow. Flip
+// to true to bring it back -- no other code changes needed.
+const SHOW_BATCH_TRACKER = false
+
 export default async function SubmitPage() {
-  const supabase = await getSupabaseRouteClient()
-  const activePools = await getActiveLivePools(supabase)
+  // Skip the Supabase round-trip entirely while the tracker is hidden --
+  // nothing renders it, so there's nothing to fetch for.
+  const activePools = SHOW_BATCH_TRACKER ? await getActiveLivePools(await getSupabaseRouteClient()) : []
 
   return (
     <main className="mx-auto max-w-5xl px-6 py-10 lg:py-16">
@@ -31,7 +38,7 @@ export default async function SubmitPage() {
         </p>
       </header>
       <Suspense fallback={null}>
-        <SubmissionWizard activePools={activePools} />
+        <SubmissionWizard activePools={activePools} showBatchTracker={SHOW_BATCH_TRACKER} />
       </Suspense>
     </main>
   )

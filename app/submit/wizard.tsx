@@ -5,8 +5,7 @@ import { useSearchParams } from 'next/navigation'
 import { AnimatePresence, motion } from 'framer-motion'
 import { ManifestRail } from '@/components/submit/manifest-rail'
 import { PoolTracker } from '@/components/PoolTracker'
-import { ActiveBatchesPanel } from '@/components/submit/active-batches-panel'
-import type { IntakeMode } from '@/components/submit/active-batches-panel'
+import { LiveBatchTracker } from '@/components/grading/LiveBatchTracker'
 import { StepGraderTier } from '@/components/submit/step-grader-tier'
 import { StepAddOns } from '@/components/submit/step-addons'
 import { StepReviewPay } from '@/components/submit/step-review-pay'
@@ -25,6 +24,8 @@ import type {
 interface Props {
   /** Currently-filling PCG/ACE batches, fetched server-side in app/submit/page.tsx. */
   activePools: PoolRow[]
+  /** Mirrors app/submit/page.tsx's SHOW_BATCH_TRACKER feature flag. */
+  showBatchTracker: boolean
 }
 
 const VALID_COMPANIES = new Set<GradingCompany>(['PCG', 'PSA', 'ACE'])
@@ -54,7 +55,7 @@ function createEmptyCard(): CardEntry {
   }
 }
 
-export function SubmissionWizard({ activePools }: Props) {
+export function SubmissionWizard({ activePools, showBatchTracker }: Props) {
   // Pre-selects grader + tier when arriving from a link that already knows
   // which batch a customer wants to join -- e.g. an old bookmarked
   // /submit?company=PCG&tier=standard link (the same deep-link the
@@ -112,10 +113,6 @@ export function SubmissionWizard({ activePools }: Props) {
   const [needsSemiRigids, setNeedsSemiRigids] = useState(false)
   const [interestedInConsignment, setInterestedInConsignment] = useState(false)
 
-  // "Select from Active Batches" vs "Custom Submission" toggle atop Step 1 --
-  // defaults to the batch browser when there's something to join, otherwise
-  // starts on the manual picker since an empty batch grid has nothing to do.
-  const [intakeMode, setIntakeMode] = useState<IntakeMode>(activePools.length > 0 ? 'batch' : 'custom')
   const cardsSectionRef = useRef<HTMLDivElement>(null)
 
   const joinBatch = useCallback((nextCompany: GradingCompany, nextTier: SubmissionTier) => {
@@ -190,14 +187,7 @@ export function SubmissionWizard({ activePools }: Props) {
 
   return (
     <div>
-      {step === 0 && (
-        <ActiveBatchesPanel
-          pools={activePools}
-          mode={intakeMode}
-          onModeChange={setIntakeMode}
-          onJoinBatch={joinBatch}
-        />
-      )}
+      {showBatchTracker && step === 0 && <LiveBatchTracker pools={activePools} onSelectBatch={joinBatch} />}
 
       <div className="grid lg:grid-cols-[220px_1fr] gap-10 lg:gap-16">
         <div className="lg:sticky lg:top-10 lg:self-start space-y-10">
