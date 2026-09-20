@@ -93,11 +93,11 @@ export default function Navbar() {
           </Link>
           
           <div className="hidden md:flex gap-6 text-sm font-medium text-slate-300">
-            <Link href="/dashboard" className={`hover:text-amber-400 transition ${pathname === '/dashboard' ? 'text-amber-400' : ''}`}>
-              Submit Cards
+            <Link href="/submit" className={`hover:text-amber-400 transition ${pathname === '/submit' ? 'text-amber-400' : ''}`}>
+              Submit & Batches
             </Link>
-            <Link href="/batches" className={`hover:text-amber-400 transition ${pathname === '/batches' ? 'text-amber-400' : ''}`}>
-              Batches
+            <Link href="/dashboard" className={`hover:text-amber-400 transition ${pathname === '/dashboard' ? 'text-amber-400' : ''}`}>
+              My Submissions
             </Link>
             <Link href="/shop" className={`hover:text-amber-400 transition ${pathname === '/shop' ? 'text-amber-400' : ''}`}>
               Shop

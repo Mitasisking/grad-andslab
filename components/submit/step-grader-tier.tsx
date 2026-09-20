@@ -1,5 +1,6 @@
 'use client'
 
+import type { RefObject } from 'react'
 import { Button } from '@/components/ui/button'
 import { CardShipmentRow } from '@/components/submit/card-shipment-row'
 import { formatGBP, formatZAR } from '@/lib/currency'
@@ -27,6 +28,8 @@ interface Props {
   onRemoveCard: (id: string) => void
   onNext: () => void
   canAdvance: boolean
+  /** Scroll target for the /submit batch panel's "Join Batch" action -- see app/submit/wizard.tsx. */
+  cardsSectionRef?: RefObject<HTMLDivElement | null>
 }
 
 export function StepGraderTier({
@@ -44,6 +47,7 @@ export function StepGraderTier({
   onRemoveCard,
   onNext,
   canAdvance,
+  cardsSectionRef,
 }: Props) {
   const selectedCompanyMeta = GRADING_COMPANY_OPTIONS.find((c) => c.value === company)!
   const tierOptions = TIER_OPTIONS_BY_COMPANY[company]
@@ -296,7 +300,7 @@ export function StepGraderTier({
         </div>
       )}
 
-      <div>
+      <div ref={cardsSectionRef}>
         <div className="flex items-baseline justify-between">
           <h2 className="text-[22px]" style={{ fontFamily: 'var(--font-display)', color: 'var(--ink)' }}>
             Cards in this shipment

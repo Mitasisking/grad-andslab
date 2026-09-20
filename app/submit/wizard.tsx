@@ -1,10 +1,12 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { AnimatePresence, motion } from 'framer-motion'
 import { ManifestRail } from '@/components/submit/manifest-rail'
 import { PoolTracker } from '@/components/PoolTracker'
+import { ActiveBatchesPanel } from '@/components/submit/active-batches-panel'
+import type { IntakeMode } from '@/components/submit/active-batches-panel'
 import { StepGraderTier } from '@/components/submit/step-grader-tier'
 import { StepAddOns } from '@/components/submit/step-addons'
 import { StepReviewPay } from '@/components/submit/step-review-pay'
@@ -14,10 +16,16 @@ import type {
   AceLabelOption,
   CardEntry,
   GradingCompany,
+  PoolRow,
   ProductRegion,
   ShippingAddress,
   SubmissionTier,
 } from '@/lib/submission-types'
+
+interface Props {
+  /** Currently-filling PCG/ACE batches, fetched server-side in app/submit/page.tsx. */
+  activePools: PoolRow[]
+}
 
 const VALID_COMPANIES = new Set<GradingCompany>(['PCG', 'PSA', 'ACE'])
 
@@ -46,12 +54,13 @@ function createEmptyCard(): CardEntry {
   }
 }
 
-export function SubmissionWizard() {
+export function SubmissionWizard({ activePools }: Props) {
   // Pre-selects grader + tier when arriving from a link that already knows
-  // which batch a customer wants to join -- e.g. the homepage's Live Batch
-  // Tracker (components/LivePools.tsx) links to /submit?company=PCG&tier=standard
-  // for a specific open pool's "Join Batch" button. Falls back to this
-  // wizard's own defaults for a plain /submit visit with no query string.
+  // which batch a customer wants to join -- e.g. an old bookmarked
+  // /submit?company=PCG&tier=standard link (the same deep-link the
+  // in-page "Join Batch" panel below now sets directly instead). Falls
+  // back to this wizard's own defaults for a plain /submit visit with no
+  // query string.
   const searchParams = useSearchParams()
   const initialCompany: GradingCompany = isValidCompany(searchParams.get('company')) ? (searchParams.get('company') as GradingCompany) : 'PCG'
   const initialTierParam = searchParams.get('tier')
@@ -102,6 +111,23 @@ export function SubmissionWizard() {
   const [needsCleanAndPolish, setNeedsCleanAndPolish] = useState(false)
   const [needsSemiRigids, setNeedsSemiRigids] = useState(false)
   const [interestedInConsignment, setInterestedInConsignment] = useState(false)
+
+  // "Select from Active Batches" vs "Custom Submission" toggle atop Step 1 --
+  // defaults to the batch browser when there's something to join, otherwise
+  // starts on the manual picker since an empty batch grid has nothing to do.
+  const [intakeMode, setIntakeMode] = useState<IntakeMode>(activePools.length > 0 ? 'batch' : 'custom')
+  const cardsSectionRef = useRef<HTMLDivElement>(null)
+
+  const joinBatch = useCallback((nextCompany: GradingCompany, nextTier: SubmissionTier) => {
+    setCompany(nextCompany)
+    setTier(nextTier)
+    if (nextCompany !== 'ACE') setLabelOption('standard')
+    // Deferred a frame so the (possibly newly-rendered) cards section exists
+    // to scroll to before we measure its position.
+    requestAnimationFrame(() => {
+      cardsSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    })
+  }, [])
 
   useEffect(() => {
     let cancelled = false
@@ -163,84 +189,96 @@ export function SubmissionWizard() {
   const goBack = () => setStep((s) => Math.max(s - 1, 0))
 
   return (
-    <div className="grid lg:grid-cols-[220px_1fr] gap-10 lg:gap-16">
-      <div className="lg:sticky lg:top-10 lg:self-start space-y-10">
-        <ManifestRail currentStep={step} />
-        {tier && (
-          <div className="hidden lg:block">
-            <PoolTracker gradingCompany={company} tier={tier} limit={1} />
-          </div>
-        )}
-      </div>
+    <div>
+      {step === 0 && (
+        <ActiveBatchesPanel
+          pools={activePools}
+          mode={intakeMode}
+          onModeChange={setIntakeMode}
+          onJoinBatch={joinBatch}
+        />
+      )}
 
-      <div className="min-w-0">
-        <AnimatePresence mode="wait" initial={false}>
-          <motion.div
-            key={step}
-            initial={{ opacity: 0, x: 16 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -16 }}
-            transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
-          >
-            {step === 0 && (
-              <StepGraderTier
-                region={region}
-                company={company}
-                tier={tier}
-                labelOption={labelOption}
-                cards={cards}
-                onSelectRegion={setRegion}
-                onSelectCompany={selectCompany}
-                onSelectTier={setTier}
-                onSelectLabelOption={setLabelOption}
-                onUpdateCard={updateCard}
-                onAddCard={addCard}
-                onRemoveCard={removeCard}
-                onNext={goNext}
-                canAdvance={canAdvanceFromStep1}
-              />
-            )}
+      <div className="grid lg:grid-cols-[220px_1fr] gap-10 lg:gap-16">
+        <div className="lg:sticky lg:top-10 lg:self-start space-y-10">
+          <ManifestRail currentStep={step} />
+          {tier && (
+            <div className="hidden lg:block">
+              <PoolTracker gradingCompany={company} tier={tier} limit={1} />
+            </div>
+          )}
+        </div>
 
-            {step === 1 && (
-              <StepAddOns
-                cards={cards}
-                onUpdateCard={updateCard}
-                needsCleanAndPolish={needsCleanAndPolish}
-                onToggleCleanAndPolish={setNeedsCleanAndPolish}
-                needsSemiRigids={needsSemiRigids}
-                onToggleSemiRigids={setNeedsSemiRigids}
-                interestedInConsignment={interestedInConsignment}
-                onToggleConsignment={setInterestedInConsignment}
-                region={region}
-                onNext={goNext}
-                onBack={goBack}
-              />
-            )}
+        <div className="min-w-0">
+          <AnimatePresence mode="wait" initial={false}>
+            <motion.div
+              key={step}
+              initial={{ opacity: 0, x: 16 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -16 }}
+              transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+            >
+              {step === 0 && (
+                <StepGraderTier
+                  region={region}
+                  company={company}
+                  tier={tier}
+                  labelOption={labelOption}
+                  cards={cards}
+                  onSelectRegion={setRegion}
+                  onSelectCompany={selectCompany}
+                  onSelectTier={setTier}
+                  onSelectLabelOption={setLabelOption}
+                  onUpdateCard={updateCard}
+                  onAddCard={addCard}
+                  onRemoveCard={removeCard}
+                  onNext={goNext}
+                  canAdvance={canAdvanceFromStep1}
+                  cardsSectionRef={cardsSectionRef}
+                />
+              )}
 
-            {step === 2 && tier && (
-              <StepReviewPay
-                region={region}
-                gradingCompany={company}
-                tier={tier}
-                labelOption={labelOption}
-                inPersonMode={inPersonMode}
-                eventSlug={eventSlug}
-                cards={cards}
-                addresses={addresses}
-                addressesLoaded={addressesLoaded}
-                addressId={addressId}
-                courier={courier}
-                needsCleanAndPolish={needsCleanAndPolish}
-                needsSemiRigids={needsSemiRigids}
-                interestedInConsignment={interestedInConsignment}
-                onSelectAddress={setAddressId}
-                onSelectCourier={setCourier}
-                onAddressCreated={handleAddressCreated}
-                onBack={goBack}
-              />
-            )}
-          </motion.div>
-        </AnimatePresence>
+              {step === 1 && (
+                <StepAddOns
+                  cards={cards}
+                  onUpdateCard={updateCard}
+                  needsCleanAndPolish={needsCleanAndPolish}
+                  onToggleCleanAndPolish={setNeedsCleanAndPolish}
+                  needsSemiRigids={needsSemiRigids}
+                  onToggleSemiRigids={setNeedsSemiRigids}
+                  interestedInConsignment={interestedInConsignment}
+                  onToggleConsignment={setInterestedInConsignment}
+                  region={region}
+                  onNext={goNext}
+                  onBack={goBack}
+                />
+              )}
+
+              {step === 2 && tier && (
+                <StepReviewPay
+                  region={region}
+                  gradingCompany={company}
+                  tier={tier}
+                  labelOption={labelOption}
+                  inPersonMode={inPersonMode}
+                  eventSlug={eventSlug}
+                  cards={cards}
+                  addresses={addresses}
+                  addressesLoaded={addressesLoaded}
+                  addressId={addressId}
+                  courier={courier}
+                  needsCleanAndPolish={needsCleanAndPolish}
+                  needsSemiRigids={needsSemiRigids}
+                  interestedInConsignment={interestedInConsignment}
+                  onSelectAddress={setAddressId}
+                  onSelectCourier={setCourier}
+                  onAddressCreated={handleAddressCreated}
+                  onBack={goBack}
+                />
+              )}
+            </motion.div>
+          </AnimatePresence>
+        </div>
       </div>
     </div>
   )

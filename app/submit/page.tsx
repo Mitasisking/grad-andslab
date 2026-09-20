@@ -1,13 +1,18 @@
 import type { Metadata } from 'next'
 import { Suspense } from 'react'
 import { SubmissionWizard } from './wizard'
+import { getSupabaseRouteClient } from '@/lib/supabase-route-client'
+import { getActiveLivePools } from '@/lib/pools/active-pools'
 
 export const metadata: Metadata = {
   title: 'Submit for grading',
   description: 'Send cards to Premier Card Grading (PCG) through our grading pipeline.',
 }
 
-export default function SubmitPage() {
+export default async function SubmitPage() {
+  const supabase = await getSupabaseRouteClient()
+  const activePools = await getActiveLivePools(supabase)
+
   return (
     <main className="mx-auto max-w-5xl px-6 py-10 lg:py-16">
       <header className="mb-10 lg:mb-14 max-w-xl">
@@ -26,7 +31,7 @@ export default function SubmitPage() {
         </p>
       </header>
       <Suspense fallback={null}>
-        <SubmissionWizard />
+        <SubmissionWizard activePools={activePools} />
       </Suspense>
     </main>
   )
