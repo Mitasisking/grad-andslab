@@ -13,15 +13,15 @@ This file is updated at the end of every response that builds or modifies a comp
 
 ## Current Milestone
 
-**Phase: homepage cleanup — extract Live Batch Tracker to `/batches`.** Everything through
-wiring `ORDER_CONFIRMED` into the Payfast webhook is **committed and pushed** to `main`
-(`4026e1d`, `df13969`, `0de1894`, `fb9bb14`), migrations 0059-0062 all live on production. Email
-delivery work (Resend domain verification, the remaining 6 notification stages) is **explicitly
-parked at the user's request** — do not pick it back up unprompted. The grader filter
-false-positive fix (`products.grading_company`, migration 0063) is code-complete, migration
-applied to production, click-tested live — **uncommitted**, see below. Active work: a new
-`/batches` page holding the Live Batch Tracker previously embedded on the homepage
-(**uncommitted**, see below) — pure frontend, no schema change, no migration needed.
+**Phase: remove `/experience`.** Everything through the grader filter fix and the `/batches`
+extraction is **committed and pushed** to `main` (`4026e1d`, `df13969`, `0de1894`, `fb9bb14`,
+`8913730`, `2c7c9f3`), migrations 0059-0063 all live on production. Email delivery work (Resend
+domain verification, the remaining 6 notification stages) is **explicitly parked at the user's
+request** — do not pick it back up unprompted. Active work: full removal of the `/experience`
+3D hero-reveal page and its exclusive component tree, including the six npm dependencies
+(`three`, `@react-three/fiber`, `@react-three/drei`, `gsap`, `lenis`, `@types/three`) that were
+used exclusively by it — all uninstalled via `npm uninstall`, build re-verified clean
+(**uncommitted**, see below).
 
 ---
 
@@ -31,7 +31,7 @@ Grouped by subsystem. Paths are relative to repo root. This lists what exists an
 up today — not a to-do list.
 
 ### App routes — public
-- `app/page.tsx`, `app/layout.tsx`, `app/experience/page.tsx` (+ `components/experience/*`)
+- `app/page.tsx`, `app/layout.tsx`
 - `app/batches/page.tsx` — standalone Live Batch Tracker, extracted off the homepage. Reuses
   `components/LivePools.tsx` as-is (server-rendered snapshot via `lib/pools/active-pools.ts`);
   adds its own empty state (a "no batches filling" message + Start a Submission CTA) for when
@@ -191,71 +191,35 @@ up today — not a to-do list.
 
 ## Uncommitted work in the tree right now
 
-**Committed and pushed** (all on `main`): ACE tier overhaul + ACE Label Options + notification
-system stage 1 (`4026e1d`); In-Person Event Drop-Off (`df13969`); booth-handover contact-lookup
-bug fix (`0de1894`); `ORDER_CONFIRMED` wired into the Payfast webhook (`fb9bb14`). Migrations
-0059-0062 all live on production. `RECEIVED_HQ`/`ORDER_CONFIRMED` email delivery is blocked by
-an unrelated, pre-existing Resend domain-verification issue (see Blocked below) — parked at the
-user's request, not being chased further.
+**Committed and pushed** (all on `main`, newest last): ACE tier overhaul + ACE Label Options +
+notification system stage 1 (`4026e1d`); In-Person Event Drop-Off (`df13969`); booth-handover
+contact-lookup bug fix (`0de1894`); `ORDER_CONFIRMED` wired into the Payfast webhook (`fb9bb14`);
+grader filter false-positive fix, `products.grading_company` (`8913730`, migration 0063 applied
+to production and click-tested live — see that commit message for full detail); Live Batch
+Tracker extracted to `/batches` (`2c7c9f3`, click-tested live). Migrations 0059-0063 all live on
+production. `RECEIVED_HQ`/`ORDER_CONFIRMED` email delivery is blocked by an unrelated,
+pre-existing Resend domain-verification issue (see Blocked below) — parked at the user's
+request, not being chased further.
 
-**Uncommitted — grader filter false-positive fix**:
-- `supabase/migrations/0063_add_product_grading_company.sql` — **applied to production,
-  independently re-verified**: `information_schema.columns` confirms `grading_company` exists
-  (`text`, nullable); both `chk_products_grading_company_valid` and
-  `chk_products_grading_company_matches_category` confirmed live via `pg_get_constraintdef`,
-  definitions matching the migration exactly. Adds `products.grading_company` (nullable text,
-  CHECK'd to `PCG`/`ACE`/`PSA`, CHECK'd to only ever be set when `category = 'graded'`), plus a
-  one-time backfill for existing graded rows matched against the exact `" — <GRADER> <grade>"`
-  suffix every bulk-import tool already appends (anchored, not a bare substring check — using a
-  bare check here would just reintroduce the exact bug this migration fixes). The ordering risk
-  this note used to warn about (`toProductRow` sends `grading_company` on every single product
-  create/update, not just graded ones, so deploying this before the migration ran would have
-  broken all product admin operations) no longer applies now that the migration is live.
-- `lib/shop/grader.ts` — `matchesGrader`/`detectGrader` (the title-substring heuristic) deleted
-  entirely, now fully unused. Only the `Grader` type remains.
-- `components/shop/product-filters.tsx` — `applyShopFilters`'s grader check now reads
-  `p.grading_company` directly instead of scanning the title text.
-- `components/experience/chase-cards.ts` — same swap, for the hero shatter-fan's grader-scheme
-  pick.
-- `lib/admin/product-input.ts`, `app/admin/shop/types.ts`, `components/shop/product-grid.tsx` —
-  `gradingCompany`/`grading_company` added to the shared product input/row types, validated
-  (required when `category === 'graded'`, forbidden otherwise — same pairing pattern as
-  `sport`/`cardType`).
-- `app/admin/shop/product-form-modal.tsx` — new "Grading company" select, shown only when
-  Category = Graded, cleared automatically when switching away (mirrors the existing
-  `selectCardType`/sport-clearing pattern).
-- All three bulk import tools (`bulk-ace-import.tsx`, `bulk-pcg-import.tsx`,
-  `bulk-psa-import.tsx`) now set `gradingCompany` explicitly on every row instead of relying on
-  the grader name being baked into the title (the title suffix is kept for readability, but is
-  no longer what the filter actually checks) — their doc comments and on-page copy updated to
-  match.
-- `app/shop/page.tsx`'s `PRODUCT_COLUMNS` now selects `grading_company` so the client-side
-  filter actually has the data to check.
-- `tsc`/`eslint`/`npm run build` all clean. **Click-tested live against real production data**:
-  the admin edit form for a real PSA-graded product ("Galarian Moltres V — PSA 10 GEM MT")
-  correctly shows the new Grading company select pre-filled to "PSA" (confirms the migration's
-  backfill worked); the public shop's Grader filter, checking "PSA", correctly narrows the
-  Graded category down to just that one card, excluding six real ACE-graded cards that were
-  previously miscategorized by the old title-substring check.
-
-**Uncommitted — extract Live Batch Tracker to `/batches`**:
-- `app/batches/page.tsx` — new, reuses `components/LivePools.tsx` unchanged, adds an empty-state
-  block for when no pools are active.
-- `app/page.tsx` — the embedded `<LivePools pools={activePools} />` section, its `getActiveLivePools`
-  call, and both now-unused imports removed.
-- `components/Navbar.tsx` — new "Batches" link (`/batches`) between "Submit Cards" and "Shop".
-- `tsc`/`eslint`/`npm run build` all clean (two pre-existing lint issues in `app/page.tsx` and
-  `components/Navbar.tsx`, confirmed via `git stash` to predate this session, left untouched).
-  **Click-tested live**: homepage no longer shows the tracker (goes straight from hero to "The
-  Cuppa's Cards Vault"); `/batches` renders all 7 real active pools correctly, including "ACE
-  Basic" showing 18/20 (confirms the earlier grader-fix-testing pool cleanup held); clicking
-  "Join Batch" on it correctly navigated to `/submit?company=ACE&tier=ace_basic` with Step 1
-  pre-selecting ACE Grading + Basic tier automatically — the existing `wizard.tsx` URL-param
-  handling needed no changes for this.
-- **Not built, by design** (see Blocked / Needs a Decision below): a return-shipping selector
-  ("Return Courier to Door" / "Vault / Marketplace Listing") — the original request said to
-  "retain" this, but no such selector exists anywhere in the codebase to retain. Flagged and
-  explicitly deferred rather than inventing new scope silently.
+**Uncommitted — removed `/experience`**:
+- `app/experience/page.tsx` and all 12 files under `components/experience/` deleted entirely.
+  Confirmed via grep that nothing outside that directory imported any of them (the only external
+  reference was a doc comment in `card-shatter-fan.tsx`, itself now deleted).
+- `components/Navbar.tsx` — removed the "The Vault" nav link (`/experience`). Confirmed via grep
+  this was the only link to that route anywhere in the codebase — no other CTA, redirect, or
+  Footer link pointed there, so nothing needs repointing to `/submit` or `/batches`.
+- No dedicated stylesheet existed for this route (all styling was Tailwind/inline); nothing
+  global (`app/layout.tsx`, `app/globals.css`) referenced any of `SmoothScrollProvider`,
+  GSAP `ScrollTrigger`, or the audio controller — everything was self-contained under
+  `components/experience/`, confirmed via grep before deleting.
+- **Dependencies removed, on your confirmation**: `three`, `@react-three/fiber`,
+  `@react-three/drei`, `gsap`, `lenis` (dependencies) and `@types/three` (devDependency) — all
+  confirmed completely unused via grep first, then removed via `npm uninstall` (56 packages
+  removed, `package.json`/`package-lock.json` both updated, 0 vulnerabilities).
+- `tsc` clean and `npm run build` succeeds **after** the dependency removal too (re-verified, not
+  just before it) — `/experience` confirmed gone from the route manifest. `eslint` on
+  `components/Navbar.tsx` shows the same two pre-existing issues already confirmed (via
+  `git stash`, in an earlier task) to predate this session — left untouched.
 - Untracked, not yet triaged into the repo structure: `Stock photos/`, `TheCardApi.txt`,
   `claude context.txt`, `cuppa cards logo temp logo.jpeg`, `termsofservice.txt`, `zernio.txt`.
 
@@ -283,8 +247,8 @@ user's request, not being chased further.
 
 ## Immediate Next Task
 
-Both the grader filter fix and the `/batches` extraction are code-complete and click-tested
-live — waiting on your go-ahead to commit (together or separately, your call).
+`/experience` removal (route, components, nav link, and the six now-unused npm dependencies) is
+code-complete, build-verified — waiting on your go-ahead to commit.
 
 Email delivery work (Resend domain verification, wiring the remaining 6 notification stages) is
 **parked at the user's request** — do not pick this back up unprompted. Other open items:
