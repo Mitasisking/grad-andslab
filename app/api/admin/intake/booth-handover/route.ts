@@ -57,7 +57,7 @@ export async function POST(request: NextRequest) {
   try {
     const { data: items } = await supabase
       .from('submission_items')
-      .select('card_name, set_name, card_number')
+      .select('card_name, set_name, card_number, declared_value')
       .eq('submission_id', updated.id)
 
     // getContact's auth.admin.getUserById call needs the service-role
@@ -80,6 +80,7 @@ export async function POST(request: NextRequest) {
           cardName: item.card_name,
           setName: item.set_name,
           cardNumber: item.card_number,
+          declaredValue: Number(item.declared_value ?? 0),
         })),
         // No dual-surface photos yet at the moment of handover -- those
         // come from a later, separate intake-photo step

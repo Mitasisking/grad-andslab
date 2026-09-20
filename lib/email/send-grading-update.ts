@@ -1,4 +1,4 @@
-import { getResendClient, getEmailFrom } from '@/lib/email/resend-client'
+import { sendEmail } from '@/lib/email/send-email'
 import { getSupabaseServerClient } from '@/lib/supabase-server'
 import { getContact } from '@/lib/email/send-order-confirmation'
 import { renderOrderConfirmedEmail } from '@/lib/email/templates/order-confirmed'
@@ -37,21 +37,25 @@ function renderGradingEmail(payload: GradingEmailPayload): { subject: string; ht
 }
 
 /**
- * Sends one stage of the grading notification lifecycle via Resend. Same
- * best-effort contract as lib/email/send-order-confirmation.ts's functions:
- * this does NOT catch its own errors -- a notification failure must never
- * take down whatever pipeline event triggered it, so every call site is
- * responsible for wrapping this in try/catch and only logging on failure,
- * same as the Payfast webhook already does for the existing send-* functions.
+ * Sends one stage of the grading notification lifecycle over Google
+ * SMTP/Nodemailer (lib/email/send-email.ts). Same best-effort contract as
+ * lib/email/send-order-confirmation.ts's functions: this does NOT swallow
+ * its own failures -- sendEmail() itself never throws, but this re-throws
+ * on `success: false` so every existing call site's try/catch (e.g. the
+ * Payfast webhook, booth-handover route) keeps working unchanged. A
+ * notification failure must never take down whatever pipeline event
+ * triggered it, so every call site is responsible for catching this.
  */
 export async function sendGradingUpdate(payload: GradingEmailPayload): Promise<void> {
   const { subject, html } = renderGradingEmail(payload)
-  await getResendClient().emails.send({
-    from: getEmailFrom(),
+  const result = await sendEmail({
     to: payload.customer.email,
     subject,
     html,
   })
+  if (!result.success) {
+    throw new Error(result.error ?? 'sendGradingUpdate: sendEmail failed')
+  }
 }
 
 /**
@@ -94,7 +98,7 @@ export async function sendOrderConfirmedEmail(submissionId: string): Promise<voi
 
   const { data: items } = await supabase
     .from('submission_items')
-    .select('card_name, set_name, card_number')
+    .select('card_name, set_name, card_number, declared_value')
     .eq('submission_id', submissionId)
 
   const { fullName, email } = await getContact(supabase, submission.user_id)
@@ -117,6 +121,7 @@ export async function sendOrderConfirmedEmail(submissionId: string): Promise<voi
       cardName: item.card_name,
       setName: item.set_name,
       cardNumber: item.card_number,
+      declaredValue: Number(item.declared_value ?? 0),
     })),
     totalPaid: Number(submission.service_fee ?? 0),
     // components/submit/packing-slip.tsx is still not wired to any route

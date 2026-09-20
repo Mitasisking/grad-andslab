@@ -1,5 +1,5 @@
 import { getSupabaseServerClient } from '@/lib/supabase-server'
-import { getResendClient, getEmailFrom } from '@/lib/email/resend-client'
+import { sendEmail } from '@/lib/email/send-email'
 import { renderOrderConfirmationEmail, COLORS, escapeHtml } from '@/lib/email/templates/order-confirmation'
 import { formatZAR } from '@/lib/currency'
 import {
@@ -120,7 +120,8 @@ export async function sendSubmissionConfirmationEmail(submissionId: string, rece
     receiptUrl,
   })
 
-  await getResendClient().emails.send({ from: getEmailFrom(), to: email, subject, html })
+  const result = await sendEmail({ to: email, subject, html })
+  if (!result.success) throw new Error(result.error ?? 'sendSubmissionConfirmationEmail: sendEmail failed')
 }
 
 /**
@@ -169,7 +170,8 @@ export async function sendShopOrderConfirmationEmail(orderId: string, receiptUrl
     receiptUrl,
   })
 
-  await getResendClient().emails.send({ from: getEmailFrom(), to: email, subject, html })
+  const result = await sendEmail({ to: email, subject, html })
+  if (!result.success) throw new Error(result.error ?? 'sendShopOrderConfirmationEmail: sendEmail failed')
 }
 
 /**
@@ -254,10 +256,10 @@ export async function sendAuctionWonEmail(auctionId: string) {
   </body>
 </html>`
 
-  await getResendClient().emails.send({
-    from: getEmailFrom(),
+  const result = await sendEmail({
     to: email,
     subject: `Cuppa's Cards — you won "${auction.title}"`,
     html,
   })
+  if (!result.success) throw new Error(result.error ?? 'sendAuctionWonEmail: sendEmail failed')
 }

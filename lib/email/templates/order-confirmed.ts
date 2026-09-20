@@ -1,4 +1,4 @@
-import { formatByRegion } from '@/lib/currency'
+import { formatByRegion, formatZAR } from '@/lib/currency'
 import { COLORS, escapeHtml } from '@/lib/email/templates/order-confirmation'
 import { TIER_OPTIONS_BY_COMPANY } from '@/lib/submission-types'
 import type { OrderConfirmedPayload } from '@/types/notifications'
@@ -39,6 +39,9 @@ export function renderOrderConfirmedEmail(
     <tr>
       <td style="padding:6px 0;font-size:14px;color:${COLORS.ink};font-family:Georgia,'Times New Roman',serif;">
         ${escapeHtml(card.cardName)} — ${escapeHtml(card.setName)}${card.cardNumber ? ` <span style="color:${COLORS.inkMuted};">#${escapeHtml(card.cardNumber)}</span>` : ''}
+      </td>
+      <td align="right" style="padding:6px 0;font-size:13px;color:${COLORS.inkMuted};font-family:Arial,Helvetica,sans-serif;white-space:nowrap;">
+        ${formatZAR(card.declaredValue)}
       </td>
     </tr>`,
     )

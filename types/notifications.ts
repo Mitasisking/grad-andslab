@@ -34,6 +34,8 @@ export interface GradingEmailCard {
   cardName: string
   setName: string
   cardNumber: string | null
+  /** Always ZAR, independent of the submission's region -- components/submit/card-shipment-row.tsx's "Declared value (R)" input is ZAR-denominated regardless of region, same as submission_items.declared_value; not a region-native price like the grading fee. */
+  declaredValue: number
 }
 
 /** Fields every stage's payload carries, regardless of which checkpoint fired it. */
