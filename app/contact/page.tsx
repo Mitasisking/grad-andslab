@@ -73,11 +73,6 @@ export default function ContactPage() {
             </p>
 
             <div className="space-y-8">
-              <InfoRow icon="✉️" label="Email">
-                <a href="mailto:support@gradeandslab.com" className="text-amber-400 hover:text-amber-300 transition">
-                  support@gradeandslab.com
-                </a>
-              </InfoRow>
               <InfoRow icon="📍" label="Location">
                 South Africa
               </InfoRow>
