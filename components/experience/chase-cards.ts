@@ -1,5 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { detectGrader, type Grader } from '@/lib/shop/grader'
+import type { Grader } from '@/lib/shop/grader'
 import type { ProductRegion } from '@/lib/shop/product-type'
 
 export interface GraderScheme {
@@ -45,7 +45,7 @@ const FAN_SLOTS: Pick<ChaseCard, 'fanX' | 'fanZ' | 'fanRotationZ'>[] = [
   { fanX: 0.95, fanZ: -0.1, fanRotationZ: -0.34 },
 ]
 
-const CHASE_CARD_COLUMNS = 'id, title, price, images'
+const CHASE_CARD_COLUMNS = 'id, title, price, images, grading_company'
 
 /**
  * The 3 chase cards for the hero shatter fan -- the site's 3 most expensive
@@ -86,11 +86,11 @@ export async function getChaseCards(
     name: product.title,
     price: product.price,
     image: product.images[0],
-    // A top-priced Graded listing's title names its grader by this catalog's
-    // own convention (see lib/shop/grader.ts) -- PCG is the fallback for the
-    // rare untitled edge case rather than leaving `grader` nullable, since
+    // PCG is the fallback for the rare row with no grading_company set
+    // (e.g. a manually created listing predating 0063_add_product_grading_company.sql's
+    // backfill) rather than leaving `grader` nullable, since
     // GRADER_SCHEMES/createLabelTexture need a concrete scheme to draw.
-    grader: detectGrader(product.title) ?? 'PCG',
+    grader: (product.grading_company as Grader | null) ?? 'PCG',
     ...FAN_SLOTS[i],
   }))
 }

@@ -349,17 +349,14 @@ function ImportRow({ row, onChange }: ImportRowProps) {
  * priced" (it even labels these rows "Hidden from shop" with an Edit
  * button) -- price and activate those ones later from that same dashboard.
  *
- * products has no grading_company/grader column (confirmed against
- * supabase/migrations -- see components/shop/product-filters.tsx's
- * matchesGrader, which can only ever check the product's title text). So
- * "save with the grader set to PCG" can't mean writing to a field that
- * doesn't exist -- the only way a saved row actually gets picked up by the
- * shop's Grader filter is by having "PCG" appear in its title, which is why
- * the title sent to the batch-create API below always has " — PCG {grade}"
- * appended, decoupled from the plain card name shown in the search input
- * (appending it directly to the input's own value would also get wiped out
- * on the next keystroke, since typing there resets setName/imageUrl to
- * re-trigger a fresh TCGdex search).
+ * Saves with gradingCompany: 'PCG' explicitly (products.grading_company,
+ * 0063_add_product_grading_company.sql) -- that column, not the title text,
+ * is what the shop's Grader filter actually checks. The title sent to the
+ * batch-create API below still always has " — PCG {grade}" appended purely
+ * for readability, decoupled from the plain card name shown in the search
+ * input (appending it directly to the input's own value would also get
+ * wiped out on the next keystroke, since typing there resets
+ * setName/imageUrl to re-trigger a fresh TCGdex search).
  */
 export function BulkPcgImport() {
   const [rawInput, setRawInput] = useState('')
@@ -433,9 +430,9 @@ export function BulkPcgImport() {
       const isActive = price > 0
 
       return {
-        // See this file's top-level doc comment: there's no grader column
-        // to set, so "PCG" is baked into the title itself here -- the only
-        // thing the shop's Grader filter actually checks.
+        // "PCG" is still appended to the title for readability -- see this
+        // file's top-level doc comment: the shop's Grader filter now reads
+        // gradingCompany below, not the title text.
         title: `${row.title.trim()} — PCG ${row.grade}`,
         description: `PCG Cert #${row.certNumber}${row.grade ? ` — Grade ${row.grade}` : ''}`,
         category: 'graded',
@@ -453,6 +450,7 @@ export function BulkPcgImport() {
         cardVariant: null,
         playerName: null,
         region: 'sa',
+        gradingCompany: 'PCG',
       }
     })
 
@@ -520,8 +518,8 @@ export function BulkPcgImport() {
         <Link href="/admin/shop" className="underline underline-offset-2" style={{ color: 'var(--ink)' }}>
           Shop inventory
         </Link>
-        . &quot;PCG&quot; and the grade are appended to the saved title automatically so the shop&apos;s existing
-        Grader filter picks it up.
+        . Saved as a PCG-graded listing automatically, so the shop&apos;s Grader filter picks it up — &quot;PCG&quot;
+        and the grade are also appended to the title for readability.
       </p>
 
       <div className="mt-8">

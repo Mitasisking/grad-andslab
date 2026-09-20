@@ -291,9 +291,10 @@ function ImportRow({ row, onChange }: ImportRowProps) {
 /**
  * Manual-entry batch tool for PSA-graded stock, mirroring bulk-ace-import.tsx
  * and bulk-pcg-import.tsx's own shape and reasoning (no auto-fetch scraper;
- * TCGdex search fills in Pokémon rows; "ACE"/"PCG" baked into the saved
- * title since products has no grader column -- see those files' doc
- * comments for the full rationale, unchanged here for PSA).
+ * TCGdex search fills in Pokémon rows; saves with gradingCompany: 'PSA'
+ * explicitly, products.grading_company -- 0063_add_product_grading_company.sql
+ * -- same as those two files, "PSA" is still appended to the title too, for
+ * readability only).
  *
  * PSA is the one grader of the three with a real public verification API
  * (see app/api/admin/psa/verify-cert/route.ts), so this importer adds a
@@ -381,9 +382,9 @@ export function BulkPsaImport() {
       const isActive = price > 0
 
       return {
-        // See this file's top-level doc comment: there's no grader column
-        // to set, so "PSA" is baked into the title itself here -- the only
-        // thing the shop's Grader filter actually checks.
+        // "PSA" is still appended to the title for readability -- see this
+        // file's top-level doc comment: the shop's Grader filter now reads
+        // gradingCompany below, not the title text.
         title: `${row.title.trim()} — PSA ${row.grade}`,
         description: `PSA Cert #${row.certNumber}${row.grade ? ` — Grade ${row.grade}` : ''}`,
         category: 'graded',
@@ -401,6 +402,7 @@ export function BulkPsaImport() {
         cardVariant: null,
         playerName: null,
         region: 'sa',
+        gradingCompany: 'PSA',
       }
     })
 
@@ -456,8 +458,8 @@ export function BulkPsaImport() {
         <Link href="/admin/shop" className="underline underline-offset-2" style={{ color: 'var(--ink)' }}>
           Shop inventory
         </Link>
-        . &quot;PSA&quot; and the grade are appended to the saved title automatically so the shop&apos;s existing
-        Grader filter picks it up.
+        . Saved as a PSA-graded listing automatically, so the shop&apos;s Grader filter picks it up — &quot;PSA&quot;
+        and the grade are also appended to the title for readability.
       </p>
 
       <div className="mt-8">

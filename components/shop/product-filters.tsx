@@ -2,7 +2,7 @@
 
 import { REGION_SYMBOL } from '@/lib/shop/product-type'
 import { isOutOfPrint } from '@/lib/shop/availability'
-import { matchesGrader, type Grader } from '@/lib/shop/grader'
+import type { Grader } from '@/lib/shop/grader'
 import type { Product } from './product-grid'
 
 export type { Grader }
@@ -34,8 +34,10 @@ export function isJapanese(title: string): boolean {
 }
 
 /**
- * products has no dedicated set-language column either -- same situation as
- * isJapanese/matchesGrader above. Each set_name is exclusively one language
+ * products has no dedicated set-language column either -- same "no real
+ * structured field" situation grading_company used to be in before
+ * 0063_add_product_grading_company.sql (isJapanese above still has no such
+ * column to switch to). Each set_name is exclusively one language
  * in practice (English and Japanese print runs never share a set name), so
  * a set's language is derived from whichever language its own listings'
  * titles carry, majority-vote in case a set is ever briefly mixed (e.g.
@@ -71,7 +73,7 @@ export function applyShopFilters(products: Product[], filters: ShopFilterState):
       if (!filters.languages.includes(lang)) return false
     }
     if (filters.setNames.length > 0 && !(p.set_name && filters.setNames.includes(p.set_name))) return false
-    if (filters.graders.length > 0 && !filters.graders.some((g) => matchesGrader(p.title, g))) return false
+    if (filters.graders.length > 0 && !(p.grading_company && filters.graders.includes(p.grading_company))) return false
     if (filters.printStatus !== 'all') {
       const outOfPrint = isOutOfPrint(p.release_date)
       // A product whose release_date isn't known yet (outOfPrint === null)

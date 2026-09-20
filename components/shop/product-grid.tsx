@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useCart } from '@/lib/cart/cart-context'
 import { formatByRegion } from '@/lib/currency'
 import type { ProductRegion } from '@/lib/shop/product-type'
+import type { Grader } from '@/lib/shop/grader'
 
 export interface Product {
   id: string
@@ -24,6 +25,8 @@ export interface Product {
   region: ProductRegion
   /** Optional ~100-word collector story -- see 0058_add_product_lore.sql. */
   lore?: string | null
+  /** Only ever set for category = 'graded' -- see 0063_add_product_grading_company.sql. */
+  grading_company?: Grader | null
 }
 
 // Premium price floor: Raw Cards under R100 aren't sold individually.

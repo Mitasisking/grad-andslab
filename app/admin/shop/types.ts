@@ -1,6 +1,7 @@
 import type { CardType, Sport } from '@/lib/submission-types'
 import type { CardVariant } from '@/lib/shop/product-type'
 import type { ProductCategory, ProductFranchise, ProductRegion } from '@/lib/admin/product-input'
+import type { Grader } from '@/lib/shop/grader'
 
 /** Mirrors `select('*')` against public.products (0001_init_schema.sql + 0012/0020/0026/0031/0036's additions). */
 export interface AdminProduct {
@@ -35,6 +36,8 @@ export interface AdminProduct {
   card_variant: CardVariant | null
   player_name: string | null
   region: ProductRegion
+  /** Only ever set for category = 'graded' -- see 0063_add_product_grading_company.sql. */
+  grading_company: Grader | null
   created_at: string
   updated_at: string
 }

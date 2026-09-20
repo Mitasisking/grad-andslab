@@ -2,6 +2,7 @@ import type { CardType, Sport } from '@/lib/submission-types'
 import type { CardVariant, ProductRegion } from '@/lib/shop/product-type'
 import { REGION_OPTIONS } from '@/lib/shop/product-type'
 import { isOutOfPrint } from '@/lib/shop/availability'
+import type { Grader } from '@/lib/shop/grader'
 
 export type { ProductRegion }
 export type ProductCategory = 'sealed' | 'accessories' | 'graded' | 'cards'
@@ -13,6 +14,7 @@ const VALID_FRANCHISES: ProductFranchise[] = ['pokemon', 'sports', 'general']
 const VALID_SPORTS: Sport[] = ['soccer', 'rugby', 'f1', 'nhl', 'nba', 'mlb', 'nfl']
 const VALID_CARD_VARIANTS: CardVariant[] = ['rookie', 'auto', 'patch', 'parallel', 'base']
 const VALID_REGIONS: ProductRegion[] = REGION_OPTIONS.map((r) => r.value)
+const VALID_GRADERS: Grader[] = ['PCG', 'ACE', 'PSA']
 
 export interface ProductInput {
   title: string
@@ -41,6 +43,8 @@ export interface ProductInput {
   cardVariant: CardVariant | null
   playerName: string | null
   region: ProductRegion
+  /** Only ever set for category = 'graded' -- see products.grading_company (0063_add_product_grading_company.sql). */
+  gradingCompany: Grader | null
 }
 
 /** Shared by app/api/admin/products' POST and [id]'s PATCH — same fields, same rules, either way in. */
@@ -78,6 +82,12 @@ export function validateProductInput(body: Partial<ProductInput>): string | null
   if (!body.region || !VALID_REGIONS.includes(body.region)) {
     return 'A valid region is required.'
   }
+  if (body.category === 'graded' && (!body.gradingCompany || !VALID_GRADERS.includes(body.gradingCompany))) {
+    return 'A grading company is required for graded listings.'
+  }
+  if (body.category !== 'graded' && body.gradingCompany) {
+    return 'Grading company should only be set for graded listings.'
+  }
   return null
 }
 
@@ -107,5 +117,6 @@ export function toProductRow(body: ProductInput) {
     card_variant: body.cardVariant || null,
     player_name: body.playerName?.trim() || null,
     region: body.region,
+    grading_company: body.category === 'graded' ? body.gradingCompany : null,
   }
 }

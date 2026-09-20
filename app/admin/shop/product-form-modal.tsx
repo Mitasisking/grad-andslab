@@ -6,6 +6,7 @@ import type { CardType, Sport } from '@/lib/submission-types'
 import { CARD_VARIANT_OPTIONS, REGION_OPTIONS } from '@/lib/shop/product-type'
 import type { CardVariant, ProductRegion } from '@/lib/shop/product-type'
 import type { ProductCategory, ProductFranchise } from '@/lib/admin/product-input'
+import type { Grader } from '@/lib/shop/grader'
 import { isOutOfPrint } from '@/lib/shop/availability'
 import { uploadProductImage } from '@/lib/admin/product-image-upload'
 import { formatByRegion } from '@/lib/currency'
@@ -23,6 +24,12 @@ const FRANCHISE_OPTIONS: { value: ProductFranchise; label: string }[] = [
   { value: 'pokemon', label: 'Pokémon' },
   { value: 'sports', label: 'Sports' },
   { value: 'general', label: 'General' },
+]
+
+const GRADER_OPTIONS: { value: Grader; label: string }[] = [
+  { value: 'PCG', label: 'Premier Card Grading (PCG)' },
+  { value: 'ACE', label: 'ACE Grading' },
+  { value: 'PSA', label: 'PSA' },
 ]
 
 const REGION_CURRENCY_LABEL: Record<ProductRegion, string> = {
@@ -54,6 +61,7 @@ interface Draft {
   cardVariant: CardVariant | ''
   playerName: string
   region: ProductRegion
+  gradingCompany: Grader | ''
 }
 
 function draftFromProduct(product: AdminProduct | null): Draft {
@@ -80,6 +88,7 @@ function draftFromProduct(product: AdminProduct | null): Draft {
     cardVariant: product?.card_variant ?? '',
     playerName: product?.player_name ?? '',
     region: product?.region ?? 'sa',
+    gradingCompany: product?.grading_company ?? '',
   }
 }
 
@@ -169,6 +178,14 @@ export function ProductFormModal({ product, onClose, onSaved }: Props) {
     setDraft((prev) => ({ ...prev, cardType, sport: cardType === 'sports_card' ? prev.sport : '' }))
   }
 
+  function selectCategory(category: ProductCategory) {
+    // Grading company only applies to Graded listings -- clear it so
+    // switching away can't leave a stale grader on what's about to be saved
+    // under a different category (chk_products_grading_company_matches_category,
+    // 0063_add_product_grading_company.sql, forbids that combination anyway).
+    setDraft((prev) => ({ ...prev, category, gradingCompany: category === 'graded' ? prev.gradingCompany : '' }))
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setSaving(true)
@@ -200,6 +217,7 @@ export function ProductFormModal({ product, onClose, onSaved }: Props) {
       cardVariant: draft.cardVariant || null,
       playerName: draft.playerName.trim() || null,
       region: draft.region,
+      gradingCompany: draft.category === 'graded' ? draft.gradingCompany || null : null,
     }
 
     const res = await fetch(product ? `/api/admin/products/${product.id}` : '/api/admin/products', {
@@ -256,7 +274,7 @@ export function ProductFormModal({ product, onClose, onSaved }: Props) {
               </label>
               <select
                 value={draft.category}
-                onChange={(e) => update('category', e.target.value as ProductCategory)}
+                onChange={(e) => selectCategory(e.target.value as ProductCategory)}
                 className={inputClass}
                 style={inputStyle}
               >
@@ -302,6 +320,30 @@ export function ProductFormModal({ product, onClose, onSaved }: Props) {
               </select>
             </div>
           </div>
+
+          {draft.category === 'graded' && (
+            <div>
+              <label className={labelClass} style={labelStyle}>
+                Grading company
+              </label>
+              <select
+                required
+                value={draft.gradingCompany}
+                onChange={(e) => update('gradingCompany', e.target.value as Grader)}
+                className={inputClass}
+                style={inputStyle}
+              >
+                <option value="" disabled>
+                  Choose a grading company…
+                </option>
+                {GRADER_OPTIONS.map((g) => (
+                  <option key={g.value} value={g.value}>
+                    {g.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
 
           <div className="grid grid-cols-2 gap-3">
             <div>
