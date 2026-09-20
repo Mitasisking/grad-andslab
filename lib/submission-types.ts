@@ -239,6 +239,78 @@ export function tierPriceForRegion(tier: TierOption, region: ProductRegion): num
   return tier.basePriceZAR
 }
 
+/**
+ * Customer's choice of how their submission is dispatched internationally
+ * to ACE Grading's UK facility -- see supabase/migrations/0065_add_submission_type.sql.
+ * Deliberately NOT the same concept as pool_id/pool_status below: those
+ * track membership in a specific, real public.pools row (opened via the
+ * currently-hidden LiveBatchTracker UI); submission_type is a standing
+ * customer preference that exists independently of whether a real pool is
+ * open to join right now.
+ */
+export type SubmissionType = 'batch' | 'individual'
+
+export interface SubmissionTypeOption {
+  value: SubmissionType
+  label: string
+  badge: string
+  summary: string
+  detail: string
+}
+
+/** Shown in Step 1's "Submission Method" section (components/submit/step-grader-tier.tsx). */
+export const SUBMISSION_TYPE_OPTIONS: SubmissionTypeOption[] = [
+  {
+    value: 'batch',
+    label: 'Pooled Batch',
+    badge: 'Most Economical',
+    summary: 'Consolidated with our upcoming scheduled international shipment.',
+    detail: 'Shared international freight and customs handling fees.',
+  },
+  {
+    value: 'individual',
+    label: 'Individual Direct Dispatch',
+    badge: 'Fastest Turnaround',
+    summary:
+      'Dispatched directly to ACE Grading as a standalone shipment as soon as your cards arrive at HQ.',
+    detail: 'Customer covers dedicated direct international courier & customs clearance fees.',
+  },
+]
+
+/**
+ * International freight contribution to ACE Grading's UK facility, billed
+ * per submission (not per card) -- 'batch' is a shared contribution toward
+ * one consolidated shipment; 'individual' is a full dedicated door-to-door
+ * courier quote, hence the large gap. Ballpark stand-in figures, not yet a
+ * real invoiced business cost -- same "replace once known" caveat as every
+ * other approximate-conversion figure in this file and
+ * step-review-pay.tsx's own COURIERS array.
+ */
+export const INTERNATIONAL_SHIPPING_FEE_USD: Record<SubmissionType, number> = {
+  batch: 8,
+  individual: 55,
+}
+export const INTERNATIONAL_SHIPPING_FEE_GBP: Record<SubmissionType, number> = {
+  batch: 6,
+  individual: 43,
+}
+export const INTERNATIONAL_SHIPPING_FEE_ZAR: Record<SubmissionType, number> = {
+  batch: 150,
+  individual: 1020,
+}
+
+export function internationalShippingFeeForRegion(submissionType: SubmissionType, region: ProductRegion): number {
+  if (region === 'usa') return INTERNATIONAL_SHIPPING_FEE_USD[submissionType]
+  if (region === 'uk') return INTERNATIONAL_SHIPPING_FEE_GBP[submissionType]
+  return INTERNATIONAL_SHIPPING_FEE_ZAR[submissionType]
+}
+
+/** Fee-summary line-item labels (components/submit/step-review-pay.tsx), distinguishing the two dispatch methods. */
+export const SUBMISSION_TYPE_LINE_ITEM_LABEL: Record<SubmissionType, string> = {
+  batch: 'International Shipping: Shared Batch Pool',
+  individual: 'International Shipping: Dedicated Direct Dispatch',
+}
+
 // ----------------------------------------------------------------------------
 // Phase 3 — tracking dashboard & admin intake/grading
 // Row shapes below mirror `select('*')` against supabase/migrations/0001_init_schema.sql
@@ -285,6 +357,7 @@ export interface SubmissionRow {
   intake_verified_at: string | null
   pool_id: string | null
   pool_status: PoolStatus | null
+  submission_type: SubmissionType
   created_at: string
   updated_at: string
 }

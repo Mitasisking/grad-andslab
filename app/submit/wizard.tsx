@@ -20,6 +20,7 @@ import type {
   ProductRegion,
   ShippingAddress,
   SubmissionTier,
+  SubmissionType,
 } from '@/lib/submission-types'
 
 interface Props {
@@ -113,6 +114,7 @@ export function SubmissionWizard({ activePools, showBatchTracker }: Props) {
   }, [urlIntakeIsInPerson, urlEventSlug])
 
   const [step, setStep] = useState(0)
+  const [submissionType, setSubmissionType] = useState<SubmissionType>('batch')
   const [tier, setTier] = useState<SubmissionTier | null>(initialTier)
   const [labelOption, setLabelOption] = useState<AceLabelOption>('standard')
   const [cards, setCards] = useState<CardEntry[]>([createEmptyCard()])
@@ -232,9 +234,11 @@ export function SubmissionWizard({ activePools, showBatchTracker }: Props) {
               {step === 0 && (
                 <StepGraderTier
                   company={company}
+                  submissionType={submissionType}
                   tier={tier}
                   labelOption={labelOption}
                   cards={cards}
+                  onSelectSubmissionType={setSubmissionType}
                   onSelectTier={setTier}
                   onSelectLabelOption={setLabelOption}
                   onUpdateCard={updateCard}
@@ -262,6 +266,7 @@ export function SubmissionWizard({ activePools, showBatchTracker }: Props) {
                 <StepReviewPay
                   region={region}
                   gradingCompany={company}
+                  submissionType={submissionType}
                   tier={tier}
                   labelOption={labelOption}
                   inPersonMode={inPersonMode}

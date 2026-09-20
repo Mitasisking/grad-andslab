@@ -5,6 +5,15 @@ import { uploadIntakePhoto } from '@/lib/admin/photo-upload-client'
 import { STATUS_STAGES } from '@/lib/submission-types'
 import type { SubmissionItemRow, SubmissionRow, SubmissionStatus, SubmissionStatusLogRow } from '@/lib/submission-types'
 
+const SUBMISSION_TYPE_TAG: Record<SubmissionRow['submission_type'], { label: string; color: string }> = {
+  batch: { label: 'Pooled Batch', color: 'var(--ink-muted)' },
+  // Individual dispatches need to leave HQ on their own timeline rather than
+  // wait for the next scheduled batch -- called out in the business's own
+  // "seal" accent color so it can't be missed scanning down a queue of
+  // otherwise-identical-looking pooled submissions.
+  individual: { label: 'Individual Direct Dispatch', color: 'var(--seal)' },
+}
+
 interface Props {
   submission: SubmissionRow
   items: SubmissionItemRow[]
@@ -95,6 +104,12 @@ export function IntakeOrderPanel({ submission, items, statusHistory, onRefresh, 
           <h1 className="text-[24px] mt-1" style={{ fontFamily: 'var(--font-display)', color: 'var(--ink)' }}>
             {submission.grading_company} — {items.length} {items.length === 1 ? 'card' : 'cards'}
           </h1>
+          <span
+            className="inline-block mt-1.5 text-[11.5px] px-2 py-0.5 rounded-[3px] border"
+            style={{ borderColor: SUBMISSION_TYPE_TAG[submission.submission_type].color, color: SUBMISSION_TYPE_TAG[submission.submission_type].color }}
+          >
+            {SUBMISSION_TYPE_TAG[submission.submission_type].label}
+          </span>
         </div>
         <button
           type="button"

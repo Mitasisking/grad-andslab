@@ -9,10 +9,12 @@ import type {
   ProductRegion,
   Sport,
   SubmissionTier,
+  SubmissionType,
 } from '@/lib/submission-types'
 
 const VALID_REGIONS = new Set(REGION_OPTIONS.map((r) => r.value))
 const VALID_ACE_LABEL_OPTIONS = new Set<AceLabelOption>(['standard', 'colour_match', 'ace_label'])
+const VALID_SUBMISSION_TYPES = new Set<SubmissionType>(['batch', 'individual'])
 
 function generateHandoverPin(): string {
   return String(Math.floor(1000 + Math.random() * 9000))
@@ -62,6 +64,7 @@ function isValidItem(item: SubmissionItemInput): boolean {
 
 interface CreateSubmissionBody {
   gradingCompany: GradingCompany
+  submissionType: SubmissionType
   tier: SubmissionTier
   region: ProductRegion
   addressId: string
@@ -128,6 +131,13 @@ export async function POST(request: NextRequest) {
   // alongside it; a handover PIN is only minted for an in-person
   // submission, since chk_submissions_event_fields_match_channel forbids
   // one on an online submission.
+  // Same defensive-default pattern as aceLabelOption/intakeChannel below --
+  // an invalid or missing value never fails the request, it just falls back
+  // to 'batch' (the cheaper, previously-implicit default before this field
+  // existed, matching supabase/migrations/0065_add_submission_type.sql's
+  // own column default).
+  const submissionType: SubmissionType = VALID_SUBMISSION_TYPES.has(body.submissionType) ? body.submissionType : 'batch'
+
   const intakeChannel: IntakeChannel = body.intakeChannel === 'in_person_event' ? 'in_person_event' : 'online_shipment'
   const eventSlug = intakeChannel === 'in_person_event' ? body.eventSlug?.trim() || null : null
   const handoverPin = intakeChannel === 'in_person_event' ? generateHandoverPin() : null
@@ -163,6 +173,7 @@ export async function POST(request: NextRequest) {
     .insert({
       user_id: user.id,
       grading_company: body.gradingCompany,
+      submission_type: submissionType,
       tier: body.tier,
       region: body.region,
       status: 'received',

@@ -7,9 +7,11 @@ import { formatByRegion } from '@/lib/currency'
 import {
   ACE_LABEL_OPTIONS,
   IN_PERSON_DROPOFF_LABEL,
+  SUBMISSION_TYPE_LINE_ITEM_LABEL,
   TIER_OPTIONS_BY_COMPANY,
   cleanAndPolishFeeForRegion,
   inspectionFeeForRegion,
+  internationalShippingFeeForRegion,
   labelOptionFeeForRegion,
   tierPriceForRegion,
 } from '@/lib/submission-types'
@@ -20,6 +22,7 @@ import type {
   ProductRegion,
   ShippingAddress,
   SubmissionTier,
+  SubmissionType,
 } from '@/lib/submission-types'
 
 // GBP/ZAR figures are approximate conversions from the real USD costs
@@ -42,6 +45,7 @@ function courierCostForRegion(c: (typeof COURIERS)[number], region: ProductRegio
 interface Props {
   region: ProductRegion
   gradingCompany: GradingCompany
+  submissionType: SubmissionType
   tier: SubmissionTier
   labelOption: AceLabelOption
   inPersonMode: boolean
@@ -63,6 +67,7 @@ interface Props {
 export function StepReviewPay({
   region,
   gradingCompany,
+  submissionType,
   tier,
   labelOption,
   inPersonMode,
@@ -100,11 +105,16 @@ export function StepReviewPay({
   // stays at its 'standard' (free) default and contributes nothing.
   const labelOptionMeta = ACE_LABEL_OPTIONS.find((o) => o.value === labelOption)!
   const labelOptionSubtotal = gradingCompany === 'ACE' ? labelOptionFeeForRegion(labelOptionMeta, region) * cards.length : 0
+  // Freight to ACE Grading's UK facility -- distinct from shippingCost below
+  // (the domestic/inbound courier bringing cards to our HQ). Billed once
+  // per submission, not per card, same as needsCleanAndPolish above.
+  const internationalShippingSubtotal = internationalShippingFeeForRegion(submissionType, region)
   // In-person event drop-off (0062_add_in_person_event_intake.sql): inbound
   // shipping is always free table intake, so no courier selection is
   // needed or charged -- courierMeta/courier stay irrelevant here.
   const shippingCost = inPersonMode ? 0 : courierMeta ? courierCostForRegion(courierMeta, region) : 0
-  const serviceFee = gradingSubtotal + inspectionSubtotal + cleanAndPolishSubtotal + labelOptionSubtotal
+  const serviceFee =
+    gradingSubtotal + inspectionSubtotal + cleanAndPolishSubtotal + labelOptionSubtotal + internationalShippingSubtotal
   const total = serviceFee + shippingCost
   const canCheckout = inPersonMode ? Boolean(addressId) : Boolean(addressId && courier)
 
@@ -122,6 +132,7 @@ export function StepReviewPay({
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         gradingCompany,
+        submissionType,
         tier,
         region,
         addressId,
@@ -304,6 +315,12 @@ export function StepReviewPay({
               <span style={{ fontVariantNumeric: 'tabular-nums' }}>{formatByRegion(labelOptionSubtotal, region)}</span>
             </div>
           )}
+          <div className="flex justify-between gap-4">
+            <span>{SUBMISSION_TYPE_LINE_ITEM_LABEL[submissionType]}</span>
+            <span style={{ fontVariantNumeric: 'tabular-nums' }}>
+              {formatByRegion(internationalShippingSubtotal, region)}
+            </span>
+          </div>
           <div className="flex justify-between gap-4">
             <span>{inPersonMode ? IN_PERSON_DROPOFF_LABEL : `Shipping${courierMeta ? ` (${courierMeta.label})` : ''}`}</span>
             <span style={{ fontVariantNumeric: 'tabular-nums' }}>{formatByRegion(shippingCost, region)}</span>
