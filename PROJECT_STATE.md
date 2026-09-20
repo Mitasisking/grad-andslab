@@ -13,18 +13,20 @@ This file is updated at the end of every response that builds or modifies a comp
 
 ## Current Milestone
 
-**Phase: hide the Live Batch Tracker on `/submit` behind a feature flag.** The Submit Cards +
-Batches consolidation onto `/submit` is **committed, pushed, and deployed to production**
-(`f796950`, deployed as Vercel production alias `website-three-iota-83.vercel.app`). Everything
-through that is on `main` (`4026e1d`, `df13969`, `0de1894`, `fb9bb14`, `8913730`, `2c7c9f3`,
-`66aae87`, `f796950`), migrations 0059-0063 all live on production. Email delivery work (Resend
-domain verification, the remaining 6 notification stages) is **explicitly parked at the user's
-request** — do not pick it back up unprompted. Active work: the batch-selection UI has been
-isolated into its own component (`components/grading/LiveBatchTracker.tsx`) and hidden behind a
-`SHOW_BATCH_TRACKER = false` flag in `app/submit/page.tsx`, so `/submit` now defaults straight
-into the standard custom Step 1 flow (country → grading company → tier → cards) with no batch
-grid or tab toggle visible — code-complete, `tsc`/`eslint`/`npm run build` all clean, click-tested
-live in the browser (**uncommitted**, see below).
+**Phase: site-wide brand rename to "CuppasCards" (UI copy pass) + nav label cleanup.** Hiding the
+Live Batch Tracker behind `SHOW_BATCH_TRACKER` is **committed and pushed** (`2249a9f`, not yet
+deployed). Everything through that is on `main` (`4026e1d`, `df13969`, `0de1894`, `fb9bb14`,
+`8913730`, `2c7c9f3`, `66aae87`, `f796950` — `f796950` also **deployed to production**, Vercel
+alias `website-three-iota-83.vercel.app` — `2249a9f`), migrations 0059-0063 all live on
+production. Email delivery work (Resend domain verification, the remaining 6 notification stages)
+is **explicitly parked at the user's request** — do not pick it back up unprompted. Active work:
+(1) a new `lib/site-config.ts` centralizes the brand name (`CuppasCards`, was "Cuppa's Cards")
+and rolled it out across all visible UI copy — nav, footer, headings, page titles/metadata — per
+the user's explicit choice to defer legal pages (Terms/Privacy/Refund/Shipping Policy), email
+templates, and PayFast item descriptors to a separate, not-yet-requested pass; (2) the `/submit`
+nav link's label was simplified from "Submit & Batches" to "Submit" (still points to `/submit`,
+active-state styling unchanged) — code-complete, `tsc`/`eslint`/`npm run build` all clean,
+click-tested live in the browser (**uncommitted**, see below).
 
 ---
 
@@ -194,18 +196,39 @@ up today — not a to-do list.
 
 ### Shared infra
 - `lib/supabase.ts`, `supabase-server.ts`, `supabase-route-client.ts`, `lib/require-admin.ts`
+- `lib/site-config.ts` — **new**. `siteConfig.name` (`'CuppasCards'`), `.legalName`
+  (`'CuppasCards SA'`, not yet used anywhere — legal pages are still on the old name, see Blocked
+  below), `.domain` (`'cuppascards.co.za'`), `.tagline`, and `.links` (re-exports
+  `instagram`/`tiktok` from `lib/social-links.ts`'s `SOCIAL_LINKS` rather than duplicating those
+  URLs — `SOCIAL_LINKS` stays the one place social profile links are actually defined). The
+  request asked for `config/site.ts` or `lib/constants/site.ts`; neither directory exists in this
+  codebase (flat `lib/*.ts` files are the convention — see `lib/social-links.ts`,
+  `lib/submission-types.ts`), so this lives at `lib/site-config.ts` instead, same reasoning as
+  every other requested-but-nonexistent path this session.
 - `components/ui/{button,checkbox,input,label}.tsx`, `lib/utils.ts`
 - `components/{Navbar,Footer,FeaturedCarousel,PoolTracker,SocialIcons,WhatnotBanner,PackagingGuidelines}.tsx`
-  — `Navbar.tsx`'s main nav is now `Submit & Batches` (`/submit`) + `My Submissions` (`/dashboard`,
-  added back so logged-in customers still have a path to their own submissions/account now that
-  `Submit Cards` no longer points there) + `Shop`/`Vendor`/`Contact`; the standalone `Batches` link
-  is gone.
+  — `Navbar.tsx`'s main nav is `Submit` (`/submit`, label simplified from "Submit & Batches") +
+  `My Submissions` (`/dashboard`, added back so logged-in customers still have a path to their own
+  submissions/account now that `Submit Cards` no longer points there) + `Shop`/`Vendor`/`Contact`;
+  the standalone `Batches` link is gone. `Navbar.tsx`/`Footer.tsx` both now read `siteConfig.name`
+  for the logo alt text, footer copyright, and every social-icon `aria-label` instead of a
+  hardcoded `"Cuppa's Cards"` string.
 - `supabase/migrations/0001…0058` (56 files) — full schema history, `supabase/apply-all.sql`
 
 ---
 
 ## Shared Contracts (frozen — do not casually change)
 
+- **`siteConfig`** (`lib/site-config.ts`) — the single source of truth for the brand name shown in
+  UI copy. Always read `siteConfig.name` for display text; never hardcode `"Cuppa's Cards"` or
+  `"CuppasCards"` as a literal string in a component. **Not yet the source of truth everywhere**:
+  legal pages (`app/terms`, `app/privacy`, `app/refund-policy`, `app/shipping-policy`), email
+  templates/sender names (`lib/email/**`, `app/api/notify/route.ts`), and PayFast `itemName`
+  descriptors (`app/api/{submissions/checkout,shop/checkout,auctions/[id]/pay}/route.ts`) still
+  hardcode the old name — deliberately deferred at the user's explicit choice, since a legal-entity
+  name change and a payment-descriptor change carry different risk than a UI copy pass. Do not
+  migrate those to `siteConfig.legalName`/`.name` without the user separately confirming the
+  business's actual legal name is changing.
 - **`GradingCompany`** = `'PCG' | 'PSA' | 'ACE'` — `lib/submission-types.ts`
 - **`SubmissionTier`** — union of all three companies' tier slugs (PCG unprefixed, PSA/ACE prefixed) — `lib/submission-types.ts`. ACE's current purchasable tiers: `ace_basic`, `ace_standard`, `ace_premier`, `ace_ultra`, `ace_luxury`. `ace_value` stays in the union (and the DB enum/CHECK constraint) for historical-row typing only — it is retired from `TIER_OPTIONS_BY_COMPANY.ACE` and must never be re-added there.
 - **`TierOption`** gained two optional fields this task: `description` (marketing blurb, rendered under the label) and `group` (subheading key for the tier selector, e.g. ACE's `'Flagship'`/`'Premium'`). Both are optional and additive — PCG/PSA entries omit them and render exactly as before.
@@ -226,39 +249,48 @@ up today — not a to-do list.
 
 ## Uncommitted work in the tree right now
 
-**Committed, pushed, and deployed to production**: ACE tier overhaul + ACE Label Options +
-notification system stage 1 (`4026e1d`); In-Person Event Drop-Off (`df13969`); booth-handover
-contact-lookup bug fix (`0de1894`); `ORDER_CONFIRMED` wired into the Payfast webhook (`fb9bb14`);
-grader filter false-positive fix, `products.grading_company` (`8913730`, migration 0063 applied
-to production and click-tested live — see that commit message for full detail); Live Batch
-Tracker extracted to `/batches` (`2c7c9f3`, click-tested live); `/experience` and its exclusive
-3D hero-reveal component tree + six now-unused npm dependencies (`three`, `@react-three/fiber`,
-`@react-three/drei`, `gsap`, `lenis`, `@types/three`) removed entirely (`66aae87`); Submit Cards +
-Batches consolidated onto `/submit` (`f796950`) — pushed to `main` and **deployed to Vercel
-production** (`vercel deploy --prod`, alias `website-three-iota-83.vercel.app`, deployment
-`dpl_Dv9fX66bpRNzc89hndwSHbt9kvoR`). Migrations 0059-0063 all live on production.
-`RECEIVED_HQ`/`ORDER_CONFIRMED` email delivery is blocked by an unrelated, pre-existing Resend
-domain-verification issue (see Blocked below) — parked at the user's request, not being chased
-further.
+**Committed and pushed** (all on `main`; `f796950` is also **deployed to Vercel production**,
+alias `website-three-iota-83.vercel.app`, deployment `dpl_Dv9fX66bpRNzc89hndwSHbt9kvoR` —
+`2249a9f` is pushed but **not yet deployed**): ACE tier overhaul + ACE Label Options + notification
+system stage 1 (`4026e1d`); In-Person Event Drop-Off (`df13969`); booth-handover contact-lookup
+bug fix (`0de1894`); `ORDER_CONFIRMED` wired into the Payfast webhook (`fb9bb14`); grader filter
+false-positive fix, `products.grading_company` (`8913730`, migration 0063 applied to production
+and click-tested live — see that commit message for full detail); Live Batch Tracker extracted to
+`/batches` (`2c7c9f3`, click-tested live); `/experience` and its exclusive 3D hero-reveal
+component tree + six now-unused npm dependencies removed entirely (`66aae87`); Submit Cards +
+Batches consolidated onto `/submit` (`f796950`, deployed); Live Batch Tracker isolated into
+`components/grading/LiveBatchTracker.tsx` and hidden behind `SHOW_BATCH_TRACKER = false`
+(`2249a9f`). Migrations 0059-0063 all live on production. `RECEIVED_HQ`/`ORDER_CONFIRMED` email
+delivery is blocked by an unrelated, pre-existing Resend domain-verification issue (see Blocked
+below) — parked at the user's request, not being chased further.
 
-**Uncommitted — hide the Live Batch Tracker on `/submit` behind a feature flag**:
-- `components/grading/LiveBatchTracker.tsx` — **new**. Isolates the batch cards + progress bar
-  markup (and its own internal tab-toggle state) that previously lived in
-  `components/submit/active-batches-panel.tsx` (now **deleted**) into a self-contained component,
-  per the request's "Component Isolation" requirement.
-- `app/submit/page.tsx` — added the `SHOW_BATCH_TRACKER = false` module-level flag and skips the
-  `getActiveLivePools` Supabase call entirely while it's off; threads `showBatchTracker` down to
-  `SubmissionWizard` as a prop (the flag is defined in a Server Component per the request, but the
-  actual conditional render has to happen in the Client Component wizard, since that's the only
-  place with the `joinBatch` handler and scroll-ref state a live tracker needs — same Server/Client
-  boundary reasoning as `activePools` itself).
-- `app/submit/wizard.tsx` — dropped its own `intakeMode` state entirely (now fully owned by
-  `LiveBatchTracker` internally); renders the tracker only when `showBatchTracker` is true.
-- With the flag off (current default), `/submit` renders straight into Step 1's standard flow
-  (country → grading company → tier → cards) with no batch grid or tab UI, and the page is static
-  again (no Supabase round-trip) — `tsc --noEmit` clean, `eslint` shows the same pre-existing
-  issues confirmed via `git stash` to predate this task, `npm run build` succeeds, click-tested
-  live in the browser.
+**Uncommitted — site-wide brand rename to "CuppasCards" (UI copy) + `/submit` nav label cleanup**:
+- `lib/site-config.ts` — **new**, full detail in the Shared infra and Shared Contracts sections
+  above.
+- Every literal `"Cuppa's Cards"` occurrence in visible UI copy replaced with `{siteConfig.name}`
+  (or a template-string equivalent outside JSX): `components/Navbar.tsx` (logo alt, 3 social
+  aria-labels), `components/Footer.tsx` (copyright line, 4 social aria-labels),
+  `components/FeaturedCarousel.tsx` ("The {name} Vault" heading), `app/layout.tsx` (root metadata
+  title), `app/page.tsx` (hero heading, "Join the {name} Community" heading), `app/contact/page.tsx`,
+  `app/vendor/page.tsx`, `app/auctions/page.tsx`, `app/prepare/page.tsx` (packing-slip copy),
+  `app/my-account/page.tsx`, `app/my-account/reset-password/page.tsx`, `app/shop/[id]/page.tsx`
+  (both `generateMetadata` branches), `app/services/page.tsx` (metadata title), and
+  `app/admin/shop/product-form-modal.tsx` (the admin "Vault carousel" hint text). Confirmed via
+  grep this is now the complete set of UI-facing occurrences.
+- **Explicitly deferred, at the user's own choice** (not touched): `app/terms/page.tsx`,
+  `app/privacy/page.tsx`, `app/refund-policy/page.tsx`, `app/shipping-policy/page.tsx` (legal
+  entity name — `Mitchy Moo (Pty) Ltd t/a Cuppa's Cards SA`), every `lib/email/**` template +
+  sender name + `app/api/notify/route.ts`, and the PayFast `itemName` descriptors in
+  `app/api/{submissions/checkout,shop/checkout,auctions/[id]/pay}/route.ts`. See the new
+  `siteConfig` bullet under Shared Contracts for the "don't migrate these without asking" rule.
+- `components/Navbar.tsx` — separately, the `/submit` nav link's label changed from
+  "Submit & Batches" to "Submit" (destination and active-state styling both unchanged; there is no
+  separate mobile nav menu in this component to also update — `hidden md:flex` is the only nav
+  link block that exists).
+- `tsc --noEmit` clean, `eslint` shows the same pre-existing issues confirmed via `git stash` to
+  predate this task, `npm run build` succeeds, click-tested live in the browser (homepage hero,
+  vault heading, community heading, footer copyright, nav label all confirmed showing
+  "CuppasCards"/"Submit" correctly).
 - Untracked, not yet triaged into the repo structure: `Stock photos/`, `TheCardApi.txt`,
   `claude context.txt`, `cuppa cards logo temp logo.jpeg`, `termsofservice.txt`, `zernio.txt`.
 
@@ -282,13 +314,22 @@ further.
    User is waiting on more details before adding them. **Do not chase this further until the
    user brings it back up** — every email this app sends (`RECEIVED_HQ`, `ORDER_CONFIRMED`, the
    older payment-receipt emails) is blocked on this, but that's accepted as a known, deliberate
-   gap for now, not something to keep flagging every session.
+   gap for now, not something to keep flagging every session. **Note the domain mismatch**: this
+   Resend setup targets `cuppacards.com`, while `lib/site-config.ts`'s new `siteConfig.domain` is
+   `cuppascards.co.za` (confirmed by the user as the real domain being adopted) — when email work
+   resumes, confirm with the user which domain the sending address should actually verify against
+   rather than assuming `cuppacards.com` is still correct.
 
 ## Immediate Next Task
 
-Hiding the Live Batch Tracker behind `SHOW_BATCH_TRACKER = false` (component isolated into
-`components/grading/LiveBatchTracker.tsx`) is code-complete, build-verified, and click-tested
-live — waiting on your go-ahead to commit.
+The site-wide "CuppasCards" brand rename (UI copy only, via the new `lib/site-config.ts`) and the
+`/submit` nav label simplification ("Submit & Batches" → "Submit") are code-complete,
+build-verified, and click-tested live — waiting on your go-ahead to commit. `2249a9f` (the
+Live Batch Tracker feature-flag work) is committed and pushed but not yet deployed — say the word
+if you want that on production too.
+
+Legal pages, email templates, and PayFast item descriptors still say "Cuppa's Cards" — deliberately
+deferred; only touch them if you separately confirm the legal entity name is actually changing.
 
 Email delivery work (Resend domain verification, wiring the remaining 6 notification stages) is
 **parked at the user's request** — do not pick this back up unprompted. Other open items:

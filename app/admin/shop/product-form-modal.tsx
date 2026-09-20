@@ -10,6 +10,7 @@ import type { Grader } from '@/lib/shop/grader'
 import { isOutOfPrint } from '@/lib/shop/availability'
 import { uploadProductImage } from '@/lib/admin/product-image-upload'
 import { formatByRegion } from '@/lib/currency'
+import { siteConfig } from '@/lib/site-config'
 import { ProductThumbnail } from './product-thumbnail'
 import type { AdminProduct } from './types'
 
@@ -474,7 +475,7 @@ export function ProductFormModal({ product, onClose, onSaved }: Props) {
           )}
           {effectiveVaultGrail && (
             <p className="text-[11.5px] -mt-2" style={{ color: 'var(--ink-muted)' }}>
-              Shows in &quot;The Cuppa&apos;s Cards Vault&quot; homepage carousel.
+              Shows in &quot;The {siteConfig.name} Vault&quot; homepage carousel.
             </p>
           )}
 

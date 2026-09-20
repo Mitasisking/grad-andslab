@@ -5,6 +5,7 @@ import { getSupabaseRouteClient } from '@/lib/supabase-route-client'
 import { formatZAR, formatGBP, formatUSD } from '@/lib/currency'
 import { getLatestGbpZarRate, zarToGbp, gbpToZar, type ExchangeRate } from '@/lib/pricing/exchange-rate'
 import { CountdownTimer } from '@/components/auctions/countdown-timer'
+import { siteConfig } from '@/lib/site-config'
 import type { AuctionRow } from '@/lib/auction-types'
 import type { ProductRegion } from '@/lib/shop/product-type'
 
@@ -110,7 +111,7 @@ export default async function AuctionsPage() {
             className="font-[family-name:var(--font-display)] text-[34px] lg:text-[42px] leading-[1.05] mt-2"
             style={{ color: 'var(--ink)' }}
           >
-            Cuppa&apos;s Cards Auctions
+            {siteConfig.name} Auctions
           </h1>
           <p className="text-[15px] mt-4 leading-relaxed" style={{ color: 'var(--ink-muted)' }}>
             Bid on graded slabs and high-end collector pieces. Bidding is free — only the winner pays, via

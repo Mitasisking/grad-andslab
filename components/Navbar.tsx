@@ -6,6 +6,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { SOCIAL_LINKS } from '../lib/social-links'
+import { siteConfig } from '../lib/site-config'
 import { FacebookIcon, InstagramIcon, TiktokIcon } from './SocialIcons'
 
 export default function Navbar() {
@@ -89,12 +90,12 @@ export default function Navbar() {
         {/* Left Side: Logo & Main Links */}
         <div className="flex items-center gap-8">
           <Link href="/" className="shrink-0 opacity-100 hover:opacity-80 transition">
-            <Image src="/logo.png" alt="Cuppa's Cards" width={48} height={48} className="h-11 w-11 sm:h-12 sm:w-12" priority />
+            <Image src="/logo.png" alt={siteConfig.name} width={48} height={48} className="h-11 w-11 sm:h-12 sm:w-12" priority />
           </Link>
           
           <div className="hidden md:flex gap-6 text-sm font-medium text-slate-300">
             <Link href="/submit" className={`hover:text-amber-400 transition ${pathname === '/submit' ? 'text-amber-400' : ''}`}>
-              Submit & Batches
+              Submit
             </Link>
             <Link href="/dashboard" className={`hover:text-amber-400 transition ${pathname === '/dashboard' ? 'text-amber-400' : ''}`}>
               My Submissions
@@ -118,7 +119,7 @@ export default function Navbar() {
               href={SOCIAL_LINKS.facebook}
               target="_blank"
               rel="noopener noreferrer"
-              aria-label="Cuppa's Cards on Facebook"
+              aria-label={`${siteConfig.name} on Facebook`}
               className="text-slate-500 hover:text-amber-400 transition"
             >
               <FacebookIcon className="w-4 h-4" />
@@ -127,7 +128,7 @@ export default function Navbar() {
               href={SOCIAL_LINKS.instagram}
               target="_blank"
               rel="noopener noreferrer"
-              aria-label="Cuppa's Cards on Instagram"
+              aria-label={`${siteConfig.name} on Instagram`}
               className="text-slate-500 hover:text-amber-400 transition"
             >
               <InstagramIcon className="w-4 h-4" />
@@ -136,7 +137,7 @@ export default function Navbar() {
               href={SOCIAL_LINKS.tiktok}
               target="_blank"
               rel="noopener noreferrer"
-              aria-label="Cuppa's Cards on TikTok"
+              aria-label={`${siteConfig.name} on TikTok`}
               className="text-slate-500 hover:text-amber-400 transition"
             >
               <TiktokIcon className="w-4 h-4" />

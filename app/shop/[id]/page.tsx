@@ -4,6 +4,7 @@ import type { Metadata } from 'next'
 import { getSupabaseRouteClient } from '@/lib/supabase-route-client'
 import { formatByRegion } from '@/lib/currency'
 import { AddToCartButton } from '@/components/shop/add-to-cart-button'
+import { siteConfig } from '@/lib/site-config'
 import type { ProductRegion } from '@/lib/shop/product-type'
 
 const PRODUCT_COLUMNS =
@@ -39,8 +40,8 @@ async function getProduct(id: string): Promise<ProductDetail | null> {
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
   const { id } = await params
   const product = await getProduct(id)
-  if (!product) return { title: "Shop | Cuppa's Cards" }
-  return { title: `${product.title} | Cuppa's Cards` }
+  if (!product) return { title: `Shop | ${siteConfig.name}` }
+  return { title: `${product.title} | ${siteConfig.name}` }
 }
 
 /**

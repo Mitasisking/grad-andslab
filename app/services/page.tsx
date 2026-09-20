@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { siteConfig } from '@/lib/site-config'
 
 interface PrepStep {
   label: string
@@ -16,7 +17,7 @@ const PREP_STEPS: PrepStep[] = [
 ]
 
 export const metadata = {
-  title: "Card Prep Services | Cuppa's Cards",
+  title: `Card Prep Services | ${siteConfig.name}`,
   description: 'Professional cleaning and preparation for your cards before grading submission.',
 }
 

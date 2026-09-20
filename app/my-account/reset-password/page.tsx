@@ -6,6 +6,7 @@ import { supabase } from '@/lib/supabase'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
+import { siteConfig } from '@/lib/site-config'
 
 /**
  * Landing page for the "Lost your password?" email link
@@ -41,7 +42,7 @@ export default function ResetPasswordPage() {
     <div style={{ background: 'var(--paper)', color: 'var(--ink)', minHeight: '100vh' }}>
       <div className="mx-auto max-w-md px-6 py-16">
         <p className="text-[13px]" style={{ color: 'var(--ink-muted)' }}>
-          Cuppa&apos;s Cards
+          {siteConfig.name}
         </p>
         <h1 className="text-[26px] mt-1" style={{ fontFamily: 'var(--font-display)', color: 'var(--ink)' }}>
           Set a new password

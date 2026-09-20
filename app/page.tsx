@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { SOCIAL_LINKS } from '../lib/social-links'
+import { siteConfig } from '../lib/site-config'
 import { WhatsappIcon } from '../components/SocialIcons'
 // Whatnot Live is shelved for now (launch is focused purely on grading
 // submissions and shop inventory) -- component and import kept, just
@@ -38,7 +39,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
             Official PCG and ACE Middleman
           </div>
           <h1 className="text-5xl md:text-7xl font-black text-[#a67c00] mb-6 tracking-tight [-webkit-text-stroke:1.5px_black]">
-            Cuppa&apos;s Cards
+            {siteConfig.name}
           </h1>
           <p className="text-xl md:text-2xl text-slate-300 max-w-2xl mx-auto mb-10 leading-relaxed">
             South Africa's premier middleman service. Making it easy to grade your cards.
@@ -113,7 +114,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
         <div className="max-w-4xl mx-auto px-6">
           <div className="relative overflow-hidden rounded-3xl border border-[#25D366]/20 bg-gradient-to-br from-slate-800 to-slate-900 px-8 py-14 md:py-16 text-center">
             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-[#25D366]/10 rounded-full blur-3xl -z-10 pointer-events-none" />
-            <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">Join the Cuppa&apos;s Cards Community</h2>
+            <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">Join the {siteConfig.name} Community</h2>
             <p className="text-slate-300 text-lg leading-relaxed mb-8 max-w-xl mx-auto">
               Join our exclusive WhatsApp group to be the first to know about new product pre-orders, flash sales,
               and upcoming grading submission deadlines!

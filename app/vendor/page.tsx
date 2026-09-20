@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, type FormEvent, type ReactNode } from 'react'
+import { siteConfig } from '@/lib/site-config'
 
 const PAST_EVENTS = [
   { name: 'V&A Waterfront TCG Expo', location: 'Cape Town, South Africa', period: 'March 2025' },
@@ -82,7 +83,7 @@ export default function VendorPage() {
             FOR EVENT ORGANIZERS
           </div>
           <h1 className="text-4xl md:text-6xl font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-400 to-amber-600 mb-6 tracking-tight">
-            Bring Cuppa&apos;s Cards to Your Event
+            Bring {siteConfig.name} to Your Event
           </h1>
           <p className="text-lg md:text-xl text-slate-300 max-w-2xl mx-auto mb-10 leading-relaxed">
             We vend at TCG expos and collector conventions across South Africa, giving attendees a way to

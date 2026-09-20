@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { PackagingGuidelines } from '@/components/PackagingGuidelines'
+import { siteConfig } from '@/lib/site-config'
 
 interface StepItem {
   label: string
@@ -37,7 +38,7 @@ const STEPS: Step[] = [
     items: [
       {
         label: 'Match the Packing Slip',
-        body: "Stack your cards in the exact order they appear on your Cuppa's Cards digital packing slip.",
+        body: `Stack your cards in the exact order they appear on your ${siteConfig.name} digital packing slip.`,
       },
       {
         label: 'Labeling',

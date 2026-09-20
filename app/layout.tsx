@@ -2,9 +2,10 @@ import './globals.css'
 import type { Metadata } from 'next'
 import Navbar from '../components/Navbar'
 import { Footer } from '../components/Footer'
+import { siteConfig } from '../lib/site-config'
 
 export const metadata: Metadata = {
-  title: "Cuppa's Cards | PCG Middleman Service",
+  title: `${siteConfig.name} | PCG Middleman Service`,
   description: 'Professional Pokémon card grading middleman service based in South Africa.',
 }
 

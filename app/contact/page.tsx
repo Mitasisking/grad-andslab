@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { useState, type FormEvent, type ReactNode } from 'react'
+import { siteConfig } from '@/lib/site-config'
 
 interface ContactForm {
   name: string
@@ -68,7 +69,7 @@ export default function ContactPage() {
             </h1>
             <p className="text-slate-300 text-lg leading-relaxed mb-10">
               Whether you have a question about a grading submission, a product in our shop, or need help tracking
-              an order, the Cuppa&apos;s Cards team is here to help!
+              an order, the {siteConfig.name} team is here to help!
             </p>
 
             <div className="space-y-8">

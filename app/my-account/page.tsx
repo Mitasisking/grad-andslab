@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Button } from '@/components/ui/button'
 import { TurnstileWidget } from '@/components/auth/turnstile-widget'
+import { siteConfig } from '@/lib/site-config'
 
 const inputStyle = { borderColor: 'var(--line)', color: 'var(--ink)' }
 const labelClass = 'text-[12.5px] block mb-1'
@@ -239,7 +240,7 @@ export default function MyAccountPage() {
     <div style={{ background: 'var(--paper)', color: 'var(--ink)', minHeight: '100vh' }}>
       <div className="mx-auto max-w-4xl px-6 py-12 lg:py-16">
         <p className="text-[13px]" style={{ color: 'var(--ink-muted)' }}>
-          Cuppa&apos;s Cards
+          {siteConfig.name}
         </p>
         <h1 className="text-[28px] mt-1" style={{ fontFamily: 'var(--font-display)', color: 'var(--ink)' }}>
           My Account
