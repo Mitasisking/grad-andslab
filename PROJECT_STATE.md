@@ -13,20 +13,18 @@ This file is updated at the end of every response that builds or modifies a comp
 
 ## Current Milestone
 
-**Phase: site-wide brand rename to "CuppasCards" (UI copy pass) + nav label cleanup.** Hiding the
-Live Batch Tracker behind `SHOW_BATCH_TRACKER` is **committed and pushed** (`2249a9f`, not yet
-deployed). Everything through that is on `main` (`4026e1d`, `df13969`, `0de1894`, `fb9bb14`,
-`8913730`, `2c7c9f3`, `66aae87`, `f796950` — `f796950` also **deployed to production**, Vercel
-alias `website-three-iota-83.vercel.app` — `2249a9f`), migrations 0059-0063 all live on
-production. Email delivery work (Resend domain verification, the remaining 6 notification stages)
-is **explicitly parked at the user's request** — do not pick it back up unprompted. Active work:
-(1) a new `lib/site-config.ts` centralizes the brand name (`CuppasCards`, was "Cuppa's Cards")
-and rolled it out across all visible UI copy — nav, footer, headings, page titles/metadata — per
-the user's explicit choice to defer legal pages (Terms/Privacy/Refund/Shipping Policy), email
-templates, and PayFast item descriptors to a separate, not-yet-requested pass; (2) the `/submit`
-nav link's label was simplified from "Submit & Batches" to "Submit" (still points to `/submit`,
-active-state styling unchanged) — code-complete, `tsc`/`eslint`/`npm run build` all clean,
-click-tested live in the browser (**uncommitted**, see below).
+**Phase: idle — everything below is committed, pushed, and deployed to production.** The
+site-wide "CuppasCards" brand rename (UI copy pass) and the `/submit` nav label cleanup
+("Submit & Batches" → "Submit") are done: `lib/site-config.ts` centralizes the brand name and is
+rolled out across all visible UI copy — nav, footer, headings, page titles/metadata — per the
+user's explicit choice to defer legal pages (Terms/Privacy/Refund/Shipping Policy), email
+templates, and PayFast item descriptors to a separate, not-yet-requested pass. Everything is on
+`main` (`4026e1d`, `df13969`, `0de1894`, `fb9bb14`, `8913730`, `2c7c9f3`, `66aae87`, `f796950`,
+`2249a9f`, `03c67de`) and **live on production** (Vercel alias `website-three-iota-83.vercel.app`,
+deployment `dpl_6HpsguvENRUQnLBJ3PjhWZGJsamf`), migrations 0059-0063 all live on production. Email
+delivery work (Resend domain verification, the remaining 6 notification stages) is **explicitly
+parked at the user's request** — do not pick it back up unprompted. No uncommitted work is
+outstanding.
 
 ---
 
@@ -249,22 +247,23 @@ up today — not a to-do list.
 
 ## Uncommitted work in the tree right now
 
-**Committed and pushed** (all on `main`; `f796950` is also **deployed to Vercel production**,
-alias `website-three-iota-83.vercel.app`, deployment `dpl_Dv9fX66bpRNzc89hndwSHbt9kvoR` —
-`2249a9f` is pushed but **not yet deployed**): ACE tier overhaul + ACE Label Options + notification
-system stage 1 (`4026e1d`); In-Person Event Drop-Off (`df13969`); booth-handover contact-lookup
-bug fix (`0de1894`); `ORDER_CONFIRMED` wired into the Payfast webhook (`fb9bb14`); grader filter
-false-positive fix, `products.grading_company` (`8913730`, migration 0063 applied to production
-and click-tested live — see that commit message for full detail); Live Batch Tracker extracted to
-`/batches` (`2c7c9f3`, click-tested live); `/experience` and its exclusive 3D hero-reveal
-component tree + six now-unused npm dependencies removed entirely (`66aae87`); Submit Cards +
-Batches consolidated onto `/submit` (`f796950`, deployed); Live Batch Tracker isolated into
-`components/grading/LiveBatchTracker.tsx` and hidden behind `SHOW_BATCH_TRACKER = false`
-(`2249a9f`). Migrations 0059-0063 all live on production. `RECEIVED_HQ`/`ORDER_CONFIRMED` email
-delivery is blocked by an unrelated, pre-existing Resend domain-verification issue (see Blocked
-below) — parked at the user's request, not being chased further.
+**None.** Everything is committed, pushed to `main`, and deployed to Vercel production (alias
+`website-three-iota-83.vercel.app`, deployment `dpl_6HpsguvENRUQnLBJ3PjhWZGJsamf`): ACE tier
+overhaul + ACE Label Options + notification system stage 1 (`4026e1d`); In-Person Event Drop-Off
+(`df13969`); booth-handover contact-lookup bug fix (`0de1894`); `ORDER_CONFIRMED` wired into the
+Payfast webhook (`fb9bb14`); grader filter false-positive fix, `products.grading_company`
+(`8913730`, migration 0063 applied to production and click-tested live — see that commit message
+for full detail); Live Batch Tracker extracted to `/batches` (`2c7c9f3`, click-tested live);
+`/experience` and its exclusive 3D hero-reveal component tree + six now-unused npm dependencies
+removed entirely (`66aae87`); Submit Cards + Batches consolidated onto `/submit` (`f796950`); Live
+Batch Tracker isolated into `components/grading/LiveBatchTracker.tsx` and hidden behind
+`SHOW_BATCH_TRACKER = false` (`2249a9f`); site-wide "CuppasCards" brand rename (UI copy) +
+`/submit` nav label simplified to "Submit" (`03c67de`). Migrations 0059-0063 all live on
+production. `RECEIVED_HQ`/`ORDER_CONFIRMED` email delivery is blocked by an unrelated,
+pre-existing Resend domain-verification issue (see Blocked below) — parked at the user's request,
+not being chased further.
 
-**Uncommitted — site-wide brand rename to "CuppasCards" (UI copy) + `/submit` nav label cleanup**:
+**What `03c67de` changed** (for reference — already live):
 - `lib/site-config.ts` — **new**, full detail in the Shared infra and Shared Contracts sections
   above.
 - Every literal `"Cuppa's Cards"` occurrence in visible UI copy replaced with `{siteConfig.name}`
@@ -288,9 +287,9 @@ below) — parked at the user's request, not being chased further.
   separate mobile nav menu in this component to also update — `hidden md:flex` is the only nav
   link block that exists).
 - `tsc --noEmit` clean, `eslint` shows the same pre-existing issues confirmed via `git stash` to
-  predate this task, `npm run build` succeeds, click-tested live in the browser (homepage hero,
-  vault heading, community heading, footer copyright, nav label all confirmed showing
-  "CuppasCards"/"Submit" correctly).
+  predate this task, `npm run build` succeeds, click-tested live in the browser before deploying
+  (homepage hero, vault heading, community heading, footer copyright, nav label all confirmed
+  showing "CuppasCards"/"Submit" correctly).
 - Untracked, not yet triaged into the repo structure: `Stock photos/`, `TheCardApi.txt`,
   `claude context.txt`, `cuppa cards logo temp logo.jpeg`, `termsofservice.txt`, `zernio.txt`.
 
@@ -322,14 +321,12 @@ below) — parked at the user's request, not being chased further.
 
 ## Immediate Next Task
 
-The site-wide "CuppasCards" brand rename (UI copy only, via the new `lib/site-config.ts`) and the
-`/submit` nav label simplification ("Submit & Batches" → "Submit") are code-complete,
-build-verified, and click-tested live — waiting on your go-ahead to commit. `2249a9f` (the
-Live Batch Tracker feature-flag work) is committed and pushed but not yet deployed — say the word
-if you want that on production too.
+Nothing outstanding — the brand rename, nav label cleanup, and Live Batch Tracker feature flag are
+all committed, pushed, and deployed to production.
 
 Legal pages, email templates, and PayFast item descriptors still say "Cuppa's Cards" — deliberately
-deferred; only touch them if you separately confirm the legal entity name is actually changing.
+deferred; only touch them if the user separately confirms the legal entity name is actually
+changing.
 
 Email delivery work (Resend domain verification, wiring the remaining 6 notification stages) is
 **parked at the user's request** — do not pick this back up unprompted. Other open items:
