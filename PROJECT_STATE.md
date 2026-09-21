@@ -635,6 +635,25 @@ up today — not a to-do list.
 
 ## Shared Contracts (frozen — do not casually change)
 
+- **`public.profiles`'s real production schema has drifted from every migration file, including
+  `0001_init_schema.sql`** — confirmed twice now, independently, against the live database
+  (`0040_fix_handle_new_user_missing_email_column.sql`, and again in this session via a failed
+  live query). **Production `profiles` has NO `email` column** despite every migration back to
+  0001 declaring one (`select profiles(email)` breaks in production — `0040`'s own comment flags
+  `app/admin/pools/page.tsx` and `lib/email/send-order-confirmation.ts` as likely-affected,
+  unverified as of that migration; get a user's email by joining to `auth.users` instead, e.g.
+  `select p.*, u.email from public.profiles p join auth.users u on u.id = p.id`). Production
+  `profiles` also has columns no migration file mentions: `street_address`, `city`, `postal_code`,
+  `country`, `phone`, `role text default 'customer'` (not the `public.user_role` enum
+  `default 'user'` that 0001 declares — but still just a plain string comparison, so `role =
+  'admin'` reads/writes the same either way and every admin check in this app already relies on
+  exactly that comparison, not on the enum type), and `is_admin boolean` (unused — confirmed no
+  application code reads this column; every admin check goes through `profiles.role`, never
+  `profiles.is_admin`). Production predates the "rebuild" this migration history describes and was
+  never brought fully in line with it. **Before writing any new query against `profiles`, check
+  what columns actually exist in production rather than trusting the migration files' declared
+  shape** — this project doesn't have a generated `database.types.ts` to catch the mismatch at
+  compile time (see the `SubmissionRow`/`PoolRow` Shared Contract entry below on why).
 - **`siteConfig`** (`lib/site-config.ts`) — the single source of truth for the brand name shown in
   UI copy. Always read `siteConfig.name` for display text; never hardcode `"Cuppa's Cards"` as a
   literal string in a component. **Legal pages, email templates, and PayFast descriptors were
@@ -686,23 +705,18 @@ field that drives routing/matching logic, never the name.
 
 ## Uncommitted work in the tree right now
 
-**One piece of work is currently uncommitted: the admin authorization enforcement**
-(`app/admin/layout.tsx`, `app/login/page.tsx` + new `app/login/login-form.tsx`) described in the
-Active File Manifest and Shared Contracts above.
-
-Everything through commit `970ebb4` ("Update landing/shop/vendor pages, submission wizard, and add
-social sign-in": the landing page section reorder, the hero copy update, the Google/Apple OAuth
-addition, the Submission Method Step 1→Step 2 relocation, the Step 3 Order Summary/delivery-method
-rewrite, the vendor page's "Every Grading Tier, On-Site" copy update, and the Vault carousel's
-relocation from the homepage to `/shop`) is committed, pushed to `origin/main`
-(`db61e29..970ebb4 main -> main`), and deployed to Vercel production (deployment
-`dpl_AQ6VAFrgiw3ZPjEZyB5AfggaNb9N`, aliased to `website-three-iota-83.vercel.app`, deployed via
-`vercel --prod`; build compiled clean, all 79 routes generated with no errors).
-
-**`c5351a6`** ("Update PROJECT_STATE.md to reflect production deployment," a docs-only follow-up
-to `970ebb4`) **is committed locally but not yet pushed or deployed** — nothing in it needs
-deploying (it only updates this file), but push is still a separate, explicitly-gated step per
-this project's standing practice and hasn't been requested for it specifically.
+**Nothing is currently uncommitted.** Everything described in this file — through commit
+`5e0d906` ("Gate all /admin routes behind a centralized admin-role check": `app/admin/layout.tsx`,
+`app/login/page.tsx` + new `app/login/login-form.tsx`, on top of `c5351a6` and `970ebb4` — the
+landing page section reorder, the hero copy update, the Google/Apple OAuth addition, the
+Submission Method Step 1→Step 2 relocation, the Step 3 Order Summary/delivery-method rewrite, the
+vendor page's "Every Grading Tier, On-Site" copy update, the Vault carousel's relocation from the
+homepage to `/shop`, and the admin-route authorization guard — see the Active File Manifest and
+Shared Contracts above for full detail on each) — is committed, pushed to `origin/main`
+(`db61e29..970ebb4..5e0d906`), and deployed to Vercel production (deployment
+`dpl_HzCQmK5fv4r5CvZb2R71rCD7npRW`, aliased to `website-three-iota-83.vercel.app`, deployed via
+`vercel --prod`; build compiled clean, all 79 routes generated with no errors, `/login` confirmed
+still prerendering statically and `/admin` correctly dynamic).
 
 The subsections below are kept as a historical record of what shipped in each past task/commit,
 not a list of pending changes — check `git status` if you need to confirm this is still true
@@ -1005,19 +1019,24 @@ configuration gap, not a code bug.
    all. The real remaining blocker for actual email delivery is simply that `.env.local`'s
    `EMAIL_SERVER_*` values are still placeholders, not the domain-mismatch concern this item used
    to describe.
-5. **Granting the first two admins (`mitchell@cuppascards.com`, `kyle@cuppascards.com`) needs to
-   be run by the user, not this session.** The obvious `UPDATE public.profiles SET role = 'admin'
-   WHERE ...` fails with `P0001: Only an admin can change a profile's role` — `0007_rls_hardening.sql`'s
-   `prevent_self_role_escalation()` trigger blocks any `profiles.role` change unless the caller is
-   already an admin or `auth.role() = 'service_role'`, neither of which is true from a Supabase
-   Dashboard SQL Editor session. The safe fix (temporarily `ALTER TABLE public.profiles DISABLE
-   TRIGGER trg_profiles_protect_role;`, run the `UPDATE`, then immediately `ENABLE TRIGGER` again)
-   is exactly the kind of "weaken a security control" action Claude Code's own safety classifier
-   correctly refuses to run autonomously — this session prepared the corrected SQL and explained
-   why it's needed, but the user has to actually execute it themselves in the SQL Editor. Once
-   either account has `profiles.role = 'admin'`, granting further admins from the app itself
-   becomes possible without ever touching this trigger again (an existing admin satisfies
-   `public.is_admin()`, which the trigger already allows).
+5. ~~Granting the first two admins~~ — **RESOLVED, confirmed live.** `mitchell@cuppascards.com`
+   and `kyle@cuppascards.com` both now have `profiles.role = 'admin'`, run by the user directly in
+   the Supabase SQL Editor (not by this session — see below for why). The obvious `UPDATE
+   public.profiles SET role = 'admin' WHERE ...` had originally failed with `P0001: Only an admin
+   can change a profile's role` — `0007_rls_hardening.sql`'s `prevent_self_role_escalation()`
+   trigger blocks any `profiles.role` change unless the caller is already an admin or
+   `auth.role() = 'service_role'`, neither of which is true from a Supabase Dashboard SQL Editor
+   session. The fix that actually worked: `ALTER TABLE public.profiles DISABLE TRIGGER
+   trg_profiles_protect_role;`, then the `UPDATE`, then immediately `ALTER TABLE public.profiles
+   ENABLE TRIGGER trg_profiles_protect_role;` again — this session prepared that corrected SQL and
+   explained why it was needed, but would not (and could not, per Claude Code's own safety
+   classifier, which correctly refuses to "weaken a security control" autonomously) run it itself;
+   the user ran it directly. **A first verification attempt also failed** (`42703: column "email"
+   does not exist` on `public.profiles`) — see the new Shared Contract entry below on this
+   project's `profiles`-table schema drift; the corrected verification joined through `auth.users`
+   for the email instead. Now that two real admins exist, granting further admins going forward can
+   go through the app itself (an existing admin satisfies `public.is_admin()`, which the trigger
+   already allows) without ever needing to touch this trigger again.
 
 ## Immediate Next Task
 
@@ -1110,7 +1129,8 @@ Seven pieces of work, all landed in commit `970ebb4`:
   carousel (arrows, dots, all 7 grails) rendering as the first element on the page, directly above
   the category pills, with no visual clash against the shop layout's theme.
 
-**Not yet committed — admin authorization enforcement**: `app/admin/layout.tsx` (new, centralized
+**Committed, pushed, and deployed to production (`5e0d906`, deployment `dpl_HzCQmK5fv4r5CvZb2R71rCD7npRW`) — admin authorization enforcement**:
+`app/admin/layout.tsx` (new, centralized
 `/admin/**` route guard), `app/login/page.tsx` (rewritten as a thin Server Component) and
 `app/login/login-form.tsx` (new, the actual client form, now `next`-param-aware). See the Active
 File Manifest and Shared Contracts entries above for full detail. `npx tsc --noEmit`, `npm run
