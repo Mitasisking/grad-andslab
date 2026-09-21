@@ -279,36 +279,81 @@ export const SUBMISSION_TYPE_OPTIONS: SubmissionTypeOption[] = [
 
 /**
  * International freight contribution to ACE Grading's UK facility, billed
- * per submission (not per card) -- 'batch' is a shared contribution toward
- * one consolidated shipment; 'individual' is a full dedicated door-to-door
- * courier quote, hence the large gap. Ballpark stand-in figures, not yet a
- * real invoiced business cost -- same "replace once known" caveat as every
- * other approximate-conversion figure in this file and
- * step-review-pay.tsx's own COURIERS array.
+ * per submission (not per card) as two separate legs -- outbound (SA to UK)
+ * and return (UK to SA) -- each at this same per-leg rate. 'batch' is a
+ * shared contribution toward one consolidated shipment; 'individual' is a
+ * full dedicated door-to-door courier quote, hence the large gap. Ballpark
+ * stand-in figures, not yet a real invoiced business cost -- same "replace
+ * once known" caveat as every other approximate-conversion figure in this
+ * file. Superseded the old single lump-sum INTERNATIONAL_SHIPPING_FEE_*
+ * constants (removed) when step-review-pay.tsx's Order Summary was split
+ * into separate outbound/return line items.
  */
-export const INTERNATIONAL_SHIPPING_FEE_USD: Record<SubmissionType, number> = {
-  batch: 8,
-  individual: 55,
-}
-export const INTERNATIONAL_SHIPPING_FEE_GBP: Record<SubmissionType, number> = {
+export const INTERNATIONAL_COURIER_LEG_FEE_USD: Record<SubmissionType, number> = {
   batch: 6,
-  individual: 43,
+  individual: 76,
 }
-export const INTERNATIONAL_SHIPPING_FEE_ZAR: Record<SubmissionType, number> = {
-  batch: 150,
-  individual: 1020,
+export const INTERNATIONAL_COURIER_LEG_FEE_GBP: Record<SubmissionType, number> = {
+  batch: 5,
+  individual: 60,
 }
-
-export function internationalShippingFeeForRegion(submissionType: SubmissionType, region: ProductRegion): number {
-  if (region === 'usa') return INTERNATIONAL_SHIPPING_FEE_USD[submissionType]
-  if (region === 'uk') return INTERNATIONAL_SHIPPING_FEE_GBP[submissionType]
-  return INTERNATIONAL_SHIPPING_FEE_ZAR[submissionType]
+export const INTERNATIONAL_COURIER_LEG_FEE_ZAR: Record<SubmissionType, number> = {
+  batch: 110,
+  individual: 1400,
 }
 
-/** Fee-summary line-item labels (components/submit/step-review-pay.tsx), distinguishing the two dispatch methods. */
-export const SUBMISSION_TYPE_LINE_ITEM_LABEL: Record<SubmissionType, string> = {
-  batch: 'International Shipping: Shared Batch Pool',
-  individual: 'International Shipping: Dedicated Direct Dispatch',
+export function internationalCourierLegFeeForRegion(submissionType: SubmissionType, region: ProductRegion): number {
+  if (region === 'usa') return INTERNATIONAL_COURIER_LEG_FEE_USD[submissionType]
+  if (region === 'uk') return INTERNATIONAL_COURIER_LEG_FEE_GBP[submissionType]
+  return INTERNATIONAL_COURIER_LEG_FEE_ZAR[submissionType]
+}
+
+/** Order Summary line-item labels for the two international courier legs (components/submit/step-review-pay.tsx), distinguishing the two dispatch methods. */
+export const INTERNATIONAL_COURIER_LEG_LABELS: Record<SubmissionType, { outbound: string; returnLeg: string }> = {
+  batch: {
+    outbound: 'International Courier: Outbound to ACE UK (Pooled)',
+    returnLeg: 'International Courier: Return to SA (Pooled)',
+  },
+  individual: {
+    outbound: 'International Courier: Outbound Direct (DHL/FedEx)',
+    returnLeg: 'International Courier: Return Direct (DHL/FedEx)',
+  },
+}
+
+/**
+ * Domestic leg of the journey -- customer to CuppasCards HQ, and HQ back to
+ * customer -- via The Courier Guy's Pudo Locker-to-Locker service, billed as
+ * two separate legs at this same per-leg rate (components/submit/
+ * step-review-pay.tsx's "Ship from" section). Replaces the old COURIERS
+ * array of placeholder US carrier tiers (UPS Ground/2nd Day Air, FedEx
+ * Priority Overnight) that step-review-pay.tsx used to let the customer
+ * choose between -- there is no longer a choice of domestic carrier, just
+ * this one real South African provider. Zero-rated entirely when the
+ * customer instead chooses in-person drop-off (see LOCAL_IN_PERSON_LEG_LABELS
+ * below) -- same "replace once known" ballpark-figure caveat as every other
+ * approximate-conversion figure in this file.
+ */
+export const DOMESTIC_COURIER_LABEL = 'The Courier Guy — Pudo Locker to Locker'
+export const DOMESTIC_COURIER_LEG_FEE_USD = 6
+export const DOMESTIC_COURIER_LEG_FEE_GBP = 5
+export const DOMESTIC_COURIER_LEG_FEE_ZAR = 110
+
+export function domesticCourierLegFeeForRegion(region: ProductRegion): number {
+  if (region === 'usa') return DOMESTIC_COURIER_LEG_FEE_USD
+  if (region === 'uk') return DOMESTIC_COURIER_LEG_FEE_GBP
+  return DOMESTIC_COURIER_LEG_FEE_ZAR
+}
+
+/** Order Summary line-item labels for the two domestic courier legs, shown when "Courier Delivery" is selected in Step 3's "Ship from" section. */
+export const LOCAL_COURIER_LEG_LABELS = {
+  outbound: 'Local Courier: Drop-off to HQ (Pudo Locker)',
+  returnLeg: 'Local Courier: Return from HQ (Pudo Locker)',
+}
+
+/** Order Summary line-item labels for the two (zero-cost) domestic legs, shown when "In-Person Drop-Off" is selected in Step 3's "Ship from" section instead of Courier Delivery. */
+export const LOCAL_IN_PERSON_LEG_LABELS = {
+  outbound: 'Local Intake: In-Person Drop-off',
+  returnLeg: 'Local Return: In-Person Collection',
 }
 
 // ----------------------------------------------------------------------------

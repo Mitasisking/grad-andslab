@@ -9,6 +9,8 @@ import { CategoryTabs, POKEMON_CENTER_CATEGORY } from '@/components/shop/categor
 import { SportsCardFilters } from '@/components/shop/sports-card-filters'
 import { ShopBrowser } from '@/components/shop/shop-browser'
 import { ProductGrid } from '@/components/shop/product-grid'
+import { FeaturedCarousel } from '@/components/FeaturedCarousel'
+import { getFeaturedProducts } from '@/lib/shop/featured-products'
 import { REGION_OPTIONS, type ProductType, type ProductRegion } from '@/lib/shop/product-type'
 import type { ShopUrlParams } from '@/lib/shop/shop-url'
 
@@ -56,6 +58,7 @@ export default async function ShopPage({ searchParams }: { searchParams: Promise
 
   const supabase = await getSupabaseRouteClient()
   const isPokemonCenterView = category === POKEMON_CENTER_CATEGORY
+  const featuredProducts = await getFeaturedProducts(supabase, activeRegion)
 
   // Sealed products stay hidden from the storefront entirely until 3 years
   // have passed since release -- a Pokémon Center exclusive is exempt and
@@ -168,6 +171,8 @@ export default async function ShopPage({ searchParams }: { searchParams: Promise
 
   return (
     <div>
+      <FeaturedCarousel products={featuredProducts} />
+
       {/* RegionToggle intentionally not rendered: this storefront is
           SA-only for now (see app/page.tsx's hero copy) -- USA/UK are still
           real, working region values (0031_add_product_region.sql) and

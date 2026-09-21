@@ -136,11 +136,24 @@ up today — not a to-do list.
 
 ### App routes — public
 - `app/page.tsx`, `app/layout.tsx` — `app/page.tsx`'s hero has no separate `components/home/Hero.tsx`
-  (a requested-but-nonexistent path — everything is inline in the page itself). Hero pill badge:
-  "Everything should be made as simple as possible, but not simpler." (padding/font-size nudged
-  down — `px-4 py-1.5`, `text-[11px]` — so the longer quote fits on one line; every other pill
-  style, and every button/layout/import elsewhere on the page, unchanged). Hero subheading:
-  "South Africa's premier grading service. Making it easy to grade your cards."
+  (a requested-but-nonexistent path — everything is inline in the page itself). **Hero copy
+  (2026-09-21, latest)**: pill badge now reads "South Africa's Premier Grading Service." (was
+  "Everything should be made as simple as possible, but not simpler." — the CSS `uppercase` class
+  on this pill means casing in the source doesn't affect the rendered display either way);
+  subheading now reads "Making Grading Easy" (was "South Africa's premier grading service. Making
+  it easy to grade your cards."). Padding/font-size on the pill (`px-4 py-1.5`, `text-[11px]`,
+  nudged down for the previous longer quote) and every other button/layout/import were left
+  untouched even though the new pill text is shorter. **Section order below the hero** (also
+  2026-09-21): Hero → "The Easiest Way to Grade" (3-step `Submit Online`/`Secure Logistics`/
+  `Slabs to Your Door` value prop) → WhatsApp community CTA. Purely a `<section>`-block reorder;
+  no inner card layout, animation, or typography touched. **`<FeaturedCarousel>` ("The
+  CuppasCards Vault" premium grails showcase) relocated off the homepage entirely** (same day,
+  separate instruction) — moved to `/shop` (see that page's manifest entry below) to keep the
+  homepage "ultra-clean and conversion-focused." `app/page.tsx` is now a plain synchronous
+  component again: the `searchParams`/`HomePageProps`/`activeRegion`/`getSupabaseRouteClient`/
+  `getFeaturedProducts` plumbing that existed here purely to feed that carousel's region-aware
+  product fetch was deleted outright (not commented out) along with it, since none of it had any
+  other purpose on this page.
 - `app/batches/page.tsx` — **removed**. The standalone Live Batch Tracker route (and
   `components/LivePools.tsx`, its exclusive slate/amber-themed renderer) is gone; `/batches` now
   308-redirects to `/submit` via `next.config.js`'s `redirects()`. Its content lives on `/submit`
@@ -157,8 +170,36 @@ up today — not a to-do list.
   placeholders — no live event photos exist yet). `NAV_SECTIONS` conditionally includes the
   `history` entry based on the same flag, so the button and the section it links to are always in
   sync. Nothing deleted — flipping the flag to `true` brings both back exactly as they were.
+  **In-Person Submissions feature card 2** ("Every Grading Tier, On-Site") copy updated to drop
+  the legacy PCG/PSA multi-grader claim and the "live USD pricing" line — the launch rollout has
+  ACE as the sole active grading company (`app/submit/wizard.tsx` hardcodes `company="ACE"`) with
+  ZAR the only region actually in use, so a booth attendee was never really choosing between PCG,
+  PSA, and ACE, nor seeing USD pricing. Was: `"Attendees choose between PCG, PSA, and ACE Grading
+  tiers the same way they would online, with live USD pricing."` Now: `"Attendees choose ACE
+  Grading tiers the same way they would online."` Heading, card layout/grid, typography, and the
+  number-badge hierarchy (`FeatureCard`) are all untouched. This was the only PCG/PSA/USD
+  reference anywhere on this page.
 - `app/terms/page.tsx`, `app/privacy/page.tsx`, `app/refund-policy/page.tsx`, `app/shipping-policy/page.tsx` (+ `components/legal/legal-page.tsx`)
-- `app/login/page.tsx`, `app/signup/page.tsx`, `app/my-account/page.tsx`, `app/my-account/reset-password/page.tsx`
+- `app/login/page.tsx`, `app/signup/page.tsx` — both gained "Continue with Google"/"Continue with
+  Apple" buttons above the existing email/password form (behind a gold-pill "Or" divider), calling
+  `supabase.auth.signInWithOAuth({provider, options: {redirectTo: '<origin>/auth/callback'}})` via
+  the same client-side `supabase` (`lib/supabase.ts`, `createBrowserClient`) the existing
+  email/password flow already uses — no new Supabase client instance. `oauthLoading` state
+  disables all three sign-in options while a redirect is in flight. **Google/Apple sign-in via
+  Supabase Auth is code-complete but NOT yet usable** — see the Blocked item below; confirmed via
+  a live click-test that the client correctly redirects to Supabase's real `/auth/v1/authorize`
+  endpoint with the right provider/redirect params, which Supabase itself then rejects with
+  `"Unsupported provider: provider is not enabled"` since neither provider has been turned on and
+  configured with real OAuth app credentials in the Supabase Dashboard yet.
+- `app/auth/callback/route.ts` — **new**. OAuth redirect target for both pages above: reads `?code=`
+  and calls `getSupabaseRouteClient().auth.exchangeCodeForSession(code)` (reusing the same route
+  client every other route handler in this app already uses, rather than a second inline
+  `createServerClient` setup), then redirects to `?next=` (default `/dashboard`) on success or
+  `/login?error=oauth_exchange_failed` on failure.
+- `components/SocialIcons.tsx` — gained `GoogleIcon` (real 4-color Google "G" mark, the one icon
+  in this file that isn't `currentColor`-driven since Google's mark is inherently multi-color) and
+  `AppleIcon`, matching the file's existing minimal-inline-SVG convention.
+- `app/my-account/page.tsx`, `app/my-account/reset-password/page.tsx`
 
 ### Submission flow (grading intake)
 - `app/submit/page.tsx` — `async` Server Component. Defines `SHOW_BATCH_TRACKER = false`, a
@@ -206,10 +247,10 @@ up today — not a to-do list.
   origin" or "Grading company" selector, and dropped the `region`/`onSelectRegion`/`onSelectCompany`
   props entirely — `app/submit/wizard.tsx` now passes a fixed `company="ACE"` and no region prop.
   Only ACE's 5 tiers are reachable; Label options (ACE-only) render unconditionally since ACE is
-  now always the active company. **New**: a "Submission Method" section now renders above
-  "Turnaround" — two selectable cards (`SUBMISSION_TYPE_OPTIONS`, `lib/submission-types.ts`) for
-  `'batch'` (Pooled Batch, default) vs `'individual'` (Individual Direct Dispatch), driven by new
-  `submissionType`/`onSelectSubmissionType` props.
+  now always the active company. Step 1 now leads directly with "Turnaround", followed by "Label
+  options" and "Cards in this shipment" — the "Submission Method" section that previously sat
+  above "Turnaround" here has been relocated to the top of `step-addons.tsx` (Step 2); this
+  component no longer receives `submissionType`/`onSelectSubmissionType` props at all.
 - `step-addons.tsx` — **launch rollout**: Semi-Rigids and Consignment toggle cards removed
   entirely (props `needsSemiRigids`/`onToggleSemiRigids`/`interestedInConsignment`/
   `onToggleConsignment` dropped from `Props`); copy updated for Pre-grading preparation and the
@@ -220,15 +261,75 @@ up today — not a to-do list.
   row now collapses its Yes/No toggle into a "Full submission Clean and Polish active" badge
   (previously just disabled the buttons in place) via `needsCleanAndPolish` inside the `cards.map`.
   The pre-existing `handleToggleCleanAndPolish`/`handleTogglePerCardPrep` mutual-exclusivity logic
-  is unchanged.
+  is unchanged. **New**: gained `submissionType`/`onSelectSubmissionType` props (moved here from
+  `step-grader-tier.tsx`) and now renders the "Submission Method" section — two selectable cards
+  (`SUBMISSION_TYPE_OPTIONS`, `lib/submission-types.ts`) for `'batch'` (Pooled Batch, default) vs
+  `'individual'` (Individual Direct Dispatch) — as the first child of the section, above
+  "Pre-grading preparation". Markup/copy/badges are unchanged from their prior location.
+  `app/submit/wizard.tsx` still owns the `submissionType` state itself and still passes it
+  unchanged to `<StepReviewPay>` for Step 3's order-summary line item, so relocating the selector
+  required no changes to pricing/checkout logic.
 - `step-review-pay.tsx` — still receives `needsSemiRigids`/`interestedInConsignment` props, now
   always `false` from `app/submit/wizard.tsx`'s hardcoded constants instead of user toggles, and
-  still forwards them to `app/api/submissions/route.ts`'s checkout payload unchanged. **New**:
-  gained a `submissionType` prop; computes `internationalShippingSubtotal` via
-  `internationalShippingFeeForRegion` and adds it into `serviceFee`; renders a new Order Summary
-  line item using `SUBMISSION_TYPE_LINE_ITEM_LABEL[submissionType]` ("International Shipping:
-  Shared Batch Pool" / "...Dedicated Direct Dispatch"); forwards `submissionType` in the
-  `/api/submissions` POST body.
+  still forwards them to `app/api/submissions/route.ts`'s checkout payload unchanged. Gained a
+  `submissionType` prop, forwarded in the `/api/submissions` POST body.
+  **Rewritten (2026-09-21) — "Ship from" delivery-method selector + 5-point Order Summary**:
+  - `courier`/`onSelectCourier` props are gone entirely — replaced by `onToggleInPersonMode`
+    (wired to `app/submit/wizard.tsx`'s existing `setInPersonMode`, which previously only ever
+    got set by the booth-QR URL param or the admin's global `event_settings` toggle). "Ship from"
+    now opens with two selectable cards, matching Step 2's Submission Method radio-card style:
+    **Courier Delivery** (`!inPersonMode`, the default) and **In-Person Drop-Off** (`inPersonMode`)
+    — clicking either just flips the same `inPersonMode` boolean everywhere else in the wizard
+    already reads (including the "Live Intake Active" badge at the top of the page, which is an
+    intentional, accepted side effect of reusing that one flag rather than inventing a second,
+    parallel one). The existing saved-address list / "+ Add a new address" flow renders unchanged
+    below the two cards, for both delivery methods (still needed for the return shipment either
+    way). The separate "Courier" section (previously "Inbound" when `inPersonMode`) now renders
+    only when `!inPersonMode`, and shows a single fixed line for the one real domestic provider
+    instead of a clickable list — see the courier-tier replacement below. `canCheckout` simplified
+    to just `Boolean(addressId)` (no more `&& courier`) since there is no longer a domestic courier
+    to separately select.
+  - **Domestic courier tiers replaced**: the placeholder `COURIERS` array (`UPS Ground`,
+    `UPS 2nd Day Air`, `FedEx Priority Overnight` — never-real US carrier stand-ins) and
+    `courierCostForRegion` are deleted. `lib/submission-types.ts` gained `DOMESTIC_COURIER_LABEL`
+    ("The Courier Guy — Pudo Locker to Locker"), `DOMESTIC_COURIER_LEG_FEE_USD/GBP/ZAR` (ZAR 110,
+    the only real figure the business gave; USD/GBP are the same kind of approximate-conversion
+    stand-in as every other cross-currency figure in that file, in practice never shown since
+    `region` is hardcoded to `'sa'`), and `domesticCourierLegFeeForRegion(region)`. Billed as two
+    separate legs (customer→HQ, HQ→customer) at this same per-leg rate, zero-rated entirely when
+    `inPersonMode` is true.
+  - **International courier fee restructured into two legs**: the old single lump-sum
+    `INTERNATIONAL_SHIPPING_FEE_USD/GBP/ZAR` constants and `internationalShippingFeeForRegion`
+    function (which combined outbound+return into one number: ZAR 150 batch / ZAR 1020 individual)
+    are deleted, replaced by `INTERNATIONAL_COURIER_LEG_FEE_USD/GBP/ZAR` (**per leg**: ZAR 110
+    batch / ZAR 1400 individual — new figures from the business, not a re-derivation of the old
+    ones) and `internationalCourierLegFeeForRegion(submissionType, region)`. `SUBMISSION_TYPE_LINE_ITEM_LABEL`
+    (one label per type) is deleted, replaced by `INTERNATIONAL_COURIER_LEG_LABELS[submissionType]`
+    (`{ outbound, returnLeg }` label pairs — "...to ACE UK (Pooled)"/"...to SA (Pooled)" for batch,
+    "...Direct (DHL/FedEx)" both ways for individual).
+  - **Order Summary restructured into a strict 6-item breakdown**, in this exact order: (1) ACE
+    grading fees (unchanged); (2) ACE label fee — **now always shown**, including at R 0,00 for the
+    free Standard option (previously hidden when free); (3) "CuppasCards Services" — the old two
+    separate line items (pre-grading inspection, Clean & Polish) collapsed into **one** line, since
+    `step-addons.tsx`'s `handleToggleCleanAndPolish`/`handleTogglePerCardPrep` already make them
+    mutually exclusive — label is `"Full Clean & Polish"`, `"Pre-grading preparation × N"`, or (if
+    neither is selected) a bare `"Pre-grading preparation"` at R 0,00; (4) Local Courier Fees — two
+    lines (`LOCAL_COURIER_LEG_LABELS` at the real ZAR 110 each, or `LOCAL_IN_PERSON_LEG_LABELS` at
+    R 0,00 when `inPersonMode`); (5) International Courier Fees — two lines
+    (`INTERNATIONAL_COURIER_LEG_LABELS[submissionType]`, each leg priced via
+    `internationalCourierLegFeeForRegion`); (6) Total due today. `serviceFee` (the value stored in
+    `submissions.service_fee`, sent to `/api/submissions`) = grading + label + CuppasCards Services
+    + both international legs — domestic (local courier) legs are still kept out of `serviceFee`
+    and only added into `total` (the actual Payfast charge), same split as before this rewrite.
+  - **New**: a static "Import & Customs Notice" disclosure paragraph renders directly below the
+    Order Summary table (above the checkout error/Pay button) — plain informational copy, not
+    computed from any pricing constant, so no `lib/submission-types.ts` change was needed for it.
+  - The `courier: string | null` field the API still accepts is now always sent as either
+    `DOMESTIC_COURIER_LABEL` or `IN_PERSON_DROPOFF_LABEL` (a fixed string, never a customer choice)
+    — `app/api/submissions/route.ts`, `packing-slip.tsx`, and the admin/email surfaces that display
+    this column were all checked and require no changes (free-text display only, no allow-list).
+  - `app/submit/wizard.tsx`'s own `courier`/`setCourier` state is deleted entirely (it fed nothing
+    but the old `courier`/`onSelectCourier` props above, which no longer exist).
 - `components/submit/card-shipment-row.tsx` — **launch rollout, fully rewritten**: the
   Pokémon/Sports Cards toggle pills, Sport `<select>`, and `SportsCardSearch` import/usage are
   removed entirely (not just hidden) — every card is always the Pokémon search UI now. `sports-
@@ -256,13 +357,21 @@ up today — not a to-do list.
 - Label Options selector (`components/submit/step-grader-tier.tsx`, below Turnaround, ACE-only)
   feeding `step-review-pay.tsx`'s subtotal and `app/api/submissions/route.ts`'s insert — click-tested
   live in the running app: selector renders/toggles correctly, hidden entirely for PCG/PSA.
-- **In-person event drop-off** (`app/submit/wizard.tsx` detects it via `?intake=in-person&event=slug`
-  or the global `event_settings` toggle; `step-review-pay.tsx` replaces the Courier section with a
-  fixed free "In-Person Drop-Off (Table Intake)" line when active). `supabase/migrations/0062_add_in_person_event_intake.sql`
+- **In-person drop-off** (`app/submit/wizard.tsx`'s `inPersonMode` state) has two independent ways
+  to become `true`: automatically, via `?intake=in-person&event=slug` or the global `event_settings`
+  admin toggle (booth/event flow, unchanged); or manually, via the customer clicking "In-Person
+  Drop-Off" in Step 3's "Ship from" section (added in the Order Summary rewrite above) — the two
+  paths share the exact same state and downstream logic, so a booth customer arriving with
+  `inPersonMode` already `true` simply sees that card pre-selected in Step 3, and any customer can
+  manually flip it either way regardless of how they arrived. `supabase/migrations/0062_add_in_person_event_intake.sql`
   adds `submissions.intake_channel/event_slug/handover_pin/intake_verified_at` and the singleton
-  `event_settings` table. Click-tested live through Step 3 — Inbound correctly shows R0,00 and the
-  Pay button enables without a courier selection; checkout itself (the actual DB insert) was **not**
-  exercised since migration 0062 isn't applied to production yet.
+  `event_settings` table; a manually-selected in-person drop-off submits with `intake_channel =
+  'in_person_event'` and `event_slug = null`, a combination the migration's own comment already
+  calls out as valid ("an admin could run a live event with no slug set"), so the admin
+  booth-handover flow (`app/api/admin/intake/booth-handover/route.ts`) needed no changes. Click-tested
+  live through Step 3 — Inbound correctly shows R0,00 and the Pay button enables without a domestic
+  courier selection; checkout itself (the actual DB insert) was **not** exercised since migration
+  0062 isn't applied to production yet.
 - `supabase/migrations/0065_add_submission_type.sql` — adds `submissions.submission_type`
   (`text not null default 'batch'` + CHECK `in ('batch', 'individual')`). **Applied to production
   by the user directly** (an assistant-run attempt was blocked by Claude Code's own auto-mode
@@ -320,7 +429,16 @@ up today — not a to-do list.
   breaks the file's own pre-existing `activeType === 'sports_card'` checks with `TS2367`);
   `ProductTypeToggle` import/usage commented out (component itself untouched); the `Graded`
   category's Supabase query now adds `.eq('grading_company', 'ACE')` in both the main and
-  (now-dead-but-preserved) sports-card query branches.
+  (now-dead-but-preserved) sports-card query branches. **`<FeaturedCarousel>` ("The CuppasCards
+  Vault" premium grails showcase) relocated here from the homepage** (2026-09-21) — renders as the
+  very first thing in the page's returned JSX, above the `CategoryTabs`/filters/product grid, using
+  the same `activeRegion` this page already computed for its own product queries (no new region
+  logic needed). `getFeaturedProducts(supabase, activeRegion)` is called once, right after the
+  existing `supabase`/`isPokemonCenterView` setup. `FeaturedCarousel`'s own dark, full-bleed
+  styling (`bg-neutral-950`, arrows, dot indicators, slab card layout) was not touched — verified
+  live that it renders cleanly here since `app/shop/layout.tsx`'s wrapper is already on the same
+  dark `--paper`/`--ink` theme as the rest of the app, not a literal light "paper" background as
+  the CSS variable's name might suggest.
 - `components/shop/*` (browser, grid, filters, sports-card-filters, category-tabs,
   subcategory-pills, region-toggle, product-type-toggle, cart-button, add-to-cart-button) —
   **launch rollout, "hide not delete"**: `category-tabs.tsx`'s `CATEGORIES` array has "Pokémon
@@ -516,7 +634,7 @@ up today — not a to-do list.
 - **`TierOption`** gained two optional fields this task: `description` (marketing blurb, rendered under the label) and `group` (subheading key for the tier selector, e.g. ACE's `'Flagship'`/`'Premium'`). Both are optional and additive — PCG/PSA entries omit them and render exactly as before.
 - **`SubmissionStatus`** = `'received' | 'inspected' | 'shipped' | 'graded' | 'returned'` (5-stage pipeline, `STATUS_STAGES`) — `lib/submission-types.ts`
 - **`PoolStatus`** = `'open' | 'closed' | 'shipped' | 'completed'` — `lib/submission-types.ts`, table `public.pools` (migration 0035)
-- **`SubmissionType`** = `'batch' | 'individual'` — `lib/submission-types.ts`, column `submissions.submission_type` (migration 0065, **applied to production and independently re-verified**). Customer's choice of international dispatch method to ACE Grading's UK facility, surfaced in Step 1's "Submission Method" section and priced in Step 3's Order Summary via `internationalShippingFeeForRegion`/`SUBMISSION_TYPE_LINE_ITEM_LABEL`. **Deliberately not the same concept as `pool_id`/`pool_status`**: those track membership in one specific, real `public.pools` row (a tier-scoped batch with capacity, joined via the currently-hidden `LiveBatchTracker` UI, `SHOW_BATCH_TRACKER = false`); `submission_type` is a much simpler standing customer preference that exists independently of whether a real pool is currently open to join — a `'batch'` submission_type never requires or implies a non-null `pool_id`. Do not conflate the two, and do not wire `submission_type = 'batch'` to automatically assign a `pool_id` without a separate, explicit decision to do so.
+- **`SubmissionType`** = `'batch' | 'individual'` — `lib/submission-types.ts`, column `submissions.submission_type` (migration 0065, **applied to production and independently re-verified**). Customer's choice of international dispatch method to ACE Grading's UK facility, surfaced at the top of Step 2's "Submission Method" section (relocated there from Step 1, see the Active File Manifest) and priced in Step 3's Order Summary as two separate legs via `internationalCourierLegFeeForRegion`/`INTERNATIONAL_COURIER_LEG_LABELS` (per-leg ZAR: 110 batch / 1400 individual — replaced the old single lump-sum `internationalShippingFeeForRegion`/`SUBMISSION_TYPE_LINE_ITEM_LABEL`, both deleted, in the Step 3 Order Summary rewrite). **Deliberately not the same concept as `pool_id`/`pool_status`**: those track membership in one specific, real `public.pools` row (a tier-scoped batch with capacity, joined via the currently-hidden `LiveBatchTracker` UI, `SHOW_BATCH_TRACKER = false`); `submission_type` is a much simpler standing customer preference that exists independently of whether a real pool is currently open to join — a `'batch'` submission_type never requires or implies a non-null `pool_id`. Do not conflate the two, and do not wire `submission_type = 'batch'` to automatically assign a `pool_id` without a separate, explicit decision to do so.
 - **`ProductRegion`** = `'usa' | 'uk' | 'sa'` — `lib/shop/product-type.ts` — drives `tierPriceForRegion`, `cleanAndPolishFeeForRegion`, `inspectionFeeForRegion`, and shop currency display. **Policy**: USD/GBP/ZAR are independently-priced per region, never converted from one another at checkout time.
 - **Currency display policy**: admin Financials dashboard is ZAR-primary with GBP bracket, deliberately. Public/customer-facing surfaces price natively per region (see above). Do not force ZAR-primary onto customer-facing pages — flagged explicitly in `launch_readiness_report.md` as a deliberate distinction, not a bug.
 - **DB row shapes**: `SubmissionRow`, `PoolRow`, `SubmissionItemRow`, `SubmissionStatusLogRow` (`lib/submission-types.ts`) mirror `supabase/migrations/0001_init_schema.sql`, `0004_status_history.sql`, `0035_submission_pools.sql` — no generated `database.types.ts` exists; these are hand-maintained and must be kept in sync with migrations manually.
@@ -532,6 +650,11 @@ every outgoing transactional email.
 - **`GradingEmailStage`** (`types/notifications.ts`) — an 8-stage notification-layer lifecycle, intentionally more granular than the DB's `SubmissionStatus` (5 stages) or `shipment_batch_status` (5 stages, migration 0052). Most stages beyond `ORDER_CONFIRMED` have no DB column or call site yet — adding a stage here is a type contract, not a promise it's wired up.
 - **`AceLabelOption`** = `'standard' | 'colour_match' | 'ace_label'` — lives in `lib/submission-types.ts` (with `ACE_LABEL_OPTIONS`/`labelOptionFeeForRegion`), **not** a separate `types/grading.ts` — that path was requested but deliberately not created, to avoid a second, competing home for grading-domain types alongside the existing single source of truth. Same per-submission modeling as `needs_clean_and_polish`/`needs_semi_rigids` (one choice for the whole batch, not per-card) — only ever non-null when `grading_company = 'ACE'` (enforced by `chk_submissions_ace_label_option_valid`, migration 0061). ZAR fees (R25/R75) are ACE's own designated retail prices, not the usual ~18.5 USD/ZAR stand-in conversion; USD is still the derived stand-in.
 - **`IntakeChannel`** = `'online_shipment' | 'in_person_event'` and **`EventSettingsRow`** — `lib/submission-types.ts` (again, not `types/grading.ts` — same reasoning as `AceLabelOption` above; every new domain type this session has gone into the existing file, not a parallel one). "Awaiting Booth Handover" / "Received & Logged" are **UI labels derived from `intake_channel` + `intake_verified_at`**, deliberately not new `SubmissionStatus` enum values — that enum is shared with the customer pipeline stepper (`STATUS_STAGES`/`PipelineProgress`) and `lib/admin/submission-status.ts`'s `changeSubmissionStatus`, which only accepts its fixed 5 values; extending it for a pre-`received` state would mean touching that shared stepper UI for a state most submissions never pass through. Every submission, in-person or not, still gets `status = 'received'` at creation, unchanged.
+**As of the Step 3 Order Summary rewrite**, `intake_channel = 'in_person_event'` is no longer only
+set automatically (booth QR / admin `event_settings` toggle) — a customer can also choose it
+manually via "In-Person Drop-Off" in Step 3's "Ship from" section, in which case `event_slug` is
+sent as `null`. This is an already-valid combination per this migration's own comment ("an admin
+could run a live event with no slug set"), so no schema or admin-flow change was needed for it.
 `EventSettingsRow` gained `active_event_name: string | null` (migration 0064) — purely a display
 name for the admin panel and the `/submit` wizard's badge; `active_event_slug` remains the only
 field that drives routing/matching logic, never the name.
@@ -541,12 +664,16 @@ field that drives routing/matching logic, never the name.
 
 ## Uncommitted work in the tree right now
 
-**Nothing is currently uncommitted.** Everything described in this file — through commit
-`db61e29` — is committed, pushed to `origin/main`, and deployed to Vercel production (alias
-`website-three-iota-83.vercel.app`, deployment `dpl_DeHC5XYXZ9FAhyXGdNKbLFa4Bvq9`, deployed via
-`vercel --prod`). The subsections below are kept as a historical record of what shipped in each
-past task/commit, not a list of pending changes — check `git status` if you need to confirm this
-is still true before trusting it blindly.
+**Seven pieces of work are currently uncommitted** — the landing page section reorder, the hero
+copy update, the Google/Apple OAuth addition, the Submission Method Step 1→Step 2 relocation, the
+Step 3 Order Summary/delivery-method rewrite, the vendor page's "Every Grading Tier, On-Site"
+copy update, and the Vault carousel's relocation from the homepage to `/shop` (see the "Immediate
+Next Task" section below for details on each). Everything else described in
+this file — through commit `db61e29` — is committed, pushed to `origin/main`, and deployed to
+Vercel production (alias `website-three-iota-83.vercel.app`, deployment
+`dpl_DeHC5XYXZ9FAhyXGdNKbLFa4Bvq9`, deployed via `vercel --prod`). The subsections below are kept
+as a historical record of what shipped in each past task/commit, not a list of pending changes —
+check `git status` if you need to confirm this is still true before trusting it blindly.
 
 **Committed, pushed, and deployed to production through `648f42d`** (earlier deploy, superseded by
 the one above): ACE tier
@@ -759,11 +886,69 @@ follow-up instruction (2026-09-20) — the current, live value is `updates@cuppa
 immediate retry succeeded). Final inbox delivery to the CC address itself wasn't independently
 checked, since that mailbox isn't accessible from this session.
 
+**Uncommitted — landing page section reorder**: `app/page.tsx`'s "The Easiest Way to Grade"
+3-step section now renders directly below the hero, with `<FeaturedCarousel>` ("The CuppasCards
+Vault") moved below it instead of above — swapped by moving one `<section>` block, no inner
+content/styling changes. `tsc`/`eslint` clean (same 49-problem baseline). Click-tested live: the
+homepage now renders Hero → "The Easiest Way to Grade" → "The CuppasCards Vault" (all 7 products
+intact) → WhatsApp CTA.
+
+**Uncommitted — landing page hero copy update**: `app/page.tsx`'s pill badge is now "South
+Africa's Premier Grading Service." and the subheading is now "Making Grading Easy" — text-only,
+no styling change. `tsc`/`eslint` clean (48 problems, one fewer than the 49-problem baseline,
+since the old subheading's own unescaped-apostrophe warning no longer exists). Click-tested live.
+
+**Uncommitted — Vault carousel relocated from homepage to `/shop`**: `<FeaturedCarousel>` ("The
+CuppasCards Vault") removed from `app/page.tsx` entirely (not just reordered this time) and added
+to the top of `app/shop/page.tsx`, above `CategoryTabs`/filters/the product grid, per the user's
+explicit instruction to keep the homepage "ultra-clean and conversion-focused." `app/page.tsx`
+reverted to a plain synchronous component — the `searchParams`/`activeRegion`/
+`getSupabaseRouteClient`/`getFeaturedProducts` plumbing that existed there solely to feed this
+carousel was deleted, not left commented out, since it now has zero other purpose on that page.
+`app/shop/page.tsx` already computed its own `activeRegion` and `supabase` client for its product
+queries, so wiring the carousel in only needed one new `getFeaturedProducts(supabase,
+activeRegion)` call — no duplicate region logic. Doc comments referencing this carousel as a
+"homepage carousel" (`components/FeaturedCarousel.tsx`, `lib/shop/featured-products.ts`,
+`app/admin/shop/{product-form-modal.tsx,types.ts}`, `lib/admin/product-input.ts`) were all updated
+to say "shop page carousel" for accuracy — none of these are user-facing strings except the one in
+`product-form-modal.tsx` ("Shows in... shop page carousel", the `is_vault_grail` toggle's helper
+text in the admin product form). `npx tsc --noEmit` and `npm run lint` both pass clean (same
+48-problem baseline, no new issues). Click-tested live: homepage now renders Hero → "The Easiest
+Way to Grade" → WhatsApp CTA with no Vault section and no console errors; `/shop` renders the full
+Vault carousel (arrows, dot indicators, all 7 grails) as the first thing on the page, directly
+above the category pills, with no visual clash against `app/shop/layout.tsx`'s wrapper — that
+layout is already on the same dark theme as the rest of the app despite its `--paper`/`--ink`
+CSS-variable naming, not a literal light background.
+
+**Uncommitted — Google/Apple OAuth added via Supabase Auth**: new `app/auth/callback/route.ts`
+exchanges the OAuth `?code=` for a session via the existing `getSupabaseRouteClient()`; new
+`GoogleIcon`/`AppleIcon` in `components/SocialIcons.tsx`; `app/login/page.tsx` and
+`app/signup/page.tsx` both gained "Continue with Google"/"Continue with Apple" buttons calling
+`supabase.auth.signInWithOAuth()`. `tsc`/`eslint` clean (same baseline). **Not yet usable by a
+real user** — see Blocked item 0 above: Supabase rejects both providers with "not enabled" until
+real OAuth app credentials are configured in the Supabase Dashboard, which is outside this
+session's access. Click-tested live: confirmed the client-side redirect reaches Supabase's real
+authorize endpoint with correct params, and Supabase's own rejection message confirms this is a
+configuration gap, not a code bug.
+
 - Untracked, not yet triaged into the repo structure: `Stock photos/`, `TheCardApi.txt`,
   `claude context.txt`, `cuppa cards logo temp logo.jpeg`, `termsofservice.txt`, `zernio.txt`.
 
 ## Blocked / Needs a Decision
 
+0. **Google/Apple OAuth needs real provider credentials entered in the Supabase Dashboard.**
+   `app/login/page.tsx`/`app/signup/page.tsx`'s "Continue with Google"/"Continue with Apple"
+   buttons and `app/auth/callback/route.ts` are all code-complete and confirmed reaching
+   Supabase's real `/auth/v1/authorize` endpoint correctly — but Supabase itself rejects the
+   request with `"Unsupported provider: provider is not enabled"`. This requires, for each
+   provider, creating a real OAuth app (Google Cloud Console: an OAuth 2.0 Client ID/Secret with
+   `https://wzqkvqafzcrqrouikuar.supabase.co/auth/v1/callback` registered as an authorized
+   redirect URI; Apple Developer: a Services ID + Team ID + Key ID + private key) and entering
+   those credentials into this project's Supabase Dashboard under Authentication → Providers. This
+   is external-service configuration this session has no access to and should not attempt to
+   fabricate or work around — the user needs to do this (or explicitly provide the credentials)
+   before either button will work for a real user. Until then, clicking either button sends the
+   user to a Supabase error page instead of the provider's real login screen.
 1. **Currency-display policy scope** — ZAR-primary/GBP-bracket is confirmed correct for admin
    Financials. Open question: should that pattern extend anywhere in the public shop or
    customer emails, or stay admin-only?
@@ -803,6 +988,79 @@ templates exist and render correctly. **Outbound email is now fully live**: the 
 the real Gmail App Password for `mitchell@cuppascards.com` (2026-09-20), and real sends were
 confirmed via `/admin/test-emails` throughout this session, returning real `messageId`s with no
 SMTP error. No credential blocker remains on this pipeline.
+
+Not yet committed: the landing page section reorder, the hero copy update, the Google/Apple OAuth
+addition, the Submission Method Step 1→Step 2 relocation, and the Step 3 Order Summary/delivery-
+method rewrite — see the five bullets below.
+
+Seven more pieces are code-complete, waiting on your go-ahead to commit:
+- The landing page's `<FeaturedCarousel>` ("The CuppasCards Vault") now renders below "The Easiest
+  Way to Grade" instead of above it (`app/page.tsx`).
+- The landing page hero copy: pill badge now "South Africa's Premier Grading Service.", subheading
+  now "Making Grading Easy" (`app/page.tsx`).
+- Google/Apple OAuth sign-in via Supabase Auth (`app/auth/callback/route.ts`,
+  `app/login/page.tsx`, `app/signup/page.tsx`, `components/SocialIcons.tsx`) — **but this one
+  cannot actually be used by a real customer yet**. See Blocked item 0: Google and Apple both need
+  real OAuth app credentials configured in the Supabase Dashboard before either button does
+  anything but show a Supabase error page. Committing this is safe (the buttons don't function
+  until that dashboard config exists), but don't tell customers social login is live until it is.
+- The `/submit` wizard's "Submission Method" section (`'batch'`/`'individual'` dispatch) has been
+  relocated from the top of Step 1 (`step-grader-tier.tsx`) to the top of Step 2
+  (`step-addons.tsx`, above "Pre-grading preparation") — `app/submit/wizard.tsx` updated to pass
+  `submissionType`/`onSelectSubmissionType` to `<StepAddOns>` instead of `<StepGraderTier>`. Copy,
+  badges, and styling are unchanged; `submissionType` state itself still lives in `wizard.tsx` and
+  still flows unchanged into `<StepReviewPay>` for Step 3's pricing. `npx tsc --noEmit` and
+  `npm run lint` both pass clean (48 problems, same pre-existing baseline as before this change,
+  no new issues). **Live browser click-through was inconclusive this session**: this session's
+  automated browser tab was backgrounded (`document.visibilityState: "hidden"`) for the whole
+  verification attempt, and Chrome suspends `requestAnimationFrame` for hidden tabs — since the
+  wizard's step transitions are `framer-motion` `AnimatePresence` `exit` animations driven by rAF,
+  the panel visually never advanced past Step 1 in this session no matter how many times "Continue"
+  was clicked, even though the underlying `step` state and `ManifestRail` checkmarks *did* advance
+  correctly on every click (confirmed via direct DOM/JS inspection, not just the extension's
+  snapshot tools) — this points to the backgrounded tab, not the relocation, as the cause. A
+  version of the AnimatePresence wrapper with a per-branch `key` was tried and reverted once this
+  was understood, since it wasn't the actual root cause and wasn't part of what was asked for.
+  **Since re-verified live and confirmed working** (later in this session) by temporarily patching the
+  wizard's step-transition `transition={{ duration: ... }}` to `0` (a test-only, fully reverted
+  change — `git diff` on `app/submit/wizard.tsx` afterward showed only the intended prop-move, no
+  animation-related diff) so the exit animation could resolve without needing real
+  `requestAnimationFrame` ticks, which Chrome fully suspends for a hidden/backgrounded tab
+  regardless of how long you wait. With that workaround, Step 1 → Step 2 → Step 3 all rendered
+  correctly on real clicks.
+- Step 3 (`Review & pay`)'s "Ship from" section now offers a Courier Delivery / In-Person Drop-Off
+  choice, and the Order Summary is restructured into a strict 6-line breakdown (ACE grading → ACE
+  label, now always shown → CuppasCards Services, combined into one line → Local Courier Fees,
+  two legs → International Courier Fees, two legs, now priced separately from the old lump sum →
+  Total due today), plus a new static "Import & Customs Notice" paragraph below it. The 3 placeholder
+  US courier tiers are gone, replaced by the one real South African provider (The Courier Guy —
+  Pudo Locker to Locker, R110 each way). See the `step-review-pay.tsx` bullet in the Active File
+  Manifest above for the full breakdown of every pricing/label change. `npx tsc --noEmit` and
+  `npm run lint` both pass clean (same 48-problem baseline, no new issues). **Live click-tested
+  end-to-end** (later in this session, using the same temporary rAF-duration workaround described in the
+  Step 1→Step 2 bullet above, reverted afterward): with 1 card (Standard tier, ACE grading R590,
+  Standard label R0, no prep/Clean&Polish selected) —
+  Courier Delivery + Pooled Batch → Local legs R110+R110, International legs R110+R110, **Total
+  R1 030,00**, matching `590+0+0+110+110+110+110`; toggling to In-Person Drop-Off correctly zeroed
+  both local legs and hid the Courier section (`Local Intake`/`Local Return` both R0,00, **Total
+  R810,00**), and showed the "Live Intake Active" badge at the top of the page as expected/
+  documented above; switching Step 2's Submission Method to Individual Direct Dispatch correctly
+  updated both international legs to R1 400,00 each (**Total R3 390,00** while still in In-Person
+  Drop-Off mode: `590+0+0+0+0+1400+1400`). All labels, math, and toggling behaved exactly as
+  specified — no issues found.
+- `/vendor`'s "Every Grading Tier, On-Site" feature card body copy updated to drop the legacy
+  PCG/PSA multi-grader claim and the "live USD pricing" line (`app/vendor/page.tsx`) — see the
+  Active File Manifest bullet above for the exact before/after text. Heading, card grid/layout,
+  typography, and number-badge hierarchy untouched. `npx tsc --noEmit` passes clean; this was a
+  pure JSX string change with no logic/props affected, so no live click-through was needed.
+- The Vault carousel (`<FeaturedCarousel>`, "The CuppasCards Vault") moved off the homepage
+  entirely and onto `/shop`, per the user's explicit instruction to keep the homepage "ultra-clean
+  and conversion-focused." See the `app/page.tsx` and `app/shop/page.tsx` bullets in the Active
+  File Manifest above for the full detail. `npx tsc --noEmit` and `npm run lint` both pass clean
+  (same 48-problem baseline). **Click-tested live**: homepage confirmed Hero → "The Easiest Way to
+  Grade" → WhatsApp CTA with no Vault section and no console errors; `/shop` confirmed the full
+  carousel (arrows, dots, all 7 grails) rendering as the first element on the page, directly above
+  the category pills, with no visual clash against the shop layout's theme.
 
 **Still genuinely open**:
 - **Resend domain verification** is moot now that Resend itself has been fully replaced by Google

@@ -130,7 +130,7 @@ export default function VendorPage() {
             <FeatureCard
               number="2"
               title="Every Grading Tier, On-Site"
-              body="Attendees choose between PCG, PSA, and ACE Grading tiers the same way they would online, with live USD pricing."
+              body="Attendees choose ACE Grading tiers the same way they would online."
             />
             <FeatureCard
               number="3"

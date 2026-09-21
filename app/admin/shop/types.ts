@@ -26,7 +26,7 @@ export interface AdminProduct {
   release_date: string | null
   /** Bypasses the Sealed time-gate and surfaces under its own Shop category pill regardless of category/age -- see 0055_add_product_pokemon_center.sql. */
   is_pokemon_center: boolean
-  /** Manually curated for "The Cuppa's Cards Vault" homepage carousel -- see 0057_add_product_is_vault_grail.sql. A Sealed product can only be true here once it's out of print (lib/shop/availability.ts's isOutOfPrint). */
+  /** Manually curated for "The Cuppa's Cards Vault" shop page carousel -- see 0057_add_product_is_vault_grail.sql. A Sealed product can only be true here once it's out of print (lib/shop/availability.ts's isOutOfPrint). */
   is_vault_grail: boolean
   /** Optional ~100-word collector story, AI-drafted then admin-reviewed -- see 0058_add_product_lore.sql and /api/admin/generate-lore. */
   lore: string | null

@@ -6,29 +6,8 @@ import { WhatsappIcon } from '../components/SocialIcons'
 // submissions and shop inventory) -- component and import kept, just
 // commented out, so re-enabling later is a two-line uncomment.
 // import { WhatnotBanner } from '../components/WhatnotBanner'
-import { FeaturedCarousel } from '../components/FeaturedCarousel'
-import { getSupabaseRouteClient } from '../lib/supabase-route-client'
-import { getFeaturedProducts } from '../lib/shop/featured-products'
-import { REGION_OPTIONS, type ProductRegion } from '../lib/shop/product-type'
 
-const VALID_REGIONS = new Set(REGION_OPTIONS.map((r) => r.value))
-
-interface HomePageProps {
-  searchParams: Promise<{ region?: string }>
-}
-
-export default async function HomePage({ searchParams }: HomePageProps) {
-  // No site-wide "active region" concept exists yet (RegionToggle on /shop
-  // is purely a per-request URL param, not a persisted preference) -- 'sa'
-  // is the default every other region-aware surface in this app already
-  // falls back to, and ?region= lets a link (e.g. from /shop) opt into a
-  // different one for this carousel specifically.
-  const { region } = await searchParams
-  const activeRegion: ProductRegion = region && VALID_REGIONS.has(region as ProductRegion) ? (region as ProductRegion) : 'sa'
-
-  const supabase = await getSupabaseRouteClient()
-  const featuredProducts = await getFeaturedProducts(supabase, activeRegion)
-
+export default function HomePage() {
   return (
     <div className="min-h-screen bg-slate-900 text-white selection:bg-amber-500 selection:text-slate-900">
       
@@ -36,13 +15,13 @@ export default async function HomePage({ searchParams }: HomePageProps) {
       <section className="relative pt-32 pb-20 md:pt-48 md:pb-32 overflow-hidden">
         <div className="max-w-6xl mx-auto px-6 relative z-10 text-center">
           <div className="inline-block mb-4 px-4 py-1.5 rounded-full bg-slate-800 border border-slate-700 text-[11px] font-semibold text-emerald-400 tracking-wide uppercase">
-            Everything should be made as simple as possible, but not simpler.
+            South Africa&apos;s Premier Grading Service.
           </div>
           <h1 className="text-5xl md:text-7xl font-black text-[#a67c00] mb-6 tracking-tight [-webkit-text-stroke:1.5px_black]">
             {siteConfig.name}
           </h1>
           <p className="text-xl md:text-2xl text-slate-300 max-w-2xl mx-auto mb-10 leading-relaxed">
-            South Africa's premier grading service. Making it easy to grade your cards.
+            Making Grading Easy
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
             <Link
@@ -65,8 +44,6 @@ export default async function HomePage({ searchParams }: HomePageProps) {
       </section>
 
       {/* <WhatnotBanner /> */}
-
-      <FeaturedCarousel products={featuredProducts} />
 
       {/* How It Works Section */}
       <section className="py-24 bg-slate-950 border-y border-slate-800">

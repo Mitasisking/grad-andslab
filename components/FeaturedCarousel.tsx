@@ -52,7 +52,7 @@ function FeaturedCard({ product }: { product: FeaturedProduct }) {
   )
 }
 
-/** Homepage "Premium Showcase" -- auto-rotating carousel of the region's 7 highest-priced listings. */
+/** Shop page "Premium Showcase" -- auto-rotating carousel of the region's 7 highest-priced listings. */
 export function FeaturedCarousel({ products }: { products: FeaturedProduct[] }) {
   const [index, setIndex] = useState(0)
   const [paused, setPaused] = useState(false)

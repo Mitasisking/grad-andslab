@@ -475,7 +475,7 @@ export function ProductFormModal({ product, onClose, onSaved }: Props) {
           )}
           {effectiveVaultGrail && (
             <p className="text-[11.5px] -mt-2" style={{ color: 'var(--ink-muted)' }}>
-              Shows in &quot;The {siteConfig.name} Vault&quot; homepage carousel.
+              Shows in &quot;The {siteConfig.name} Vault&quot; shop page carousel.
             </p>
           )}
 

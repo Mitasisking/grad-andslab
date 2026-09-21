@@ -6,12 +6,16 @@ import { AddAddressForm } from '@/components/submit/add-address-form'
 import { formatByRegion } from '@/lib/currency'
 import {
   ACE_LABEL_OPTIONS,
+  DOMESTIC_COURIER_LABEL,
   IN_PERSON_DROPOFF_LABEL,
-  SUBMISSION_TYPE_LINE_ITEM_LABEL,
+  INTERNATIONAL_COURIER_LEG_LABELS,
+  LOCAL_COURIER_LEG_LABELS,
+  LOCAL_IN_PERSON_LEG_LABELS,
   TIER_OPTIONS_BY_COMPANY,
   cleanAndPolishFeeForRegion,
+  domesticCourierLegFeeForRegion,
   inspectionFeeForRegion,
-  internationalShippingFeeForRegion,
+  internationalCourierLegFeeForRegion,
   labelOptionFeeForRegion,
   tierPriceForRegion,
 } from '@/lib/submission-types'
@@ -25,23 +29,6 @@ import type {
   SubmissionType,
 } from '@/lib/submission-types'
 
-// GBP/ZAR figures are approximate conversions from the real USD costs
-// (0.79 USD/GBP, 18.5 USD/ZAR -- the same ZAR rate already used for
-// TIER_OPTIONS_BY_COMPANY.PCG in lib/submission-types.ts), rounded to a
-// clean price point, NOT separately invoiced courier costs. Replace with
-// the real per-region shipping cost once it's known -- edit directly.
-const COURIERS = [
-  { value: 'ups_ground', label: 'UPS Ground, insured', costUSD: 12, costGBP: 9, costZAR: 220 },
-  { value: 'ups_2day', label: 'UPS 2nd Day Air, insured', costUSD: 28, costGBP: 22, costZAR: 520 },
-  { value: 'fedex_overnight', label: 'FedEx Priority Overnight', costUSD: 46, costGBP: 36, costZAR: 850 },
-]
-
-function courierCostForRegion(c: (typeof COURIERS)[number], region: ProductRegion): number {
-  if (region === 'usa') return c.costUSD
-  if (region === 'uk') return c.costGBP
-  return c.costZAR
-}
-
 interface Props {
   region: ProductRegion
   gradingCompany: GradingCompany
@@ -54,12 +41,11 @@ interface Props {
   addresses: ShippingAddress[]
   addressesLoaded: boolean
   addressId: string | null
-  courier: string | null
   needsCleanAndPolish: boolean
   needsSemiRigids: boolean
   interestedInConsignment: boolean
   onSelectAddress: (id: string) => void
-  onSelectCourier: (value: string) => void
+  onToggleInPersonMode: (value: boolean) => void
   onAddressCreated: (address: ShippingAddress) => void
   onBack: () => void
 }
@@ -76,12 +62,11 @@ export function StepReviewPay({
   addresses,
   addressesLoaded,
   addressId,
-  courier,
   needsCleanAndPolish,
   needsSemiRigids,
   interestedInConsignment,
   onSelectAddress,
-  onSelectCourier,
+  onToggleInPersonMode,
   onAddressCreated,
   onBack,
 }: Props) {
@@ -90,33 +75,53 @@ export function StepReviewPay({
   const [checkoutError, setCheckoutError] = useState<string | null>(null)
 
   const tierMeta = TIER_OPTIONS_BY_COMPANY[gradingCompany].find((t) => t.value === tier)!
-  const courierMeta = COURIERS.find((c) => c.value === courier)
 
   // Everything here is priced in the country-of-origin's currency (region,
-  // chosen in step 1 -- components/submit/step-grader-tier.tsx), and
+  // hardcoded to 'sa' in app/submit/wizard.tsx for the launch rollout), and
   // api/submissions/checkout charges Payfast the matching ZAR amount to
   // stay consistent with what's shown here.
   const perCardFee = tierPriceForRegion(tierMeta, region)
   const gradingSubtotal = perCardFee * cards.length
-  const inspectionSubtotal = cards.filter((c) => c.preCheckOptIn).length * inspectionFeeForRegion(region)
-  const cleanAndPolishSubtotal = needsCleanAndPolish ? cleanAndPolishFeeForRegion(region) : 0
+
   // Label options only apply to ACE (components/submit/step-grader-tier.tsx
   // hides the selector for every other company); labelOption otherwise
-  // stays at its 'standard' (free) default and contributes nothing.
+  // stays at its 'standard' (free) default and contributes nothing. Unlike
+  // the CuppasCards Services line below, this line is always shown in the
+  // Order Summary (even at R 0,00 for the free Standard option) so the
+  // customer can see which label was chosen.
   const labelOptionMeta = ACE_LABEL_OPTIONS.find((o) => o.value === labelOption)!
   const labelOptionSubtotal = gradingCompany === 'ACE' ? labelOptionFeeForRegion(labelOptionMeta, region) * cards.length : 0
-  // Freight to ACE Grading's UK facility -- distinct from shippingCost below
-  // (the domestic/inbound courier bringing cards to our HQ). Billed once
-  // per submission, not per card, same as needsCleanAndPolish above.
-  const internationalShippingSubtotal = internationalShippingFeeForRegion(submissionType, region)
-  // In-person event drop-off (0062_add_in_person_event_intake.sql): inbound
-  // shipping is always free table intake, so no courier selection is
-  // needed or charged -- courierMeta/courier stay irrelevant here.
-  const shippingCost = inPersonMode ? 0 : courierMeta ? courierCostForRegion(courierMeta, region) : 0
-  const serviceFee =
-    gradingSubtotal + inspectionSubtotal + cleanAndPolishSubtotal + labelOptionSubtotal + internationalShippingSubtotal
-  const total = serviceFee + shippingCost
-  const canCheckout = inPersonMode ? Boolean(addressId) : Boolean(addressId && courier)
+
+  // "CuppasCards Services" collapses the two mutually-exclusive pre-grading
+  // add-ons (components/submit/step-addons.tsx's handleToggleCleanAndPolish/
+  // handleTogglePerCardPrep) into a single Order Summary line, since a
+  // submission can only ever have one of the two active at a time.
+  const cardsWithPrepCount = cards.filter((c) => c.preCheckOptIn).length
+  const inspectionSubtotal = cardsWithPrepCount * inspectionFeeForRegion(region)
+  const cleanAndPolishSubtotal = needsCleanAndPolish ? cleanAndPolishFeeForRegion(region) : 0
+  const cuppasServicesSubtotal = needsCleanAndPolish ? cleanAndPolishSubtotal : inspectionSubtotal
+  const cuppasServicesLabel = needsCleanAndPolish
+    ? 'Full Clean & Polish'
+    : cardsWithPrepCount > 0
+      ? `Pre-grading preparation × ${cardsWithPrepCount}`
+      : 'Pre-grading preparation'
+
+  // Domestic leg (customer <-> HQ), via The Courier Guy's Pudo Locker-to-
+  // Locker service -- billed as two separate legs, zero-rated entirely when
+  // the customer instead chooses in-person drop-off in "Ship from" below.
+  const domesticLegFee = domesticCourierLegFeeForRegion(region)
+  const localCourierTotal = inPersonMode ? 0 : domesticLegFee * 2
+
+  // International leg (SA <-> ACE Grading's UK facility) -- billed as two
+  // separate legs regardless of delivery method, since every submission
+  // still has to make the same round trip to the grader.
+  const internationalLegFee = internationalCourierLegFeeForRegion(submissionType, region)
+  const internationalCourierLabels = INTERNATIONAL_COURIER_LEG_LABELS[submissionType]
+  const internationalCourierTotal = internationalLegFee * 2
+
+  const serviceFee = gradingSubtotal + labelOptionSubtotal + cuppasServicesSubtotal + internationalCourierTotal
+  const total = serviceFee + localCourierTotal
+  const canCheckout = Boolean(addressId)
 
   async function beginCheckout() {
     if (!canCheckout) return
@@ -136,7 +141,7 @@ export function StepReviewPay({
         tier,
         region,
         addressId,
-        courier: inPersonMode ? IN_PERSON_DROPOFF_LABEL : courier,
+        courier: inPersonMode ? IN_PERSON_DROPOFF_LABEL : DOMESTIC_COURIER_LABEL,
         serviceFee,
         needsCleanAndPolish,
         needsSemiRigids,
@@ -198,6 +203,60 @@ export function StepReviewPay({
           Ship from
         </h2>
 
+        <div className="grid sm:grid-cols-2 gap-3 mt-4">
+          <button
+            type="button"
+            onClick={() => onToggleInPersonMode(false)}
+            className="text-left border rounded-[3px] p-4"
+            style={{
+              borderColor: !inPersonMode ? 'var(--seal)' : 'var(--line)',
+              background: !inPersonMode ? 'var(--paper-raised)' : 'transparent',
+            }}
+          >
+            <span className="flex items-center gap-2.5">
+              <span
+                className="w-3.5 h-3.5 rounded-full border shrink-0"
+                style={{
+                  borderColor: !inPersonMode ? 'var(--seal)' : 'var(--line)',
+                  background: !inPersonMode ? 'var(--seal)' : 'transparent',
+                }}
+              />
+              <span className="text-[15px]" style={{ color: 'var(--ink)' }}>
+                Courier Delivery
+              </span>
+            </span>
+            <p className="text-[13px] mt-2.5" style={{ color: 'var(--ink)' }}>
+              Ship your cards to us via {DOMESTIC_COURIER_LABEL}.
+            </p>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => onToggleInPersonMode(true)}
+            className="text-left border rounded-[3px] p-4"
+            style={{
+              borderColor: inPersonMode ? 'var(--seal)' : 'var(--line)',
+              background: inPersonMode ? 'var(--paper-raised)' : 'transparent',
+            }}
+          >
+            <span className="flex items-center gap-2.5">
+              <span
+                className="w-3.5 h-3.5 rounded-full border shrink-0"
+                style={{
+                  borderColor: inPersonMode ? 'var(--seal)' : 'var(--line)',
+                  background: inPersonMode ? 'var(--seal)' : 'transparent',
+                }}
+              />
+              <span className="text-[15px]" style={{ color: 'var(--ink)' }}>
+                In-Person Drop-Off
+              </span>
+            </span>
+            <p className="text-[13px] mt-2.5" style={{ color: 'var(--ink)' }}>
+              Bring your cards to us directly — no domestic courier fees.
+            </p>
+          </button>
+        </div>
+
         {addressesLoaded && addresses.length === 0 && !showAddAddress && (
           <p className="text-[13.5px] mt-3" style={{ color: 'var(--ink-muted)' }}>
             No saved addresses yet.
@@ -249,65 +308,37 @@ export function StepReviewPay({
         )}
       </div>
 
-      <div>
-        <h2 className="text-[22px]" style={{ fontFamily: 'var(--font-display)', color: 'var(--ink)' }}>
-          {inPersonMode ? 'Inbound' : 'Courier'}
-        </h2>
-        {inPersonMode ? (
+      {!inPersonMode && (
+        <div>
+          <h2 className="text-[22px]" style={{ fontFamily: 'var(--font-display)', color: 'var(--ink)' }}>
+            Courier
+          </h2>
           <div className="flex items-center justify-between py-3 mt-3 border-t border-b" style={{ borderColor: 'var(--line)' }}>
             <span className="text-[14px]" style={{ color: 'var(--ink)' }}>
-              {IN_PERSON_DROPOFF_LABEL}
+              {DOMESTIC_COURIER_LABEL}
             </span>
             <span className="text-[13px]" style={{ fontVariantNumeric: 'tabular-nums', color: 'var(--ink-muted)' }}>
-              {formatByRegion(0, region)}
+              {formatByRegion(domesticLegFee, region)} each way
             </span>
           </div>
-        ) : (
-          <div className="flex flex-col mt-3 border-t" style={{ borderColor: 'var(--line)' }}>
-            {COURIERS.map((c) => (
-              <button
-                key={c.value}
-                type="button"
-                onClick={() => onSelectCourier(c.value)}
-                className="flex items-center justify-between py-3 border-b text-left"
-                style={{ borderColor: 'var(--line)' }}
-              >
-                <span className="text-[14px]" style={{ color: 'var(--ink)' }}>
-                  {c.label}
-                </span>
-                <span className="text-[13px]" style={{ fontVariantNumeric: 'tabular-nums', color: 'var(--ink-muted)' }}>
-                  {formatByRegion(courierCostForRegion(c, region), region)}
-                </span>
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
+        </div>
+      )}
 
       <div>
         <h2 className="text-[22px]" style={{ fontFamily: 'var(--font-display)', color: 'var(--ink)' }}>
           Order summary
         </h2>
         <div className="mt-3 text-[14px] space-y-1.5" style={{ color: 'var(--ink)' }}>
+          {/* 1. ACE Grading Fees */}
           <div className="flex justify-between gap-4">
             <span>
               {gradingCompany} grading × {cards.length} ({tierMeta.label})
             </span>
             <span style={{ fontVariantNumeric: 'tabular-nums' }}>{formatByRegion(gradingSubtotal, region)}</span>
           </div>
-          {inspectionSubtotal > 0 && (
-            <div className="flex justify-between gap-4">
-              <span>Pre-grading inspection</span>
-              <span style={{ fontVariantNumeric: 'tabular-nums' }}>{formatByRegion(inspectionSubtotal, region)}</span>
-            </div>
-          )}
-          {cleanAndPolishSubtotal > 0 && (
-            <div className="flex justify-between gap-4">
-              <span>Clean and Polish</span>
-              <span style={{ fontVariantNumeric: 'tabular-nums' }}>{formatByRegion(cleanAndPolishSubtotal, region)}</span>
-            </div>
-          )}
-          {labelOptionSubtotal > 0 && (
+
+          {/* 2. ACE Label Fees */}
+          {gradingCompany === 'ACE' && (
             <div className="flex justify-between gap-4">
               <span>
                 {labelOptionMeta.label} label × {cards.length}
@@ -315,16 +346,49 @@ export function StepReviewPay({
               <span style={{ fontVariantNumeric: 'tabular-nums' }}>{formatByRegion(labelOptionSubtotal, region)}</span>
             </div>
           )}
+
+          {/* 3. CuppasCards Services */}
           <div className="flex justify-between gap-4">
-            <span>{SUBMISSION_TYPE_LINE_ITEM_LABEL[submissionType]}</span>
-            <span style={{ fontVariantNumeric: 'tabular-nums' }}>
-              {formatByRegion(internationalShippingSubtotal, region)}
-            </span>
+            <span>{cuppasServicesLabel}</span>
+            <span style={{ fontVariantNumeric: 'tabular-nums' }}>{formatByRegion(cuppasServicesSubtotal, region)}</span>
+          </div>
+
+          {/* 4. Local Courier Fees */}
+          {inPersonMode ? (
+            <>
+              <div className="flex justify-between gap-4">
+                <span>{LOCAL_IN_PERSON_LEG_LABELS.outbound}</span>
+                <span style={{ fontVariantNumeric: 'tabular-nums' }}>{formatByRegion(0, region)}</span>
+              </div>
+              <div className="flex justify-between gap-4">
+                <span>{LOCAL_IN_PERSON_LEG_LABELS.returnLeg}</span>
+                <span style={{ fontVariantNumeric: 'tabular-nums' }}>{formatByRegion(0, region)}</span>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="flex justify-between gap-4">
+                <span>{LOCAL_COURIER_LEG_LABELS.outbound}</span>
+                <span style={{ fontVariantNumeric: 'tabular-nums' }}>{formatByRegion(domesticLegFee, region)}</span>
+              </div>
+              <div className="flex justify-between gap-4">
+                <span>{LOCAL_COURIER_LEG_LABELS.returnLeg}</span>
+                <span style={{ fontVariantNumeric: 'tabular-nums' }}>{formatByRegion(domesticLegFee, region)}</span>
+              </div>
+            </>
+          )}
+
+          {/* 5. International Courier Fees */}
+          <div className="flex justify-between gap-4">
+            <span>{internationalCourierLabels.outbound}</span>
+            <span style={{ fontVariantNumeric: 'tabular-nums' }}>{formatByRegion(internationalLegFee, region)}</span>
           </div>
           <div className="flex justify-between gap-4">
-            <span>{inPersonMode ? IN_PERSON_DROPOFF_LABEL : `Shipping${courierMeta ? ` (${courierMeta.label})` : ''}`}</span>
-            <span style={{ fontVariantNumeric: 'tabular-nums' }}>{formatByRegion(shippingCost, region)}</span>
+            <span>{internationalCourierLabels.returnLeg}</span>
+            <span style={{ fontVariantNumeric: 'tabular-nums' }}>{formatByRegion(internationalLegFee, region)}</span>
           </div>
+
+          {/* 6. Total Due Today */}
           <div
             className="flex justify-between gap-4 pt-2 mt-2 border-t text-[15px]"
             style={{ borderColor: 'var(--line)' }}
@@ -333,6 +397,13 @@ export function StepReviewPay({
             <span style={{ fontVariantNumeric: 'tabular-nums' }}>{formatByRegion(total, region)}</span>
           </div>
         </div>
+
+        <p className="text-[12px] mt-4 leading-relaxed" style={{ color: 'var(--ink-muted)' }}>
+          <strong style={{ color: 'var(--ink)' }}>Import &amp; Customs Notice:</strong> International return
+          shipments are subject to South African customs clearance. Estimates typically include ~20% customs duty
+          assessment and 15% VAT on declared grading/service values upon re-entry, billed prior to final domestic
+          dispatch.
+        </p>
       </div>
 
       {checkoutError && (

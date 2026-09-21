@@ -14,7 +14,8 @@ const FEATURED_COLUMNS = 'id, title, category, price, images, region'
 
 /**
  * Up to 7 admin-curated grails for one region -- feeds "The Cuppa's Cards
- * Vault" homepage carousel (components/FeaturedCarousel.tsx). Previously
+ * Vault" shop page carousel (components/FeaturedCarousel.tsx, app/shop/page.tsx).
+ * Previously
  * auto-selected the top 7 highest-priced listings; now strictly
  * `is_vault_grail = true` (0057_add_product_is_vault_grail.sql, toggled from
  * the Shop Admin dashboard/product form), so a single expensive but

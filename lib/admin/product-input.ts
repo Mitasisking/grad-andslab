@@ -31,7 +31,7 @@ export interface ProductInput {
   /** ISO date string ('YYYY-MM-DD'), or null if not yet known -- see products.release_date (0020_add_product_release_date.sql). */
   releaseDate: string | null
   isPokemonCenter: boolean
-  /** Manual curation for "The Cuppa's Cards Vault" homepage carousel -- see 0057_add_product_is_vault_grail.sql. Blocked on a Sealed product until it's out of print (validated below). */
+  /** Manual curation for "The Cuppa's Cards Vault" shop page carousel -- see 0057_add_product_is_vault_grail.sql. Blocked on a Sealed product until it's out of print (validated below). */
   isVaultGrail: boolean
   /** Optional ~100-word collector story, AI-drafted then admin-reviewed -- see 0058_add_product_lore.sql and /api/admin/generate-lore. */
   lore: string | null

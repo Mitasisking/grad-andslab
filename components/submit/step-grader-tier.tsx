@@ -4,17 +4,15 @@ import type { RefObject } from 'react'
 import { Button } from '@/components/ui/button'
 import { CardShipmentRow } from '@/components/submit/card-shipment-row'
 import { formatGBP, formatZAR } from '@/lib/currency'
-import { ACE_LABEL_OPTIONS, SUBMISSION_TYPE_OPTIONS, TIER_OPTIONS_BY_COMPANY } from '@/lib/submission-types'
-import type { AceLabelOption, CardEntry, GradingCompany, SubmissionTier, SubmissionType } from '@/lib/submission-types'
+import { ACE_LABEL_OPTIONS, TIER_OPTIONS_BY_COMPANY } from '@/lib/submission-types'
+import type { AceLabelOption, CardEntry, GradingCompany, SubmissionTier } from '@/lib/submission-types'
 
 interface Props {
   /** Fixed to 'ACE' by app/submit/wizard.tsx for the launch rollout -- still a real prop (rather than hardcoded in this component) so the tier lookup/label-options logic below stays company-driven instead of ACE-specific. */
   company: GradingCompany
-  submissionType: SubmissionType
   tier: SubmissionTier | null
   labelOption: AceLabelOption
   cards: CardEntry[]
-  onSelectSubmissionType: (value: SubmissionType) => void
   onSelectTier: (tier: SubmissionTier) => void
   onSelectLabelOption: (option: AceLabelOption) => void
   onUpdateCard: (id: string, patch: Partial<CardEntry>) => void
@@ -28,11 +26,9 @@ interface Props {
 
 export function StepGraderTier({
   company,
-  submissionType,
   tier,
   labelOption,
   cards,
-  onSelectSubmissionType,
   onSelectTier,
   onSelectLabelOption,
   onUpdateCard,
@@ -53,59 +49,6 @@ export function StepGraderTier({
 
   return (
     <section className="space-y-10">
-      <div>
-        <h2 className="text-[22px]" style={{ fontFamily: 'var(--font-display)', color: 'var(--ink)' }}>
-          Submission Method
-        </h2>
-        <p className="text-[13.5px] mt-1.5" style={{ color: 'var(--ink-muted)' }}>
-          Choose how your shipment is dispatched to ACE Grading in the UK.
-        </p>
-        <div className="grid sm:grid-cols-2 gap-3 mt-4">
-          {SUBMISSION_TYPE_OPTIONS.map((option) => {
-            const selected = submissionType === option.value
-            return (
-              <button
-                key={option.value}
-                type="button"
-                onClick={() => onSelectSubmissionType(option.value)}
-                className="text-left border rounded-[3px] p-4"
-                style={{
-                  borderColor: selected ? 'var(--seal)' : 'var(--line)',
-                  background: selected ? 'var(--paper-raised)' : 'transparent',
-                }}
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <span className="flex items-center gap-2.5">
-                    <span
-                      className="w-3.5 h-3.5 rounded-full border shrink-0"
-                      style={{
-                        borderColor: selected ? 'var(--seal)' : 'var(--line)',
-                        background: selected ? 'var(--seal)' : 'transparent',
-                      }}
-                    />
-                    <span className="text-[15px]" style={{ color: 'var(--ink)' }}>
-                      {option.label}
-                    </span>
-                  </span>
-                  <span
-                    className="shrink-0 px-2 py-0.5 rounded-full text-[10.5px] font-semibold uppercase tracking-wide"
-                    style={{ background: 'var(--seal)', color: 'var(--seal-ink)' }}
-                  >
-                    {option.badge}
-                  </span>
-                </div>
-                <p className="text-[13px] mt-2.5" style={{ color: 'var(--ink)' }}>
-                  {option.summary}
-                </p>
-                <p className="text-[12px] mt-1.5" style={{ color: 'var(--ink-muted)' }}>
-                  {option.detail}
-                </p>
-              </button>
-            )
-          })}
-        </div>
-      </div>
-
       <div>
         <h2 className="text-[22px]" style={{ fontFamily: 'var(--font-display)', color: 'var(--ink)' }}>
           Turnaround

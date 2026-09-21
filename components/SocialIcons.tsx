@@ -34,3 +34,23 @@ export function WhatsappIcon({ className }: { className?: string }) {
     </svg>
   )
 }
+
+/** Real 4-color Google "G" mark -- unlike the other icons here, this one is inherently multi-color, not currentColor-driven. */
+export function GoogleIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} aria-hidden="true">
+      <path fill="#4285F4" d="M23.52 12.27c0-.85-.08-1.67-.22-2.45H12v4.64h6.47a5.53 5.53 0 0 1-2.4 3.63v3h3.88c2.27-2.09 3.57-5.17 3.57-8.82z" />
+      <path fill="#34A853" d="M12 24c3.24 0 5.95-1.07 7.94-2.91l-3.88-3c-1.08.72-2.45 1.15-4.06 1.15-3.12 0-5.77-2.11-6.71-4.94H1.28v3.1A12 12 0 0 0 12 24z" />
+      <path fill="#FBBC05" d="M5.29 14.3A7.2 7.2 0 0 1 4.91 12c0-.8.14-1.57.38-2.3v-3.1H1.28A12 12 0 0 0 0 12c0 1.94.46 3.77 1.28 5.4l4.01-3.1z" />
+      <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.44-3.44C17.94 1.19 15.24 0 12 0 7.31 0 3.26 2.69 1.28 6.6l4.01 3.1C6.23 6.86 8.88 4.75 12 4.75z" />
+    </svg>
+  )
+}
+
+export function AppleIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden="true">
+      <path d="M16.365 1.43c0 1.14-.468 2.243-1.226 3.03-.803.84-2.107 1.492-3.19 1.492-.116 0-.23-.01-.32-.023-.014-.108-.033-.24-.033-.375 0-1.09.5-2.223 1.29-3.02.8-.812 2.147-1.44 3.207-1.51.02.14.033.276.033.406zM20.09 17.24c-.53 1.22-.78 1.767-1.46 2.85-.95 1.51-2.29 3.39-3.95 3.4-1.48.02-1.86-.97-3.87-.96-2 .01-2.42.98-3.9.96-1.66-.02-2.93-1.72-3.88-3.23-2.66-4.2-2.94-9.12-1.3-11.75 1.16-1.87 3-2.97 4.72-2.97 1.75 0 2.85 1 4.3 1 1.4 0 2.26-1 4.3-1 1.53 0 3.15.83 4.3 2.27-3.79 2.08-3.18 7.5.76 9.43z" />
+    </svg>
+  )
+}

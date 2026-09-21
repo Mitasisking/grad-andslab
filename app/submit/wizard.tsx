@@ -121,7 +121,6 @@ export function SubmissionWizard({ activePools, showBatchTracker }: Props) {
   const [addresses, setAddresses] = useState<ShippingAddress[]>([])
   const [addressesLoaded, setAddressesLoaded] = useState(false)
   const [addressId, setAddressId] = useState<string | null>(null)
-  const [courier, setCourier] = useState<string | null>(null)
   const [needsCleanAndPolish, setNeedsCleanAndPolish] = useState(false)
   // Launch rollout: Step 2 no longer offers a Semi-Rigids or Consignment
   // toggle (components/submit/step-addons.tsx) -- semi-rigids are now
@@ -234,11 +233,9 @@ export function SubmissionWizard({ activePools, showBatchTracker }: Props) {
               {step === 0 && (
                 <StepGraderTier
                   company={company}
-                  submissionType={submissionType}
                   tier={tier}
                   labelOption={labelOption}
                   cards={cards}
-                  onSelectSubmissionType={setSubmissionType}
                   onSelectTier={setTier}
                   onSelectLabelOption={setLabelOption}
                   onUpdateCard={updateCard}
@@ -254,6 +251,8 @@ export function SubmissionWizard({ activePools, showBatchTracker }: Props) {
                 <StepAddOns
                   cards={cards}
                   onUpdateCard={updateCard}
+                  submissionType={submissionType}
+                  onSelectSubmissionType={setSubmissionType}
                   needsCleanAndPolish={needsCleanAndPolish}
                   onToggleCleanAndPolish={setNeedsCleanAndPolish}
                   region={region}
@@ -275,12 +274,11 @@ export function SubmissionWizard({ activePools, showBatchTracker }: Props) {
                   addresses={addresses}
                   addressesLoaded={addressesLoaded}
                   addressId={addressId}
-                  courier={courier}
                   needsCleanAndPolish={needsCleanAndPolish}
                   needsSemiRigids={needsSemiRigids}
                   interestedInConsignment={interestedInConsignment}
                   onSelectAddress={setAddressId}
-                  onSelectCourier={setCourier}
+                  onToggleInPersonMode={setInPersonMode}
                   onAddressCreated={handleAddressCreated}
                   onBack={goBack}
                 />
