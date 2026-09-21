@@ -200,6 +200,28 @@ up today — not a to-do list.
   in this file that isn't `currentColor`-driven since Google's mark is inherently multi-color) and
   `AppleIcon`, matching the file's existing minimal-inline-SVG convention.
 - `app/my-account/page.tsx`, `app/my-account/reset-password/page.tsx`
+- **Admin authorization (2026-09-21)**: `app/admin/layout.tsx` — **new**, gates every `/admin/**`
+  page route in one place (see the Route conventions Shared Contract above for the exact redirect
+  rules and how this relates to the pre-existing per-page inline checks and `lib/require-admin.ts`).
+  `components/Navbar.tsx`'s "Admin Portal" link visibility was **already** correct before this
+  task — it already only renders when a client-side `profiles.role === 'admin'` check passes — so
+  it needed no changes; the request's Navbar requirement was already satisfied by existing code.
+  `app/login/page.tsx` was split into a thin Server Component (`Suspense`-wrapping the actual form)
+  and a new `app/login/login-form.tsx` client component, solely so the form could read a `?next=`
+  query param via `useSearchParams()` (which Next.js requires a `Suspense` boundary for — same
+  reason `app/submit/page.tsx` already wraps `SubmissionWizard` the same way) — without this
+  split, `app/admin/layout.tsx`'s `redirect('/login?next=/admin')` would bounce the visitor to
+  `/login` but then silently drop `next` and always send them to `/dashboard` after logging in,
+  regardless of where they were headed. `login-form.tsx` now uses `next` (default `/dashboard`,
+  unchanged from the prior hardcoded behavior) for both the password-login `router.push(next)` and
+  the Google/Apple `signInWithOAuth`'s `redirectTo` (forwarded as `/auth/callback?next=...`, which
+  that route already reads — see the bullet above). Click-tested live: this session's own browser
+  is logged in but not admin, and visiting `/admin` correctly redirected to `/` — confirmed the
+  guard is live and working for the "authenticated, not admin" case; the "not authenticated at
+  all" redirect to `/login?next=/admin` was **not** live-tested (would have required signing out
+  of the shared browser session used by several other open tabs) but is a simple, direct
+  `if (!user) redirect(...)` matching the exact pattern `app/admin/page.tsx` already used
+  successfully before this layout existed.
 
 ### Submission flow (grading intake)
 - `app/submit/page.tsx` — `async` Server Component. Defines `SHOW_BATCH_TRACKER = false`, a
@@ -638,7 +660,7 @@ up today — not a to-do list.
 - **`ProductRegion`** = `'usa' | 'uk' | 'sa'` — `lib/shop/product-type.ts` — drives `tierPriceForRegion`, `cleanAndPolishFeeForRegion`, `inspectionFeeForRegion`, and shop currency display. **Policy**: USD/GBP/ZAR are independently-priced per region, never converted from one another at checkout time.
 - **Currency display policy**: admin Financials dashboard is ZAR-primary with GBP bracket, deliberately. Public/customer-facing surfaces price natively per region (see above). Do not force ZAR-primary onto customer-facing pages — flagged explicitly in `launch_readiness_report.md` as a deliberate distinction, not a bug.
 - **DB row shapes**: `SubmissionRow`, `PoolRow`, `SubmissionItemRow`, `SubmissionStatusLogRow` (`lib/submission-types.ts`) mirror `supabase/migrations/0001_init_schema.sql`, `0004_status_history.sql`, `0035_submission_pools.sql` — no generated `database.types.ts` exists; these are hand-maintained and must be kept in sync with migrations manually.
-- **Route conventions**: admin API routes under `app/api/admin/**` gate on `lib/require-admin.ts`; client-facing DB errors must be generic with raw errors logged server-side only (pattern established in `app/api/submissions/route.ts`, since applied to `app/api/admin/products/*`).
+- **Route conventions**: admin API routes under `app/api/admin/**` gate on `lib/require-admin.ts`; every admin *page* route under `app/admin/**` is gated centrally by `app/admin/layout.tsx` (added 2026-09-21) — checks `getSupabaseRouteClient()`'s session, `redirect('/login?next=/admin')` if unauthenticated, `redirect('/')` if authenticated but `profiles.role !== 'admin'`. Individual admin pages' own pre-existing inline `if (!user) redirect(...)` / `if (profile?.role !== 'admin') redirect('/')` checks (e.g. `app/admin/page.tsx`) are now redundant but were left in place as harmless defense-in-depth rather than stripped out — the layout's redirect fires first and the page body never runs once it does. Admin status is driven by the single `profiles.role = 'admin'` column everywhere (RLS's `public.is_admin()`, `lib/require-admin.ts`, this layout, and `components/Navbar.tsx`'s client-side "Admin Portal" link visibility) — there is deliberately no second admin-check mechanism (e.g. JWT `app_metadata`) anywhere in the app. Client-facing DB errors must be generic with raw errors logged server-side only (pattern established in `app/api/submissions/route.ts`, since applied to `app/api/admin/products/*`).
 - **PayFast webhook idempotency**: every branch in `app/api/webhooks/payfast/route.ts` gates its DB update on `payment_status = 'pending'` via an atomic `UPDATE ... WHERE`, and only fires its side effect when a row actually changed. Do not reintroduce read-then-write here.
 - **Email templating convention (decided explicitly, do not revisit without asking)**: all transactional emails are hand-rolled HTML strings with inline styles in `lib/email/templates/*.ts`, never JSX/React Email — most email clients (Outlook especially) ignore `<style>`/CSS-in-JS. Every interpolated user-entered value MUST go through `escapeHtml` (`lib/email/templates/order-confirmation.ts`) — a real stored-XSS was fixed here before. `@react-email/*` is deliberately not a dependency. Senders live in `lib/email/send-*.ts` (not `lib/mail/`), take a payload, and call `sendEmail()` (`lib/email/send-email.ts`) rather than touching the mail transport directly. **Transport**: Google SMTP via Nodemailer (`lib/email/transporter.ts`) as of this session — replaced Resend entirely (`resend` uninstalled, `lib/email/resend-client.ts` deleted) on the user's explicit choice, rather than adding a second parallel email pipeline. `sendEmail()` itself never throws (`{success, messageId?, error?}`); the four `send-*` functions each re-throw on failure so existing callers' `.catch()` blocks keep working unchanged — a notification failure must never fail the pipeline event that triggered it. **Every send is
 unconditionally CC'd to `updates@cuppascards.co.za`** (`ADMIN_CC_EMAIL` in `send-email.ts` — this
@@ -664,18 +686,27 @@ field that drives routing/matching logic, never the name.
 
 ## Uncommitted work in the tree right now
 
-**Nothing is currently uncommitted.** Everything described in this file — through commit
-`970ebb4` ("Update landing/shop/vendor pages, submission wizard, and add social sign-in": the
-landing page section reorder, the hero copy update, the Google/Apple OAuth addition, the
-Submission Method Step 1→Step 2 relocation, the Step 3 Order Summary/delivery-method rewrite, the
-vendor page's "Every Grading Tier, On-Site" copy update, and the Vault carousel's relocation from
-the homepage to `/shop` — see the "Immediate Next Task" section below for the full detail on each)
-— is committed, pushed to `origin/main` (`db61e29..970ebb4 main -> main`), and deployed to Vercel
-production (deployment `dpl_AQ6VAFrgiw3ZPjEZyB5AfggaNb9N`, aliased to
-`website-three-iota-83.vercel.app`, deployed via `vercel --prod`; build compiled clean, all 79
-routes generated with no errors). The subsections below are kept as a historical record of what
-shipped in each past task/commit, not a list of pending changes — check `git status` if you need
-to confirm this is still true before trusting it blindly.
+**One piece of work is currently uncommitted: the admin authorization enforcement**
+(`app/admin/layout.tsx`, `app/login/page.tsx` + new `app/login/login-form.tsx`) described in the
+Active File Manifest and Shared Contracts above.
+
+Everything through commit `970ebb4` ("Update landing/shop/vendor pages, submission wizard, and add
+social sign-in": the landing page section reorder, the hero copy update, the Google/Apple OAuth
+addition, the Submission Method Step 1→Step 2 relocation, the Step 3 Order Summary/delivery-method
+rewrite, the vendor page's "Every Grading Tier, On-Site" copy update, and the Vault carousel's
+relocation from the homepage to `/shop`) is committed, pushed to `origin/main`
+(`db61e29..970ebb4 main -> main`), and deployed to Vercel production (deployment
+`dpl_AQ6VAFrgiw3ZPjEZyB5AfggaNb9N`, aliased to `website-three-iota-83.vercel.app`, deployed via
+`vercel --prod`; build compiled clean, all 79 routes generated with no errors).
+
+**`c5351a6`** ("Update PROJECT_STATE.md to reflect production deployment," a docs-only follow-up
+to `970ebb4`) **is committed locally but not yet pushed or deployed** — nothing in it needs
+deploying (it only updates this file), but push is still a separate, explicitly-gated step per
+this project's standing practice and hasn't been requested for it specifically.
+
+The subsections below are kept as a historical record of what shipped in each past task/commit,
+not a list of pending changes — check `git status` if you need to confirm this is still true
+before trusting it blindly.
 
 **Committed, pushed, and deployed to production through `648f42d`** (earlier deploy, superseded by
 the one above): ACE tier
@@ -974,6 +1005,19 @@ configuration gap, not a code bug.
    all. The real remaining blocker for actual email delivery is simply that `.env.local`'s
    `EMAIL_SERVER_*` values are still placeholders, not the domain-mismatch concern this item used
    to describe.
+5. **Granting the first two admins (`mitchell@cuppascards.com`, `kyle@cuppascards.com`) needs to
+   be run by the user, not this session.** The obvious `UPDATE public.profiles SET role = 'admin'
+   WHERE ...` fails with `P0001: Only an admin can change a profile's role` — `0007_rls_hardening.sql`'s
+   `prevent_self_role_escalation()` trigger blocks any `profiles.role` change unless the caller is
+   already an admin or `auth.role() = 'service_role'`, neither of which is true from a Supabase
+   Dashboard SQL Editor session. The safe fix (temporarily `ALTER TABLE public.profiles DISABLE
+   TRIGGER trg_profiles_protect_role;`, run the `UPDATE`, then immediately `ENABLE TRIGGER` again)
+   is exactly the kind of "weaken a security control" action Claude Code's own safety classifier
+   correctly refuses to run autonomously — this session prepared the corrected SQL and explained
+   why it's needed, but the user has to actually execute it themselves in the SQL Editor. Once
+   either account has `profiles.role = 'admin'`, granting further admins from the app itself
+   becomes possible without ever touching this trigger again (an existing admin satisfies
+   `public.is_admin()`, which the trigger already allows).
 
 ## Immediate Next Task
 
@@ -1065,6 +1109,21 @@ Seven pieces of work, all landed in commit `970ebb4`:
   Grade" → WhatsApp CTA with no Vault section and no console errors; `/shop` confirmed the full
   carousel (arrows, dots, all 7 grails) rendering as the first element on the page, directly above
   the category pills, with no visual clash against the shop layout's theme.
+
+**Not yet committed — admin authorization enforcement**: `app/admin/layout.tsx` (new, centralized
+`/admin/**` route guard), `app/login/page.tsx` (rewritten as a thin Server Component) and
+`app/login/login-form.tsx` (new, the actual client form, now `next`-param-aware). See the Active
+File Manifest and Shared Contracts entries above for full detail. `npx tsc --noEmit`, `npm run
+lint` (same 48-problem baseline), and `npx next build` all pass clean, including confirming
+`/login` still prerenders statically despite the new `useSearchParams()` usage. **Partially
+click-tested live**: confirmed the "authenticated but not admin" redirect (`/admin` → `/`) works
+correctly on this session's own logged-in-but-non-admin browser session; the "not authenticated at
+all" redirect to `/login?next=/admin` was not live-tested (would have required signing out of a
+browser session shared with several other open tabs) but mirrors the exact `if (!user)
+redirect(...)` pattern `app/admin/page.tsx` already used successfully before this layout existed.
+Separately, this session prepared (but per its own safety rules would not itself execute) the
+corrected SQL to bootstrap the first two real admins — see Blocked item 5 below; that SQL is
+independent of this code change and doesn't block committing it.
 
 **Still genuinely open**:
 - **Resend domain verification** is moot now that Resend itself has been fully replaced by Google
