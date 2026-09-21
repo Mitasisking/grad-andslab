@@ -705,18 +705,22 @@ field that drives routing/matching logic, never the name.
 
 ## Uncommitted work in the tree right now
 
-**Nothing is currently uncommitted.** Everything described in this file — through commit
-`5e0d906` ("Gate all /admin routes behind a centralized admin-role check": `app/admin/layout.tsx`,
-`app/login/page.tsx` + new `app/login/login-form.tsx`, on top of `c5351a6` and `970ebb4` — the
-landing page section reorder, the hero copy update, the Google/Apple OAuth addition, the
-Submission Method Step 1→Step 2 relocation, the Step 3 Order Summary/delivery-method rewrite, the
-vendor page's "Every Grading Tier, On-Site" copy update, the Vault carousel's relocation from the
-homepage to `/shop`, and the admin-route authorization guard — see the Active File Manifest and
-Shared Contracts above for full detail on each) — is committed, pushed to `origin/main`
-(`db61e29..970ebb4..5e0d906`), and deployed to Vercel production (deployment
-`dpl_HzCQmK5fv4r5CvZb2R71rCD7npRW`, aliased to `website-three-iota-83.vercel.app`, deployed via
-`vercel --prod`; build compiled clean, all 79 routes generated with no errors, `/login` confirmed
-still prerendering statically and `/admin` correctly dynamic).
+**Nothing is currently uncommitted.** Everything through commit `5e0d906` ("Gate all /admin routes
+behind a centralized admin-role check": `app/admin/layout.tsx`, `app/login/page.tsx` + new
+`app/login/login-form.tsx`, on top of `c5351a6` and `970ebb4` — the landing page section reorder,
+the hero copy update, the Google/Apple OAuth addition, the Submission Method Step 1→Step 2
+relocation, the Step 3 Order Summary/delivery-method rewrite, the vendor page's "Every Grading
+Tier, On-Site" copy update, the Vault carousel's relocation from the homepage to `/shop`, and the
+admin-route authorization guard — see the Active File Manifest and Shared Contracts above for full
+detail on each) is committed, pushed to `origin/main` (`db61e29..970ebb4..5e0d906`), and deployed
+to Vercel production (deployment `dpl_HzCQmK5fv4r5CvZb2R71rCD7npRW`, aliased to
+`website-three-iota-83.vercel.app`, deployed via `vercel --prod`; build compiled clean, all 79
+routes generated with no errors, `/login` confirmed still prerendering statically and `/admin`
+correctly dynamic).
+
+**`fca1ec6`** ("Document confirmed admin grants and profiles schema drift" — docs-only, no code
+changes) **has been pushed to `origin/main`** (`5e0d906..fca1ec6 main -> main`). Nothing in it
+needs deploying (it only updates this file), so there's no pending deploy step for it.
 
 The subsections below are kept as a historical record of what shipped in each past task/commit,
 not a list of pending changes — check `git status` if you need to confirm this is still true
