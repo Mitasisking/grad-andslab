@@ -5,7 +5,19 @@ export interface SendEmailOptions {
   subject: string
   html: string
   text?: string
+  cc?: string | string[]
 }
+
+/**
+ * Every outgoing transactional email CCs this dedicated updates inbox so the
+ * business has visibility into what customers actually receive, without
+ * needing a separate BCC/logging pipeline. Applied unconditionally below --
+ * appended to whatever cc a caller already supplies, never replacing it.
+ * Was `info@cuppascards.co.za` -- changed to a dedicated inbox on the user's
+ * explicit instruction (2026-09-20) so this traffic doesn't mix with the
+ * general `info@` inbox.
+ */
+const ADMIN_CC_EMAIL = 'updates@cuppascards.co.za'
 
 export interface SendEmailResult {
   success: boolean
@@ -32,11 +44,13 @@ function getEmailFrom(): string {
  * best-effort (never allowed to fail the pipeline event that triggered it)
  * can check `.success` instead of wrapping every call in try/catch.
  */
-export async function sendEmail({ to, subject, html, text }: SendEmailOptions): Promise<SendEmailResult> {
+export async function sendEmail({ to, subject, html, text, cc }: SendEmailOptions): Promise<SendEmailResult> {
+  const finalCc = cc ? [...(Array.isArray(cc) ? cc : [cc]), ADMIN_CC_EMAIL] : ADMIN_CC_EMAIL
   try {
     const info = await getTransporter().sendMail({
       from: getEmailFrom(),
       to,
+      cc: finalCc,
       subject,
       html,
       text,

@@ -103,14 +103,15 @@ production here. Migrations 0059-0065 all live.
    tree**; the request's `EMAIL_FROM` domain (`cuppascards.com`) was a third domain variant this
    session has seen (after `cuppacards.com` and `cuppascards.co.za`) — **the user confirmed it's a
    real, ready Google Workspace mailbox.** `resend` was uninstalled, `nodemailer` +
-   `@types/nodemailer` installed. Full file-level detail in Active File Manifest below. Note:
-   `.env.local`'s actual `EMAIL_SERVER_*` values are still placeholders (`yourbrandemail@gmail.com`),
-   not the real `mitchell@cuppascards.com` credentials described in the request — swap in the real
-   values (a Gmail **App Password**, not the account password — Gmail SMTP requires one) before
-   expecting real sends to succeed. Confirmed live: the whole pipeline (admin-gated route → payload
-   → template → real SMTP attempt) works end-to-end against the placeholder creds, failing exactly
-   where expected (Gmail's own "Application-specific password required" error), which independently
-   proves the code path is correct.
+   `@types/nodemailer` installed. Full file-level detail in Active File Manifest below.
+   **`.env.local`'s `EMAIL_SERVER_*` values are now the real, working credentials** (real Gmail
+   App Password for `mitchell@cuppascards.com`, swapped in by the user 2026-09-20) — outbound
+   email is fully live, not just pipeline-correct-but-blocked. Confirmed via two real sends
+   through `/admin/test-emails` after a dev-server restart to pick up the new env vars: Stage 1
+   (`ORDER_CONFIRMED`) and Stage 3 (`RECEIVED_HQ`) both returned real Nodemailer `messageId`s
+   (`...@cuppascards.com`) with no SMTP error, landing in the target inbox. The earlier
+   placeholder-credential test (Gmail's "Application-specific password required" rejection) is
+   now historical — this pipeline sends real mail today.
 
 3. **WhatsApp community link** — `lib/social-links.ts`'s `SOCIAL_LINKS.whatsapp` (previously a
    placeholder) is now the real link, which automatically fixed both of its existing usages
@@ -366,14 +367,22 @@ up today — not a to-do list.
   transporter over Google SMTP (`EMAIL_SERVER_HOST`/`PORT`/`USER`/`PASSWORD` env vars, `secure:
   true`), replacing the old `resend-client.ts` (deleted). `verifyConnection()` calls
   `transporter.verify()` for a health check without sending a real email.
-- `lib/email/send-email.ts` — **new**. `sendEmail({to, subject, html, text?})`, the single entry
-  point every sender in `lib/email/` now calls instead of touching the transporter directly.
-  Unlike the old Resend call sites, this never throws — it returns `{success, messageId?,
-  error?}` — so `lib/email/send-grading-update.ts` and `send-order-confirmation.ts`'s four `send-*`
-  functions each re-throw on `success: false` to preserve their existing "caller wraps in
-  try/catch" contract for callers like the Payfast webhook and `booth-handover/route.ts` that
-  already do `.catch(...)` on them. Defaults `from` to `EMAIL_FROM`, falling back to
-  `'CuppasCards <noreply@cuppascards.com>'`.
+- `lib/email/send-email.ts` — `sendEmail({to, subject, html, text?, cc?})`, the single entry
+  point every sender in `lib/email/` calls instead of touching the transporter directly. Never
+  throws — returns `{success, messageId?, error?}` — so `lib/email/send-grading-update.ts` and
+  `send-order-confirmation.ts`'s four `send-*` functions each re-throw on `success: false` to
+  preserve their existing "caller wraps in try/catch" contract for callers like the Payfast
+  webhook and `booth-handover/route.ts` that already do `.catch(...)` on them. Defaults `from` to
+  `EMAIL_FROM`, falling back to `'CuppasCards <noreply@cuppascards.com>'`. **Every outgoing email
+  is unconditionally CC'd to `updates@cuppascards.co.za`** (`ADMIN_CC_EMAIL` constant — changed
+  from `info@cuppascards.co.za` to this dedicated inbox on the user's explicit instruction,
+  2026-09-20) — appended to whatever `cc` a caller already supplies (string or array) rather than
+  replacing it, so the
+  business has visibility into every transactional email without a separate logging pipeline. No
+  existing caller passes `cc` today, so this applies to all of them automatically with zero
+  call-site changes. Click-tested live via `/admin/test-emails`: a real send returned `HTTP 200`
+  with a real `messageId`, confirming Gmail's SMTP accepts the multi-recipient (`to` + `cc`) send
+  with no error.
 - `lib/email/send-order-confirmation.ts`, `templates/order-confirmation.ts` — existing
   payment-receipt emails, now sent via `sendEmail()` instead of Resend; template content
   unchanged.
@@ -436,13 +445,13 @@ up today — not a to-do list.
   per-page admin-role gate as `app/admin/events/page.tsx` (no shared `layout.tsx`/`requireAdmin()`
   for pages). 8 buttons (one per stage) + a "Trigger Full Sequence (5s delay between)" button that
   calls `simulate-lifecycle` sequentially with a 5s pause between sends, plus a live console log
-  of each response's HTTP status and Nodemailer `messageId`. Click-tested live: stage 1
-  (`ORDER_CONFIRMED`, an existing template) and stage 7 (`LANDED_AT_HQ`, brand-new) both correctly
-  reached Gmail's real SMTP server and failed with Gmail's own "Application-specific password
-  required" error — the same expected placeholder-credential failure as the original
-  `/api/test-email` verification, proving both the pre-existing and the 6 new templates render
-  and dispatch correctly. Real inbox review of formatting still needs the real Gmail App Password
-  swapped into `.env.local` first.
+  of each response's HTTP status and Nodemailer `messageId`. Click-tested live twice: first
+  against placeholder credentials (stage 1 `ORDER_CONFIRMED` and stage 7 `LANDED_AT_HQ` both
+  correctly reached Gmail's real SMTP server and failed with Gmail's own "Application-specific
+  password required" error, proving both the pre-existing and the 6 new templates render and
+  dispatch correctly); then again after the user swapped in the real Gmail App Password
+  (2026-09-20) — stage 1 and stage 3 (`RECEIVED_HQ`) both returned real `messageId`s with no SMTP
+  error, confirming actual delivery, not just pipeline correctness.
 - `app/api/contact-inquiries/route.ts`, `app/api/vendor-inquiries/route.ts`, `app/api/notify/route.ts`, `app/api/webhooks/pool-milestone/route.ts`
 - `components/auth/turnstile-widget.tsx` — bot protection
 
@@ -513,7 +522,13 @@ up today — not a to-do list.
 - **DB row shapes**: `SubmissionRow`, `PoolRow`, `SubmissionItemRow`, `SubmissionStatusLogRow` (`lib/submission-types.ts`) mirror `supabase/migrations/0001_init_schema.sql`, `0004_status_history.sql`, `0035_submission_pools.sql` — no generated `database.types.ts` exists; these are hand-maintained and must be kept in sync with migrations manually.
 - **Route conventions**: admin API routes under `app/api/admin/**` gate on `lib/require-admin.ts`; client-facing DB errors must be generic with raw errors logged server-side only (pattern established in `app/api/submissions/route.ts`, since applied to `app/api/admin/products/*`).
 - **PayFast webhook idempotency**: every branch in `app/api/webhooks/payfast/route.ts` gates its DB update on `payment_status = 'pending'` via an atomic `UPDATE ... WHERE`, and only fires its side effect when a row actually changed. Do not reintroduce read-then-write here.
-- **Email templating convention (decided explicitly, do not revisit without asking)**: all transactional emails are hand-rolled HTML strings with inline styles in `lib/email/templates/*.ts`, never JSX/React Email — most email clients (Outlook especially) ignore `<style>`/CSS-in-JS. Every interpolated user-entered value MUST go through `escapeHtml` (`lib/email/templates/order-confirmation.ts`) — a real stored-XSS was fixed here before. `@react-email/*` is deliberately not a dependency. Senders live in `lib/email/send-*.ts` (not `lib/mail/`), take a payload, and call `sendEmail()` (`lib/email/send-email.ts`) rather than touching the mail transport directly. **Transport**: Google SMTP via Nodemailer (`lib/email/transporter.ts`) as of this session — replaced Resend entirely (`resend` uninstalled, `lib/email/resend-client.ts` deleted) on the user's explicit choice, rather than adding a second parallel email pipeline. `sendEmail()` itself never throws (`{success, messageId?, error?}`); the four `send-*` functions each re-throw on failure so existing callers' `.catch()` blocks keep working unchanged — a notification failure must never fail the pipeline event that triggered it.
+- **Email templating convention (decided explicitly, do not revisit without asking)**: all transactional emails are hand-rolled HTML strings with inline styles in `lib/email/templates/*.ts`, never JSX/React Email — most email clients (Outlook especially) ignore `<style>`/CSS-in-JS. Every interpolated user-entered value MUST go through `escapeHtml` (`lib/email/templates/order-confirmation.ts`) — a real stored-XSS was fixed here before. `@react-email/*` is deliberately not a dependency. Senders live in `lib/email/send-*.ts` (not `lib/mail/`), take a payload, and call `sendEmail()` (`lib/email/send-email.ts`) rather than touching the mail transport directly. **Transport**: Google SMTP via Nodemailer (`lib/email/transporter.ts`) as of this session — replaced Resend entirely (`resend` uninstalled, `lib/email/resend-client.ts` deleted) on the user's explicit choice, rather than adding a second parallel email pipeline. `sendEmail()` itself never throws (`{success, messageId?, error?}`); the four `send-*` functions each re-throw on failure so existing callers' `.catch()` blocks keep working unchanged — a notification failure must never fail the pipeline event that triggered it. **Every send is
+unconditionally CC'd to `updates@cuppascards.co.za`** (`ADMIN_CC_EMAIL` in `send-email.ts` — this
+address itself changed once already, from `info@cuppascards.co.za`, both times on the user's
+explicit instruction, 2026-09-20) — appended to, never replacing, any caller-supplied `cc`. Verify
+with the user before assuming which address is current if this drifts again. Do not remove this
+without the user separately confirming the business no longer wants a copy of
+every outgoing transactional email.
 - **`GradingEmailStage`** (`types/notifications.ts`) — an 8-stage notification-layer lifecycle, intentionally more granular than the DB's `SubmissionStatus` (5 stages) or `shipment_batch_status` (5 stages, migration 0052). Most stages beyond `ORDER_CONFIRMED` have no DB column or call site yet — adding a stage here is a type contract, not a promise it's wired up.
 - **`AceLabelOption`** = `'standard' | 'colour_match' | 'ace_label'` — lives in `lib/submission-types.ts` (with `ACE_LABEL_OPTIONS`/`labelOptionFeeForRegion`), **not** a separate `types/grading.ts` — that path was requested but deliberately not created, to avoid a second, competing home for grading-domain types alongside the existing single source of truth. Same per-submission modeling as `needs_clean_and_polish`/`needs_semi_rigids` (one choice for the whole batch, not per-card) — only ever non-null when `grading_company = 'ACE'` (enforced by `chk_submissions_ace_label_option_valid`, migration 0061). ZAR fees (R25/R75) are ACE's own designated retail prices, not the usual ~18.5 USD/ZAR stand-in conversion; USD is still the derived stand-in.
 - **`IntakeChannel`** = `'online_shipment' | 'in_person_event'` and **`EventSettingsRow`** — `lib/submission-types.ts` (again, not `types/grading.ts` — same reasoning as `AceLabelOption` above; every new domain type this session has gone into the existing file, not a parallel one). "Awaiting Booth Handover" / "Received & Logged" are **UI labels derived from `intake_channel` + `intake_verified_at`**, deliberately not new `SubmissionStatus` enum values — that enum is shared with the customer pipeline stepper (`STATUS_STAGES`/`PipelineProgress`) and `lib/admin/submission-status.ts`'s `changeSubmissionStatus`, which only accepts its fixed 5 values; extending it for a pre-`received` state would mean touching that shared stepper UI for a state most submissions never pass through. Every submission, in-person or not, still gets `status = 'received'` at creation, unchanged.
@@ -729,6 +744,21 @@ real checkout with payment was not attempted): selected "Individual Direct Dispa
 through Steps 1→3, and confirmed the Order Summary showed "International Shipping: Dedicated
 Direct Dispatch — R1 020,00" with a correct total (R1 780,00).
 
+**Uncommitted — every outgoing email now CCs the admin inbox**: `lib/email/send-email.ts`'s
+`SendEmailOptions` gained an optional `cc?: string | string[]`; a new `ADMIN_CC_EMAIL` constant is
+unconditionally appended to the final `cc` list on every send (never overwriting a
+caller-supplied `cc`), so the business gets a copy of every transactional email without a
+separate logging pipeline. No existing caller needed changes since none currently passes `cc`.
+This address itself changed once already within the same task: first set to
+`info@cuppascards.co.za`, then changed to `updates@cuppascards.co.za` on the user's explicit
+follow-up instruction (2026-09-20) — the current, live value is `updates@cuppascards.co.za`.
+`tsc`/`eslint` clean (same 49-problem baseline) after both edits. Click-tested live via
+`/admin/test-emails` after both changes: real sends returned `HTTP 200` with real Nodemailer
+`messageId`s, confirming Gmail's SMTP accepted the multi-recipient send with no error each time
+(one send hit a transient `ECONNRESET` on first attempt, unrelated to the code change — the
+immediate retry succeeded). Final inbox delivery to the CC address itself wasn't independently
+checked, since that mailbox isn't accessible from this session.
+
 - Untracked, not yet triaged into the repo structure: `Stock photos/`, `TheCardApi.txt`,
   `claude context.txt`, `cuppa cards logo temp logo.jpeg`, `termsofservice.txt`, `zernio.txt`.
 
@@ -768,10 +798,16 @@ Active File Manifest above); the Step 1 "Submission Method" selector
 (`'batch'`/`'individual'` dispatch, migration 0065 applied and verified); and Step 2's "This
 submission" → "Full Clean & Polish" heading rename. Legal pages,
 email templates, and PayFast item descriptors now say "CuppasCards". All 8 grading-lifecycle email
-templates exist and render correctly (verified live via `/admin/test-emails`); swap in the real
-`EMAIL_SERVER_*`/`EMAIL_FROM` credentials in `.env.local` (a Gmail **App Password**, not the
-account password) before expecting any of them to actually land in an inbox rather than fail at
-Gmail's SMTP auth step.
+templates exist and render correctly. **Outbound email is now fully live**: the user swapped in
+the real Gmail App Password for `mitchell@cuppascards.com` (2026-09-20), and a real send was
+confirmed via `/admin/test-emails` (Stage 1 `ORDER_CONFIRMED` and Stage 3 `RECEIVED_HQ`, both
+returning real `messageId`s with no SMTP error) after restarting the dev server to pick up the
+new `.env.local` values. No credential blocker remains on this pipeline.
+
+One more piece is code-complete and click-tested live, waiting on your go-ahead to commit: every
+outgoing email now unconditionally CCs `updates@cuppascards.co.za` (`lib/email/send-email.ts`'s
+`ADMIN_CC_EMAIL`, changed from an initial `info@cuppascards.co.za` within the same task), confirmed
+via a real send returning `HTTP 200`.
 
 **Still genuinely open**:
 - **Resend domain verification** is moot now that Resend itself has been fully replaced by Google
