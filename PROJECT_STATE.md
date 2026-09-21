@@ -16,20 +16,20 @@ This file is updated at the end of every response that builds or modifies a comp
 **Phase: launch simplification pass (ACE-only + Pokémon-only + shop filter simplification +
 Add-ons rework) + outbound email moved to Google SMTP/Nodemailer + WhatsApp community link + hero
 copy + brand-name harmonization to "CuppasCards" + full 8-stage grading email lifecycle templates
-+ Submission Method (batch vs individual dispatch) selector.**
-**Live in production as of `f0236b1`** (deployed via `vercel --prod`, deployment
-`dpl_HgwE2UcsEN8GJbBUCSWrNFVK7Erd`, aliased to `website-three-iota-83.vercel.app`): everything
-from the `d521c60` deploy (hero copy, Google SMTP/Nodemailer email migration, WhatsApp community
++ Submission Method (batch vs individual dispatch) selector + admin CC on every outgoing email.**
+**Live in production as of `db61e29`** (deployed via `vercel --prod`, deployment
+`dpl_DeHC5XYXZ9FAhyXGdNKbLFa4Bvq9`, aliased to `website-three-iota-83.vercel.app`): everything
+from the `f0236b1` deploy (hero copy, Google SMTP/Nodemailer email migration, WhatsApp community
 link, Step 1 ACE-only simplification, Pokémon-only card category lock, shop filter pill
-simplification, vendor page's "Where We've Been" hide, "CuppasCards" brand-name harmonization, and
-the full 8-stage grading email lifecycle templates + `/admin/test-emails` test harness) **plus**
-the Contact page's stale direct-email block removal, the Step 1 "Submission Method" selector
-(`'batch'`/`'individual'` dispatch, `submissions.submission_type` migration 0065 — applied to
-production and independently re-verified), and Step 2's "This submission" → "Full Clean & Polish"
-heading rename. This deploy was built from this project's own manual `vercel --prod` CLI workflow
-(confirmed via `vercel ls`: prior deploys all show as CLI/Production, no git-triggered auto-deploy
-bot), not an automatic git-push trigger — pushing to `origin/main` alone does not put changes on
-production here. Migrations 0059-0065 all live.
+simplification, vendor page's "Where We've Been" hide, "CuppasCards" brand-name harmonization, the
+full 8-stage grading email lifecycle templates + `/admin/test-emails` test harness, the Contact
+page's stale direct-email block removal, the Step 1 "Submission Method" selector, and Step 2's
+"This submission" → "Full Clean & Polish" heading rename) **plus** `lib/email/send-email.ts`
+unconditionally CC'ing every outgoing email to `updates@cuppascards.co.za`. This deploy was built
+from this project's own manual `vercel --prod` CLI workflow (confirmed via `vercel ls`: prior
+deploys all show as CLI/Production, no git-triggered auto-deploy bot), not an automatic git-push
+trigger — pushing to `origin/main` alone does not put changes on production here. Migrations
+0059-0065 all live.
 
 4. **Step 1 (`Grader & tier`) simplified to ACE-only for launch** — `components/submit/
    step-grader-tier.tsx` no longer renders a "Country of origin" or "Grading company" selector;
@@ -542,8 +542,8 @@ field that drives routing/matching logic, never the name.
 ## Uncommitted work in the tree right now
 
 **Nothing is currently uncommitted.** Everything described in this file — through commit
-`f0236b1` — is committed, pushed to `origin/main`, and deployed to Vercel production (alias
-`website-three-iota-83.vercel.app`, deployment `dpl_HgwE2UcsEN8GJbBUCSWrNFVK7Erd`, deployed via
+`db61e29` — is committed, pushed to `origin/main`, and deployed to Vercel production (alias
+`website-three-iota-83.vercel.app`, deployment `dpl_DeHC5XYXZ9FAhyXGdNKbLFa4Bvq9`, deployed via
 `vercel --prod`). The subsections below are kept as a historical record of what shipped in each
 past task/commit, not a list of pending changes — check `git status` if you need to confirm this
 is still true before trusting it blindly.
@@ -790,24 +790,19 @@ checked, since that mailbox isn't accessible from this session.
 
 ## Immediate Next Task
 
-Nothing is currently pending commit/push/deploy — everything through `6c520b4` is committed,
-pushed, and live on production (deployment `dpl_HgwE2UcsEN8GJbBUCSWrNFVK7Erd`). This includes: the
+Nothing is currently pending commit/push/deploy — everything through `db61e29` is committed,
+pushed, and live on production (deployment `dpl_DeHC5XYXZ9FAhyXGdNKbLFa4Bvq9`). This includes: the
 Contact page's stale direct-email block removal (the one real test row this left in
 `contact_inquiries`, "Claude QA Test 2", has since been deleted at the user's request — see
 Active File Manifest above); the Step 1 "Submission Method" selector
-(`'batch'`/`'individual'` dispatch, migration 0065 applied and verified); and Step 2's "This
-submission" → "Full Clean & Polish" heading rename. Legal pages,
+(`'batch'`/`'individual'` dispatch, migration 0065 applied and verified); Step 2's "This
+submission" → "Full Clean & Polish" heading rename; and every outgoing email now unconditionally
+CCing `updates@cuppascards.co.za` (`lib/email/send-email.ts`'s `ADMIN_CC_EMAIL`). Legal pages,
 email templates, and PayFast item descriptors now say "CuppasCards". All 8 grading-lifecycle email
 templates exist and render correctly. **Outbound email is now fully live**: the user swapped in
-the real Gmail App Password for `mitchell@cuppascards.com` (2026-09-20), and a real send was
-confirmed via `/admin/test-emails` (Stage 1 `ORDER_CONFIRMED` and Stage 3 `RECEIVED_HQ`, both
-returning real `messageId`s with no SMTP error) after restarting the dev server to pick up the
-new `.env.local` values. No credential blocker remains on this pipeline.
-
-One more piece is code-complete and click-tested live, waiting on your go-ahead to commit: every
-outgoing email now unconditionally CCs `updates@cuppascards.co.za` (`lib/email/send-email.ts`'s
-`ADMIN_CC_EMAIL`, changed from an initial `info@cuppascards.co.za` within the same task), confirmed
-via a real send returning `HTTP 200`.
+the real Gmail App Password for `mitchell@cuppascards.com` (2026-09-20), and real sends were
+confirmed via `/admin/test-emails` throughout this session, returning real `messageId`s with no
+SMTP error. No credential blocker remains on this pipeline.
 
 **Still genuinely open**:
 - **Resend domain verification** is moot now that Resend itself has been fully replaced by Google
