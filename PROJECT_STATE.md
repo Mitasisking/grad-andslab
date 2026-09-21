@@ -664,16 +664,18 @@ field that drives routing/matching logic, never the name.
 
 ## Uncommitted work in the tree right now
 
-**Seven pieces of work are currently uncommitted** — the landing page section reorder, the hero
-copy update, the Google/Apple OAuth addition, the Submission Method Step 1→Step 2 relocation, the
-Step 3 Order Summary/delivery-method rewrite, the vendor page's "Every Grading Tier, On-Site"
-copy update, and the Vault carousel's relocation from the homepage to `/shop` (see the "Immediate
-Next Task" section below for details on each). Everything else described in
-this file — through commit `db61e29` — is committed, pushed to `origin/main`, and deployed to
-Vercel production (alias `website-three-iota-83.vercel.app`, deployment
-`dpl_DeHC5XYXZ9FAhyXGdNKbLFa4Bvq9`, deployed via `vercel --prod`). The subsections below are kept
-as a historical record of what shipped in each past task/commit, not a list of pending changes —
-check `git status` if you need to confirm this is still true before trusting it blindly.
+**Nothing is currently uncommitted.** Everything described in this file — through commit
+`970ebb4` ("Update landing/shop/vendor pages, submission wizard, and add social sign-in": the
+landing page section reorder, the hero copy update, the Google/Apple OAuth addition, the
+Submission Method Step 1→Step 2 relocation, the Step 3 Order Summary/delivery-method rewrite, the
+vendor page's "Every Grading Tier, On-Site" copy update, and the Vault carousel's relocation from
+the homepage to `/shop` — see the "Immediate Next Task" section below for the full detail on each)
+— is committed, pushed to `origin/main` (`db61e29..970ebb4 main -> main`), and deployed to Vercel
+production (deployment `dpl_AQ6VAFrgiw3ZPjEZyB5AfggaNb9N`, aliased to
+`website-three-iota-83.vercel.app`, deployed via `vercel --prod`; build compiled clean, all 79
+routes generated with no errors). The subsections below are kept as a historical record of what
+shipped in each past task/commit, not a list of pending changes — check `git status` if you need
+to confirm this is still true before trusting it blindly.
 
 **Committed, pushed, and deployed to production through `648f42d`** (earlier deploy, superseded by
 the one above): ACE tier
@@ -989,11 +991,13 @@ the real Gmail App Password for `mitchell@cuppascards.com` (2026-09-20), and rea
 confirmed via `/admin/test-emails` throughout this session, returning real `messageId`s with no
 SMTP error. No credential blocker remains on this pipeline.
 
-Not yet committed: the landing page section reorder, the hero copy update, the Google/Apple OAuth
-addition, the Submission Method Step 1→Step 2 relocation, and the Step 3 Order Summary/delivery-
-method rewrite — see the five bullets below.
+**Committed, pushed to `origin/main`, and deployed to production** (commit `970ebb4`, deployment
+`dpl_AQ6VAFrgiw3ZPjEZyB5AfggaNb9N`): the landing page section reorder, the hero copy update, the
+Google/Apple OAuth addition, the Submission Method Step 1→Step 2 relocation, the Step 3 Order
+Summary/delivery-method rewrite, the vendor page copy update, and the Vault carousel relocation —
+see the seven bullets below for full detail on each.
 
-Seven more pieces are code-complete, waiting on your go-ahead to commit:
+Seven pieces of work, all landed in commit `970ebb4`:
 - The landing page's `<FeaturedCarousel>` ("The CuppasCards Vault") now renders below "The Easiest
   Way to Grade" instead of above it (`app/page.tsx`).
 - The landing page hero copy: pill badge now "South Africa's Premier Grading Service.", subheading
