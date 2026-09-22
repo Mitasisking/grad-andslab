@@ -80,8 +80,26 @@ trigger — pushing to `origin/main` alone does not put changes on production he
      email template) updated from the old placeholder `#a67c00` to the real `#fdc82f`.
    - `npx tsc --noEmit` clean. `npm run lint`'s 46 errors/2 warnings are all pre-existing and
      unrelated (admin/events, dashboard, `lib/shipping.ts`, `scripts/*.js` — none in a file this task
-     touched). **Not yet committed, pushed, or deployed** — awaiting explicit instruction per
-     standing practice.
+     touched). **Committed (`4f5a344`), pushed to `origin/main`, and deployed to production**
+     (`dpl_HtrWwrESJzh7snQLYcgANXEnF3EK`, `vercel --prod`).
+
+10. **Hero section made visual-first (2026-09-22, uncommitted)** — `app/page.tsx`'s hero no longer
+    has any text elements: the pill badge ("South Africa's Premier Grading Service."), the
+    `{siteConfig.name}` heading, and the "Making Grading Easy" subheadline are all removed. In their
+    place, `/images/brand/logo-portrait-black.png` (one of the six brand lockups extracted during
+    the identity rollout above) renders as the section's sole visual centerpiece via `next/image`
+    (`priority`, `w-[320px] md:w-[420px] h-auto mx-auto`), with the same two CTA buttons ("Start a
+    Submission" / "Browse the Shop") centered directly beneath it, unchanged. The request's exact
+    asset path (`/images/cuppascards-hero-logo.png`) doesn't exist in this codebase — no such file
+    was ever produced — so the already-extracted portrait-black lockup was used instead, matching
+    the brand guide's own "Splash/Hero: stacked portrait logo" placement guidance (see the Current
+    Milestone brand-rollout entry above) and this section's existing `bg-slate-900` background.
+    Dark theme, section padding, and the transition into "The Easiest Way to Grade" are untouched.
+    Carries the same known "logo card" seam limitation already documented for the Navbar/Footer
+    (solid black background swatch vs. this section's not-quite-identical `bg-slate-900`) — visible
+    on click-test, not fixed here. `npx tsc --noEmit` clean. Click-tested live in the dev server:
+    logo renders centered, both buttons render directly beneath it, layout and spacing match the
+    request. **Not yet committed, pushed, or deployed.**
 
 4. **Step 1 (`Grader & tier`) simplified to ACE-only for launch** — `components/submit/
    step-grader-tier.tsx` no longer renders a "Country of origin" or "Grading company" selector;
@@ -1070,6 +1088,13 @@ deliberate decision not to repaint `slate-900`/`slate-950` sections to Forest Gr
 `npx tsc --noEmit` clean; `npm run lint`'s 46 errors/2 warnings are all pre-existing and in files
 this task never touched. Not click-tested against a fresh full rebuild yet. **Not committed,
 pushed, or deployed** — awaiting explicit instruction.
+
+**Uncommitted — homepage hero made visual-first**: `app/page.tsx`'s hero pill badge, `{siteConfig.name}`
+heading, and "Making Grading Easy" subheadline are removed; a centered `next/image` render of
+`/images/brand/logo-portrait-black.png` (`priority`, `w-[320px] md:w-[420px]`) is now the section's
+sole visual element, with the existing "Start a Submission"/"Browse the Shop" buttons unchanged
+directly beneath it. Full detail in the Current Milestone (item 10) above. `npx tsc --noEmit`
+clean. Click-tested live in the dev server. **Not committed, pushed, or deployed.**
 
 - Untracked, not yet triaged into the repo structure: `Stock photos/`, `TheCardApi.txt`,
   `claude context.txt`, `cuppa cards logo temp logo.jpeg`, `termsofservice.txt`, `zernio.txt`,

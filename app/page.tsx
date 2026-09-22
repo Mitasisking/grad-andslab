@@ -1,3 +1,4 @@
+import Image from 'next/image'
 import Link from 'next/link'
 import { SOCIAL_LINKS } from '../lib/social-links'
 import { siteConfig } from '../lib/site-config'
@@ -14,18 +15,16 @@ export default function HomePage() {
       {/* Hero Section */}
       <section className="relative pt-32 pb-20 md:pt-48 md:pb-32 overflow-hidden">
         <div className="max-w-6xl mx-auto px-6 relative z-10 text-center">
-          <div className="inline-block mb-4 px-4 py-1.5 rounded-full bg-slate-800 border border-slate-700 text-[11px] font-semibold text-emerald-400 tracking-wide uppercase">
-            South Africa&apos;s Premier Grading Service.
-          </div>
-          <h1
-            className="text-5xl md:text-7xl font-black text-brand-gold mb-6 tracking-tight [-webkit-text-stroke:1.5px_black]"
-            style={{ fontFamily: 'var(--font-display)' }}
-          >
-            {siteConfig.name}
-          </h1>
-          <p className="text-xl md:text-2xl text-slate-300 max-w-2xl mx-auto mb-10 leading-relaxed">
-            Making Grading Easy
-          </p>
+          {/* Stacked portrait lockup, matching this section's own dark bg-slate-900 --
+              the brand guide's own "Splash/Hero" placement guidance for this variant. */}
+          <Image
+            src="/images/brand/logo-portrait-black.png"
+            alt={siteConfig.name}
+            width={356}
+            height={225}
+            priority
+            className="w-[320px] md:w-[420px] h-auto mx-auto mb-10"
+          />
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
             <Link
               href="/dashboard"
