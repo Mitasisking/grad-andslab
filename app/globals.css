@@ -5,6 +5,22 @@
   --foreground: #f3efe4;
 
   /* ----------------------------------------------------------------------
+   * Cuppa's Cards brand tokens, sourced directly from
+   * "Stock photos/Cuppascards Logo and Colour Guide.pdf" (2026-09-22).
+   * Named `--brand-*` (not `--gold`/`--green`) so they read as literal
+   * brand-guide colors, distinct from this file's older `--seal`/`--vault`
+   * gold tokens below (also updated to the new gold) and from Tailwind's
+   * built-in `amber` scale (remapped to derive from this same gold further
+   * down, via @theme, so every existing `amber-*` utility class site-wide
+   * picks up the new brand color without touching each call site).
+   */
+  --brand-gold: #fdc82f; /* Pantone 123 C */
+  --brand-green: #007a33; /* Pantone 356 C */
+  --brand-forest: #1d3c34; /* Pantone 560 C */
+  --brand-black: #000000; /* Pantone Black 6 C */
+  --brand-white: #ffffff; /* Pantone White C */
+
+  /* ----------------------------------------------------------------------
    * Ledger/manifest palette — the design language used by the Phase 2-4
    * surfaces (submit, auctions, admin, dashboard, shop): wizard.tsx,
    * step-*.tsx, auction-detail.tsx, grading/intake portals, and the rest
@@ -31,12 +47,21 @@
   --ink: #f3efe4;
   --ink-muted: #a99f8c;
   --line: #3a3226;
-  --seal: #a67c00;
+  /* Was the pre-brand-guide stand-in gold #a67c00 -- now the real brand
+   * gold. --seal-ink/--vault-ink (near-black text rendered on top of this
+   * color, e.g. badge pills) keep working unchanged: dark text on a bright
+   * gold background reads at least as well as it did on the old, darker
+   * gold, if not better. */
+  --seal: var(--brand-gold);
   --seal-ink: #1c1408;
-  --vault: #a67c00;
+  --vault: var(--brand-gold);
   --vault-ink: #1c1408;
   --danger: #e2645a;
-  --font-display: Georgia, 'Iowan Old Style', 'Palatino Linotype', 'Book Antiqua', serif;
+  /* Brand guide calls for "Recoleta Regular" -- see app/layout.tsx's Fraunces
+   * loader comment for why Fraunces stands in for it today. Georgia is kept
+   * as the tail of the stack in case the Fraunces variable is ever
+   * unavailable (e.g. font loading disabled). */
+  --font-display: var(--font-fraunces), Georgia, 'Iowan Old Style', 'Palatino Linotype', 'Book Antiqua', serif;
 }
 
 @theme inline {
@@ -44,6 +69,28 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+
+  /* Brand palette exposed as Tailwind utilities: bg-brand-gold,
+   * text-brand-green, border-brand-forest, etc. */
+  --color-brand-gold: var(--brand-gold);
+  --color-brand-green: var(--brand-green);
+  --color-brand-forest: var(--brand-forest);
+  --color-brand-black: var(--brand-black);
+  --color-brand-white: var(--brand-white);
+
+  /* Remaps Tailwind's built-in `amber` scale to a ramp derived from the
+   * brand gold (#fdc82f at amber-400, the shade this codebase's existing
+   * `amber-*` classes reach for most often for text/hover accents) instead
+   * of Tailwind's stock amber hues -- every existing `amber-300/400/500/600`
+   * usage across the site (Navbar, Footer, CTAs, badges, etc.) picks up the
+   * new brand gold automatically, without editing each call site. Only the
+   * 4 shades actually used anywhere in this codebase are remapped; every
+   * other Tailwind color (including the rest of the amber scale) is
+   * untouched. */
+  --color-amber-300: #fdd870;
+  --color-amber-400: var(--brand-gold);
+  --color-amber-500: #f2b812;
+  --color-amber-600: #d9a000;
 }
 
 body {

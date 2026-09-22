@@ -38,23 +38,28 @@ export function PackagingGuidelines() {
     <section className="py-16 md:py-20">
       <div className="max-w-4xl mx-auto px-6">
         <div className="text-center mb-10">
-          <p className="text-[#a67c00] text-xs font-bold uppercase tracking-widest mb-2">Quick Reference</p>
-          <h2 className="text-3xl md:text-4xl font-black text-white tracking-tight">Do&apos;s and Don&apos;ts</h2>
+          <p className="text-brand-gold text-xs font-bold uppercase tracking-widest mb-2">Quick Reference</p>
+          <h2
+            className="text-3xl md:text-4xl font-black text-white tracking-tight"
+            style={{ fontFamily: 'var(--font-display)' }}
+          >
+            Do&apos;s and Don&apos;ts
+          </h2>
         </div>
 
         <div className="grid md:grid-cols-2 gap-6">
           {/* Do */}
           <div
             className="rounded-2xl bg-slate-900 border border-slate-800 border-t-4 p-6 md:p-8"
-            style={{ borderTopColor: '#a67c00' }}
+            style={{ borderTopColor: 'var(--brand-gold)' }}
           >
             <h3 className="text-xl font-bold text-white mb-5 flex items-center gap-2">
-              <span className="text-[#a67c00]">Do</span>
+              <span className="text-brand-gold">Do</span>
             </h3>
             <ul className="space-y-3.5">
               {DO_ITEMS.map((item) => (
                 <li key={item} className="flex items-start gap-3">
-                  <span className="shrink-0 w-5 h-5 rounded-full bg-[#a67c00]/10 text-[#a67c00] flex items-center justify-center mt-0.5">
+                  <span className="shrink-0 w-5 h-5 rounded-full bg-brand-gold/10 text-brand-gold flex items-center justify-center mt-0.5">
                     <CheckIcon className="w-3 h-3" />
                   </span>
                   <span className="text-slate-200 leading-relaxed">{item}</span>

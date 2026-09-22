@@ -17,7 +17,10 @@ export default function HomePage() {
           <div className="inline-block mb-4 px-4 py-1.5 rounded-full bg-slate-800 border border-slate-700 text-[11px] font-semibold text-emerald-400 tracking-wide uppercase">
             South Africa&apos;s Premier Grading Service.
           </div>
-          <h1 className="text-5xl md:text-7xl font-black text-[#a67c00] mb-6 tracking-tight [-webkit-text-stroke:1.5px_black]">
+          <h1
+            className="text-5xl md:text-7xl font-black text-brand-gold mb-6 tracking-tight [-webkit-text-stroke:1.5px_black]"
+            style={{ fontFamily: 'var(--font-display)' }}
+          >
             {siteConfig.name}
           </h1>
           <p className="text-xl md:text-2xl text-slate-300 max-w-2xl mx-auto mb-10 leading-relaxed">
@@ -26,7 +29,7 @@ export default function HomePage() {
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
             <Link
               href="/dashboard"
-              className="w-full sm:w-auto bg-[#a67c00] hover:bg-[#997100] text-black font-bold text-lg px-8 py-4 rounded-xl border-2 border-black transition shadow-[0_0_20px_rgba(166,124,0,0.25)] hover:shadow-[0_0_25px_rgba(166,124,0,0.45)]"
+              className="w-full sm:w-auto bg-brand-gold hover:bg-[#d9a000] text-black font-bold text-lg px-8 py-4 rounded-xl border-2 border-black transition shadow-[0_0_20px_rgba(253,200,47,0.25)] hover:shadow-[0_0_25px_rgba(253,200,47,0.45)]"
             >
               Start a Submission
             </Link>
@@ -49,7 +52,9 @@ export default function HomePage() {
       <section className="py-24 bg-slate-950 border-y border-slate-800">
         <div className="max-w-6xl mx-auto px-6">
           <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">The Easiest Way to Grade</h2>
+            <h2 className="text-3xl md:text-4xl font-bold text-white mb-4" style={{ fontFamily: 'var(--font-display)' }}>
+              The Easiest Way to Grade
+            </h2>
             <p className="text-slate-400 max-w-xl mx-auto text-lg">
               Skip the international shipping headaches and customs paperwork. We manage the entire pipeline from South Africa to the world and back.
             </p>
@@ -91,7 +96,9 @@ export default function HomePage() {
         <div className="max-w-4xl mx-auto px-6">
           <div className="relative overflow-hidden rounded-3xl border border-[#25D366]/20 bg-gradient-to-br from-slate-800 to-slate-900 px-8 py-14 md:py-16 text-center">
             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-[#25D366]/10 rounded-full blur-3xl -z-10 pointer-events-none" />
-            <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">Join the {siteConfig.name} Community</h2>
+            <h2 className="text-3xl md:text-4xl font-bold text-white mb-4" style={{ fontFamily: 'var(--font-display)' }}>
+              Join the {siteConfig.name} Community
+            </h2>
             <p className="text-slate-300 text-lg leading-relaxed mb-8 max-w-xl mx-auto">
               Join our exclusive WhatsApp group to be the first to know about new product pre-orders, flash sales,
               and upcoming grading submission deadlines!

@@ -64,7 +64,10 @@ export default function ContactPage() {
         <div className="grid md:grid-cols-2 gap-16">
           {/* Left: info */}
           <div>
-            <h1 className="text-4xl md:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-400 to-amber-600 mb-6 tracking-tight">
+            <h1
+              className="text-4xl md:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-400 to-amber-600 mb-6 tracking-tight"
+              style={{ fontFamily: 'var(--font-display)' }}
+            >
               Get in Touch
             </h1>
             <p className="text-slate-300 text-lg leading-relaxed mb-10">

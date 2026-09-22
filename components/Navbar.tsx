@@ -112,8 +112,20 @@ export default function Navbar() {
         
         {/* Left Side: Logo & Main Links */}
         <div className="flex items-center gap-8">
+          {/* Horizontal lockup on the brand's Black swatch -- the closest of
+              the four background variants in the brand guide to this navbar's
+              own bg-slate-950. There's no light-background navbar anywhere on
+              this site to switch to, so this is a fixed choice rather than a
+              dynamic light/dark swap. */}
           <Link href="/" className="shrink-0 opacity-100 hover:opacity-80 transition">
-            <Image src="/logo.png" alt={siteConfig.name} width={48} height={48} className="h-11 w-11 sm:h-12 sm:w-12" priority />
+            <Image
+              src="/images/brand/logo-horizontal-black.png"
+              alt={siteConfig.name}
+              width={356}
+              height={132}
+              className="h-9 sm:h-10 w-auto"
+              priority
+            />
           </Link>
           
           <div className="hidden md:flex gap-6 text-sm font-medium text-slate-300">

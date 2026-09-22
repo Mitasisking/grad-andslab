@@ -39,7 +39,10 @@ export const COLORS = {
   panel: '#1d1812',
   ink: '#f3efe4',
   inkMuted: '#a99f8c',
-  gold: '#a67c00',
+  // Real brand gold as of the Cuppa's Cards Logo and Colour Guide (2026-09-22)
+  // -- was a pre-brand-guide stand-in #a67c00, matching app/globals.css's
+  // --seal/--vault before their own update to the same real gold.
+  gold: '#fdc82f',
   goldInk: '#1c1408',
   line: '#332c22',
 }

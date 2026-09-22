@@ -16,7 +16,9 @@ This file is updated at the end of every response that builds or modifies a comp
 **Phase: launch simplification pass (ACE-only + Pokémon-only + shop filter simplification +
 Add-ons rework) + outbound email moved to Google SMTP/Nodemailer + WhatsApp community link + hero
 copy + brand-name harmonization to "CuppasCards" + full 8-stage grading email lifecycle templates
-+ Submission Method (batch vs individual dispatch) selector + admin CC on every outgoing email.**
++ Submission Method (batch vs individual dispatch) selector + admin CC on every outgoing email +
+admin-role authorization enforcement + **official brand identity rollout (colors, typography,
+logo assets)**.
 **Live in production as of `db61e29`** (deployed via `vercel --prod`, deployment
 `dpl_DeHC5XYXZ9FAhyXGdNKbLFa4Bvq9`, aliased to `website-three-iota-83.vercel.app`): everything
 from the `f0236b1` deploy (hero copy, Google SMTP/Nodemailer email migration, WhatsApp community
@@ -30,6 +32,56 @@ from this project's own manual `vercel --prod` CLI workflow (confirmed via `verc
 deploys all show as CLI/Production, no git-triggered auto-deploy bot), not an automatic git-push
 trigger — pushing to `origin/main` alone does not put changes on production here. Migrations
 0059-0065 all live.
+
+9. **Official brand identity rollout (2026-09-22, uncommitted)** — the user supplied a real brand
+   guide (`Stock photos/Cuppascards Logo and Colour Guide.pdf`) with exact hex/Pantone colors, a
+   named display typeface, and exported logo lockups, and asked for the whole site to be aligned to
+   it. Full detail lives in the Active File Manifest, Shared Contracts, and "Uncommitted work"
+   sections below; in short:
+   - **Color tokens**: `app/globals.css` gained real brand hex values as CSS variables
+     (`--brand-gold #fdc82f`, `--brand-green #007a33`, `--brand-forest #1d3c34`, `--brand-black`,
+     `--brand-white`), exposed as Tailwind utilities (`bg-brand-gold` etc.) via `@theme inline`.
+     `--seal`/`--vault` (the "paper/ink" theme's accent tokens, used throughout `/submit`,
+     `/dashboard`, `/admin`, `/auctions`, `/shop`) now resolve to `--brand-gold` instead of the old
+     placeholder gold. Tailwind's own `amber-300/400/500/600` scale was remapped to a gold-derived
+     ramp in the same `@theme` block — this reskins every pre-existing `amber-*` class site-wide
+     (71 usages across 14 files) with no per-file edits, since `amber` was already being used purely
+     as this app's "gold" stand-in everywhere.
+   - **Typography**: the brand guide specifies "Recoleta Regular" as the display font — a paid
+     Latinotype typeface with no free/Google Fonts distribution and no licensed font files on this
+     machine. Flagged to the user via `AskUserQuestion`; **the user chose a free look-alike for now
+     (Fraunces, via `next/font/google`)** rather than blocking on font licensing. `app/layout.tsx`
+     loads Fraunces as `--font-fraunces`; `app/globals.css`'s `--font-display` now resolves to
+     `var(--font-fraunces), Georgia, ...serif`. This is explicitly a stand-in — swapping in real
+     Recoleta font files later is a one-file change (`app/layout.tsx`, `next/font/local` instead of
+     `next/font/google`), documented inline. Applied to hero/heading text across `app/page.tsx`,
+     `app/vendor/page.tsx`, `app/services/page.tsx`, `app/contact/page.tsx`, `app/prepare/page.tsx`,
+     and `components/{FeaturedCarousel,PackagingGuidelines}.tsx`.
+   - **Logo assets**: 6 of the brand guide's 12 lockup variants were extracted from the PDF (Portrait/
+     Horizontal/URL layouts × White/Black backgrounds — Green and Deep-Green background variants were
+     **not** extracted, since no section of the site currently has a green background to place them
+     on) into `public/images/brand/`. `components/Navbar.tsx` now uses the horizontal-black lockup
+     (fixed choice — there is no light-background navbar anywhere on this site to dynamically switch
+     to); `components/Footer.tsx` gained the stacked portrait-black lockup above its existing content.
+     `public/logo.png` (the old square placeholder mark) is now fully unreferenced but left on disk,
+     not deleted.
+   - **Known limitation, flagged not fixed**: the extracted logo crops have solid baked-in
+     backgrounds (pure white/black), not transparent cutouts, since the brand guide provides
+     pre-composited swatches rather than isolated marks. `bg-slate-950`/`bg-slate-900` (Navbar/
+     Footer) aren't pixel-identical to pure black, so there's a faint-to-visible rectangular "logo
+     card" edge in both places (more visible in the Footer). Recommended permanent fix: real
+     transparent (alpha-channel) logo exports from whoever produced the brand guide. Not fixed as
+     part of this task.
+   - **Deliberately out of scope**: repainting the site's `slate-900`/`slate-950` sections to Deep
+     Forest Green or Core Black (the brand guide/checklist offered these as alternatives without
+     specifying which sections get which — a guess, not a spec, so left as-is pending a follow-up
+     instruction).
+   - `lib/email/templates/order-confirmation.ts`'s `COLORS.gold` (shared by every grading-lifecycle
+     email template) updated from the old placeholder `#a67c00` to the real `#fdc82f`.
+   - `npx tsc --noEmit` clean. `npm run lint`'s 46 errors/2 warnings are all pre-existing and
+     unrelated (admin/events, dashboard, `lib/shipping.ts`, `scripts/*.js` — none in a file this task
+     touched). **Not yet committed, pushed, or deployed** — awaiting explicit instruction per
+     standing practice.
 
 4. **Step 1 (`Grader & tier`) simplified to ACE-only for launch** — `components/submit/
    step-grader-tier.tsx` no longer renders a "Country of origin" or "Grading company" selector;
@@ -699,6 +751,26 @@ could run a live event with no slug set"), so no schema or admin-flow change was
 `EventSettingsRow` gained `active_event_name: string | null` (migration 0064) — purely a display
 name for the admin panel and the `/submit` wizard's badge; `active_event_slug` remains the only
 field that drives routing/matching logic, never the name.
+- **Brand tokens** (`app/globals.css`) — `--brand-gold #fdc82f`, `--brand-green #007a33`,
+  `--brand-forest #1d3c34`, `--brand-black #000000`, `--brand-white #ffffff`, sourced directly from
+  `Stock photos/Cuppascards Logo and Colour Guide.pdf` (2026-09-22) and exposed as Tailwind
+  utilities (`bg-brand-gold`, `text-brand-green`, etc.) via `@theme inline`. `--seal`/`--vault` (the
+  "paper/ink" theme's own accent-color variables, used app-wide via inline `style={{ color:
+  'var(--seal)' }}`) both resolve to `--brand-gold`. **Tailwind's built-in `amber-300/400/500/600`
+  scale is intentionally remapped** to a gold-derived ramp in the same `@theme` block — every
+  `amber-*` Tailwind class anywhere in this codebase now renders the real brand gold automatically;
+  do not "fix" this remap by reverting to stock Tailwind amber, and do not add new `amber-*` usages
+  expecting stock Tailwind amber — they will render brand gold, which is the intended behavior here.
+  `--font-display` resolves to `var(--font-fraunces), Georgia, ...serif` — **Fraunces is a
+  deliberate, user-approved stand-in for the brand guide's specified "Recoleta Regular"**, a paid
+  Latinotype font with no license files on this machine (see `app/layout.tsx`'s header comment).
+  Do not assume `--font-display` is the final/correct typeface; swap it for real Recoleta via
+  `next/font/local` in `app/layout.tsx` the moment licensed font files are available, without
+  touching any of the many call sites that already reference `var(--font-display)`. Logo assets
+  live in `public/images/brand/` (`logo-{portrait,horizontal,url}-{white,black}.png` — Green/Deep-Green
+  background variants not yet extracted); these have solid baked-in backgrounds, not transparent
+  cutouts — see the Current Milestone entry above for the known "logo card" visual-seam caveat this
+  causes in `Navbar.tsx`/`Footer.tsx`.
 - **`event_settings`** is a Postgres singleton-row table (`id boolean primary key default true`, `check(id)`) — the same trick as any single-row settings table; there is deliberately no way to have zero or multiple rows.
 
 ---
@@ -718,9 +790,10 @@ to Vercel production (deployment `dpl_HzCQmK5fv4r5CvZb2R71rCD7npRW`, aliased to
 routes generated with no errors, `/login` confirmed still prerendering statically and `/admin`
 correctly dynamic).
 
-**`fca1ec6`** ("Document confirmed admin grants and profiles schema drift" — docs-only, no code
-changes) **has been pushed to `origin/main`** (`5e0d906..fca1ec6 main -> main`). Nothing in it
-needs deploying (it only updates this file), so there's no pending deploy step for it.
+Two docs-only commits have landed on top of `5e0d906` since — `fca1ec6` ("Document confirmed admin
+grants and profiles schema drift") and `506cc59` ("Update PROJECT_STATE.md to reflect push
+status") — both **pushed to `origin/main`** (`5e0d906..fca1ec6..506cc59 main -> main`). Neither
+touches app code, so there's no pending deploy step for either.
 
 The subsections below are kept as a historical record of what shipped in each past task/commit,
 not a list of pending changes — check `git status` if you need to confirm this is still true
@@ -982,8 +1055,25 @@ session's access. Click-tested live: confirmed the client-side redirect reaches 
 authorize endpoint with correct params, and Supabase's own rejection message confirms this is a
 configuration gap, not a code bug.
 
+**Uncommitted — official brand identity rollout**: `app/globals.css` (brand color tokens +
+`amber-*` remap + `--seal`/`--vault`/`--font-display` updates), `app/layout.tsx` (Fraunces font
+load, standing in for the brand guide's paid "Recoleta Regular"), `components/Navbar.tsx` (real
+horizontal-black logo lockup, replacing `/logo.png`), `components/Footer.tsx` (added stacked
+portrait-black logo lockup), `app/page.tsx`/`app/vendor/page.tsx`/`app/services/page.tsx`/
+`app/contact/page.tsx`/`app/prepare/page.tsx`/`components/FeaturedCarousel.tsx`/
+`components/PackagingGuidelines.tsx` (display-font applied to hero/heading text),
+`lib/email/templates/order-confirmation.ts` (`COLORS.gold` updated to the real brand hex). New
+assets in `public/images/brand/` (6 of 12 logo lockup variants, extracted from the brand guide PDF).
+Full detail in the Current Milestone (item 9) and the new "Brand tokens" Shared Contract entry
+above, including the two flagged-but-not-fixed items (the logo "seam" visual limitation, and the
+deliberate decision not to repaint `slate-900`/`slate-950` sections to Forest Green/Black).
+`npx tsc --noEmit` clean; `npm run lint`'s 46 errors/2 warnings are all pre-existing and in files
+this task never touched. Not click-tested against a fresh full rebuild yet. **Not committed,
+pushed, or deployed** — awaiting explicit instruction.
+
 - Untracked, not yet triaged into the repo structure: `Stock photos/`, `TheCardApi.txt`,
-  `claude context.txt`, `cuppa cards logo temp logo.jpeg`, `termsofservice.txt`, `zernio.txt`.
+  `claude context.txt`, `cuppa cards logo temp logo.jpeg`, `termsofservice.txt`, `zernio.txt`,
+  `public/images/` (new brand logo assets, see above).
 
 ## Blocked / Needs a Decision
 

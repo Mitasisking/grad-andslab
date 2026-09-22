@@ -80,7 +80,12 @@ export function FeaturedCarousel({ products }: { products: FeaturedProduct[] }) 
       <div className="max-w-6xl mx-auto px-6">
         <div className="text-center mb-10">
           <p className="text-amber-400 text-xs font-bold uppercase tracking-widest mb-2">Premium Grails</p>
-          <h2 className="text-3xl md:text-4xl font-black text-white tracking-tight">The {siteConfig.name} Vault</h2>
+          <h2
+            className="text-3xl md:text-4xl font-black text-white tracking-tight"
+            style={{ fontFamily: 'var(--font-display)' }}
+          >
+            The {siteConfig.name} Vault
+          </h2>
         </div>
 
         <div
@@ -132,7 +137,7 @@ export function FeaturedCarousel({ products }: { products: FeaturedProduct[] }) 
                 className="h-1.5 rounded-full transition-all duration-300"
                 style={{
                   width: i === index ? 20 : 6,
-                  background: i === index ? '#a67c00' : '#3a3226',
+                  background: i === index ? 'var(--brand-gold)' : '#3a3226',
                 }}
               />
             ))}
