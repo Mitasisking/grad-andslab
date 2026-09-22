@@ -9,14 +9,15 @@ export function Footer() {
   return (
     <footer className="print:hidden bg-slate-900 py-12 border-t border-slate-800">
       <div className="max-w-6xl mx-auto px-6 flex flex-col items-center gap-8">
-        {/* Stacked portrait lockup on the brand's Black swatch, matching this
-            footer's own bg-slate-900. */}
+        {/* Real transparent-background brand PNG -- replaces the old
+            solid-background logo-portrait-black.png crop, so there's no more
+            "logo card" seam against this footer's bg-slate-900. */}
         <Image
-          src="/images/brand/logo-portrait-black.png"
+          src="/images/cuppascards-logo.png"
           alt={siteConfig.name}
-          width={356}
-          height={225}
-          className="h-16 w-auto"
+          width={257}
+          height={163}
+          className="h-16 w-auto object-contain"
         />
         <div className="w-full flex flex-col md:flex-row justify-between items-center gap-8 md:gap-4 text-sm text-slate-500">
           <p>© {new Date().getFullYear()} {siteConfig.name}. All rights reserved.</p>

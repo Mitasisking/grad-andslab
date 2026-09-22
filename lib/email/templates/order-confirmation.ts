@@ -47,6 +47,22 @@ export const COLORS = {
   line: '#332c22',
 }
 
+// Email clients can't resolve root-relative paths, so the logo needs an
+// absolute URL -- same appBaseUrl-with-a-hardcoded-production-fallback
+// pattern already used for links in send-order-confirmation.ts and
+// send-grading-update.ts.
+const EMAIL_APP_BASE_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://website-three-iota-83.vercel.app'
+export const EMAIL_LOGO_URL = `${EMAIL_APP_BASE_URL}/images/cuppascards-logo.png`
+
+/**
+ * Shared header logo markup for every transactional email template in this
+ * directory (replaces the old plain-text "CuppasCards" uppercase header
+ * line) -- the real transparent-background brand PNG renders cleanly
+ * against COLORS.panel's dark background with no extra masking needed,
+ * unlike the solid-background logo crops used in the app's own UI chrome.
+ */
+export const EMAIL_LOGO_HTML = `<img src="${EMAIL_LOGO_URL}" alt="CuppasCards" width="160" style="display:block;margin:0 auto;width:160px;height:auto;" />`
+
 function money(amount: number, region: ProductRegion) {
   return formatByRegion(amount, region)
 }
@@ -148,9 +164,7 @@ export function renderOrderConfirmationEmail(props: OrderConfirmationEmailProps)
           <table role="presentation" width="560" cellpadding="0" cellspacing="0" style="max-width:560px;width:100%;background:${COLORS.panel};border:1px solid ${COLORS.line};border-radius:4px;">
             <tr>
               <td style="padding:32px 32px 0;text-align:center;">
-                <p style="margin:0;font-family:Arial,Helvetica,sans-serif;font-size:11px;letter-spacing:0.18em;color:${COLORS.gold};text-transform:uppercase;">
-                  CuppasCards
-                </p>
+                ${EMAIL_LOGO_HTML}
                 <h1 style="margin:12px 0 0;font-family:Georgia,'Times New Roman',serif;font-size:24px;color:${COLORS.ink};font-weight:normal;">
                   Payment received
                 </h1>

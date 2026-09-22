@@ -101,6 +101,59 @@ trigger — pushing to `origin/main` alone does not put changes on production he
     logo renders centered, both buttons render directly beneath it, layout and spacing match the
     request. **Not yet committed, pushed, or deployed.**
 
+11. **Site-wide logo switched to a real transparent-background PNG (2026-09-22, uncommitted)** —
+    the previously-documented "logo card" seam limitation (item 9/10 above) is now resolved for
+    real, not just worked around. Full detail:
+    - **Asset**: the user's requested source file
+      (`Stock photos/Cuppascard logo png file real.png`) was copied to `public/images/cuppascards-logo.png`.
+      **That copy was NOT actually transparent** — its PNG header showed `colorType 2` (plain RGB, no
+      alpha channel at all): the checkerboard "this would be transparent" indicator from whatever
+      export tool produced it was baked into the file's opaque pixels, not encoded as real alpha.
+      Loaded live, it rendered as a literal grey/white checkerboard square on every dark background
+      — confirmed both by direct pixel inspection and by a live screenshot, not just by the PNG
+      header. Flagged to the user via `AskUserQuestion` before going further; the user's own
+      follow-up instruction directed a `sharp`-based fix (below) rather than reverting.
+    - **Fix**: `sharp` (already a project dependency, no new install) was used to chroma-key the
+      file: for every pixel, `chroma = max(r,g,b) - min(r,g,b)`; sampled values confirmed the
+      checkerboard's two grey/white tones have `chroma` ≈ 0-3 (achromatic) while the brand's gold and
+      green both sample at `chroma` ≈ 90-208 (highly saturated) — a clean, wide separation. Pixels
+      with `chroma <= 8` become fully transparent, `chroma >= 40` stay fully opaque, and the small
+      band between is linearly interpolated for anti-aliased edges. RGB values are left untouched, so
+      the gold/green brand colors are pixel-identical to the source. Re-saved over the same path as
+      a true RGBA PNG (`colorType 6`, verified via the PNG header) — independently re-verified by
+      decoding the output with `sharp` and confirming alpha is genuinely `0` at background corners
+      and non-zero at logo pixels (not just visually similar). No image-editing GUI tool or external
+      service was used — this was a one-off Node script run directly against the file, not committed
+      as a reusable script/tool.
+    - **Wired up everywhere**: `components/Navbar.tsx` (`h-8 sm:h-10 w-auto object-contain`,
+      `priority`), `components/Footer.tsx` (`h-16 w-auto object-contain`), and `app/page.tsx`'s hero
+      (unchanged `w-[280px] sm:w-[360px] md:w-[440px] h-auto` sizing from item 10) all now point at
+      `/images/cuppascards-logo.png` instead of the old solid-background `public/images/brand/*.png`
+      crops. Those six brand crops are now fully unreferenced in code (same as the pre-existing
+      `public/logo.png`) but left on disk, not deleted.
+    - **Email templates**: none of the 9 grading-lifecycle/receipt templates
+      (`lib/email/templates/*.ts`) nor the inline auction-won email
+      (`lib/email/send-order-confirmation.ts`) previously had an image logo at all — each just had a
+      plain uppercase "CuppasCards" text line. A shared `EMAIL_LOGO_URL`/`EMAIL_LOGO_HTML` pair was
+      added to `lib/email/templates/order-confirmation.ts` (the same file every template already
+      imports `COLORS`/`escapeHtml` from) rather than duplicating `<img>` markup across 10 files.
+      `EMAIL_LOGO_URL` builds an absolute URL via `process.env.NEXT_PUBLIC_APP_URL ??
+      'https://website-three-iota-83.vercel.app'` — the same appBaseUrl-with-hardcoded-fallback
+      pattern already used for links in `send-order-confirmation.ts`/`send-grading-update.ts` — since
+      email clients can't resolve root-relative paths. The transparent PNG renders cleanly against
+      every template's dark `COLORS.panel` background with no masking needed, unlike the old
+      solid-background crops. All 10 files' plain-text header lines were replaced with
+      `${EMAIL_LOGO_HTML}`; none of the 10 functions' signatures or call sites needed to change.
+    - `npx tsc --noEmit` clean. `npm run lint` back to the same pre-existing 46-error/2-warning
+      baseline (none in a file this task touched). Click-tested live in the dev server (after
+      clearing `.next/cache/images` and working around one dev-only stale-`srcset` browser-cache
+      artifact in the test tab, confirmed via direct pixel decoding to be a caching artifact, not a
+      real bug): Navbar, Hero, and Footer all render the real logo with no checkerboard, no solid
+      background box, and gold/green colors intact. Email templates were not live-sent as part of
+      this verification (would require triggering `/admin/test-emails` again) — the markup change
+      itself is a straightforward `<img>` swap with no logic touched. **Not yet committed, pushed, or
+      deployed.**
+
 4. **Step 1 (`Grader & tier`) simplified to ACE-only for launch** — `components/submit/
    step-grader-tier.tsx` no longer renders a "Country of origin" or "Grading company" selector;
    `app/submit/wizard.tsx`'s `region`/`company` are now plain `'sa'`/`'ACE'` constants (not
@@ -787,8 +840,15 @@ field that drives routing/matching logic, never the name.
   touching any of the many call sites that already reference `var(--font-display)`. Logo assets
   live in `public/images/brand/` (`logo-{portrait,horizontal,url}-{white,black}.png` — Green/Deep-Green
   background variants not yet extracted); these have solid baked-in backgrounds, not transparent
-  cutouts — see the Current Milestone entry above for the known "logo card" visual-seam caveat this
-  causes in `Navbar.tsx`/`Footer.tsx`.
+  cutouts, and are now **fully unreferenced** in code. **`/images/cuppascards-logo.png`** (real
+  transparent-background PNG, `colorType 6`/RGBA) is now the canonical logo asset used everywhere in
+  the app — Navbar, Footer, homepage hero, and every transactional email header
+  (`EMAIL_LOGO_URL`/`EMAIL_LOGO_HTML`, `lib/email/templates/order-confirmation.ts`). It required a
+  one-off `sharp` chroma-key fix after the file the user supplied turned out to have its checkerboard
+  "transparency" indicator baked into opaque RGB pixels rather than a real alpha channel — see the
+  Current Milestone entry (item 11) for the exact chroma thresholds used. If this file is ever
+  replaced, verify the replacement has a real alpha channel (PNG `colorType` 4 or 6) before assuming
+  it's transparent — a checkerboard pattern visible in an image *editor* does not guarantee this.
 - **`event_settings`** is a Postgres singleton-row table (`id boolean primary key default true`, `check(id)`) — the same trick as any single-row settings table; there is deliberately no way to have zero or multiple rows.
 
 ---
@@ -1096,9 +1156,22 @@ sole visual element, with the existing "Start a Submission"/"Browse the Shop" bu
 directly beneath it. Full detail in the Current Milestone (item 10) above. `npx tsc --noEmit`
 clean. Click-tested live in the dev server. **Not committed, pushed, or deployed.**
 
+**Uncommitted — site-wide logo switched to a real transparent PNG**: `public/images/cuppascards-logo.png`
+(the user's supplied source file, re-processed with a one-off `sharp` chroma-key script after it
+turned out to have a baked-in checkerboard instead of a real alpha channel — see Current Milestone
+item 11 for the exact thresholds) is now the canonical logo everywhere: `components/Navbar.tsx`,
+`components/Footer.tsx`, `app/page.tsx`'s hero, and a new shared `EMAIL_LOGO_URL`/`EMAIL_LOGO_HTML`
+pair in `lib/email/templates/order-confirmation.ts` used by all 9 grading-lifecycle/receipt
+templates plus the inline auction-won email in `lib/email/send-order-confirmation.ts` (replacing
+their old plain-text "CuppasCards" header line). The six `public/images/brand/*.png` crops from the
+earlier rebrand task are now fully unreferenced (left on disk, not deleted). `npx tsc --noEmit`
+clean; `npm run lint` at the same pre-existing 46-error baseline. Click-tested live: Navbar, Hero,
+and Footer all render the real logo with no checkerboard and no solid-background seam. **Not
+committed, pushed, or deployed.**
+
 - Untracked, not yet triaged into the repo structure: `Stock photos/`, `TheCardApi.txt`,
   `claude context.txt`, `cuppa cards logo temp logo.jpeg`, `termsofservice.txt`, `zernio.txt`,
-  `public/images/` (new brand logo assets, see above).
+  `public/images/` (brand logo assets, see above).
 
 ## Blocked / Needs a Decision
 

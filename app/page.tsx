@@ -15,15 +15,16 @@ export default function HomePage() {
       {/* Hero Section */}
       <section className="relative pt-32 pb-20 md:pt-48 md:pb-32 overflow-hidden">
         <div className="max-w-6xl mx-auto px-6 relative z-10 text-center">
-          {/* Stacked portrait lockup, matching this section's own dark bg-slate-900 --
-              the brand guide's own "Splash/Hero" placement guidance for this variant. */}
+          {/* Real transparent-background brand PNG -- replaces the earlier
+              solid-background logo-portrait-black.png crop, so there's no
+              "logo card" seam against this section's bg-slate-900. */}
           <Image
-            src="/images/brand/logo-portrait-black.png"
+            src="/images/cuppascards-logo.png"
             alt={siteConfig.name}
-            width={356}
-            height={225}
+            width={257}
+            height={163}
             priority
-            className="w-[320px] md:w-[420px] h-auto mx-auto mb-10"
+            className="w-[280px] sm:w-[360px] md:w-[440px] h-auto mx-auto mb-10"
           />
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
             <Link

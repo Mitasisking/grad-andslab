@@ -112,18 +112,22 @@ export default function Navbar() {
         
         {/* Left Side: Logo & Main Links */}
         <div className="flex items-center gap-8">
-          {/* Horizontal lockup on the brand's Black swatch -- the closest of
-              the four background variants in the brand guide to this navbar's
-              own bg-slate-950. There's no light-background navbar anywhere on
-              this site to switch to, so this is a fixed choice rather than a
-              dynamic light/dark swap. */}
+          {/* Real transparent-background brand PNG. The file originally
+              supplied for this task had the checkerboard baked into its
+              opaque RGB pixels (PNG colorType 2, no alpha channel) rather
+              than real transparency; it was re-processed with a sharp-based
+              chroma-key script (keys out low-chroma/near-grey pixels,
+              preserves the high-chroma gold/green brand colors) into a true
+              RGBA PNG (colorType 6) before being used here -- see
+              PROJECT_STATE.md for the full detail. No more "logo card" seam
+              against this navbar's bg-slate-950. */}
           <Link href="/" className="shrink-0 opacity-100 hover:opacity-80 transition">
             <Image
-              src="/images/brand/logo-horizontal-black.png"
+              src="/images/cuppascards-logo.png"
               alt={siteConfig.name}
-              width={356}
-              height={132}
-              className="h-9 sm:h-10 w-auto"
+              width={257}
+              height={163}
+              className="h-8 sm:h-10 w-auto object-contain"
               priority
             />
           </Link>

@@ -1,4 +1,4 @@
-import { COLORS, escapeHtml } from '@/lib/email/templates/order-confirmation'
+import { COLORS, EMAIL_LOGO_HTML, escapeHtml } from '@/lib/email/templates/order-confirmation'
 import type { DispatchedToSaPayload } from '@/types/notifications'
 
 /**
@@ -38,9 +38,7 @@ export function renderDispatchedToSaEmail(payload: DispatchedToSaPayload): { sub
           <table role="presentation" width="560" cellpadding="0" cellspacing="0" style="max-width:560px;width:100%;background:${COLORS.panel};border:1px solid ${COLORS.line};border-radius:4px;">
             <tr>
               <td style="padding:32px 32px 0;text-align:center;">
-                <p style="margin:0;font-family:Arial,Helvetica,sans-serif;font-size:11px;letter-spacing:0.18em;color:${COLORS.gold};text-transform:uppercase;">
-                  CuppasCards
-                </p>
+                ${EMAIL_LOGO_HTML}
                 <h1 style="margin:12px 0 0;font-family:Georgia,'Times New Roman',serif;font-size:24px;color:${COLORS.ink};font-weight:normal;">
                   Grading complete — heading home
                 </h1>
