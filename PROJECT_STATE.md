@@ -154,6 +154,56 @@ trigger — pushing to `origin/main` alone does not put changes on production he
       itself is a straightforward `<img>` swap with no logic touched. **Not yet committed, pushed, or
       deployed.**
 
+12. **Logo asset replaced again with a properly pre-cleaned transparent file (2026-09-22,
+    uncommitted)** — supersedes the `sharp` chroma-key workaround in item 11. The user supplied a
+    new source file, `Stock photos/Cuppalogo background removed.png`, already processed through a
+    real background-removal tool. **Independently verified before overwriting anything** (same
+    diligence as item 11, since the previous "real transparent PNG" claim turned out to be false):
+    PNG header confirmed `colorType 6` (true RGBA), and a `sharp`-decoded pixel scan confirmed the
+    alpha channel actually varies (background corners at alpha ≈ 3-4, ~95.7% of pixels fully
+    transparent, ~2.4% fully opaque, ~1.9% partial/anti-aliased edge — a normal profile for a logo
+    mark on a mostly-empty canvas) rather than being uniformly opaque or uniformly zero. Copied
+    straight over `public/images/cuppascards-logo.png` (same path, so `Navbar.tsx`/`Footer.tsx`/
+    `app/page.tsx`/the email templates from item 11 needed zero code changes). No `sharp`
+    reprocessing was needed or done this time — the file was correct as supplied.
+    **Cache purge, following the project's own documented lesson** (see the `648f42d` history note
+    on never running `rm -rf .next` while a dev server sharing that directory is running): the dev
+    server (`node.exe` PID bound to :3000) was stopped first via `taskkill`, then `.next` was deleted
+    in full (not just `.next/cache/images`, which is where item 11's leftover stale-cache confusion
+    actually turned out to live), then the dev server was restarted. Verified live in a **freshly
+    created browser tab** (not the same tab reused across items 10/11, which had accumulated a stale
+    `srcset` cache that needed manual JS workarounds to see past) — Navbar, Hero, and Footer all
+    render correctly with no checkerboard, no solid-background seam, gold/green intact, on the first
+    load with no cache-busting tricks needed. `npx tsc --noEmit` clean (no code changed, only the
+    binary asset). **Not yet committed, pushed, or deployed.**
+
+13. **Hero rebuilt as a layered large-background-logo design, with hero copy restored (2026-09-22,
+    uncommitted)** — `app/page.tsx`'s hero `<section>` is now `relative min-h-[80vh] flex
+    items-center overflow-hidden` with two stacked layers instead of the single centered-logo
+    layout from item 10:
+    - **Background layer** (`z-0`): `/images/cuppascards-logo.png` rendered via `next/image`'s
+      `fill` prop (the correct idiomatic way to have an Image cover its positioned parent by
+      percentage, rather than a fixed intrinsic `width`/`height` — not used anywhere else in this
+      codebase before now) with `sizes="100vw"`, `object-contain` (chosen over `object-cover` so the
+      whole crown+wordmark mark stays visible rather than being cropped unpredictably across
+      breakpoints), `opacity-10`, and `pointer-events-none` — a subtle full-bleed watermark, not
+      readable branding on its own. `alt=""` since it's purely decorative here (the Navbar's own
+      logo already carries the real `alt={siteConfig.name}` for assistive tech).
+    - **Foreground layer** (`z-10`): the pill badge ("South Africa's Premier Grading Service.") and
+      subheadline ("Making Grading Easy") that item 10 had removed are **restored** — the request
+      referenced this exact copy ("hero text content ('South Africa's Premier Grading Service',
+      etc.)"), so this session treated it as a request to bring back that specific previously-removed
+      copy rather than inventing new marketing text; the two CTA buttons are unchanged. This content
+      div is `relative z-10`, which combined with the background layer's `z-0` and `pointer-events-none`
+      guarantees the buttons are fully clickable — **independently verified by actually clicking
+      "Start a Submission" and confirming client-side navigation to `/dashboard` succeeded**, not just
+      by inspecting the CSS.
+    - The pre-existing ambient blur glow (`-z-10`) is unchanged and still sits behind both layers.
+    - `npx tsc --noEmit` clean; `npm run lint` at the same pre-existing 46-error baseline. Click-tested
+      live: watermark renders large and faint behind the copy/buttons exactly as specified, text and
+      buttons fully legible, "Start a Submission" click-navigates correctly. **Not yet committed,
+      pushed, or deployed.**
+
 4. **Step 1 (`Grader & tier`) simplified to ACE-only for launch** — `components/submit/
    step-grader-tier.tsx` no longer renders a "Country of origin" or "Grading company" selector;
    `app/submit/wizard.tsx`'s `region`/`company` are now plain `'sa'`/`'ACE'` constants (not
@@ -1133,45 +1183,63 @@ session's access. Click-tested live: confirmed the client-side redirect reaches 
 authorize endpoint with correct params, and Supabase's own rejection message confirms this is a
 configuration gap, not a code bug.
 
-**Uncommitted — official brand identity rollout**: `app/globals.css` (brand color tokens +
-`amber-*` remap + `--seal`/`--vault`/`--font-display` updates), `app/layout.tsx` (Fraunces font
-load, standing in for the brand guide's paid "Recoleta Regular"), `components/Navbar.tsx` (real
-horizontal-black logo lockup, replacing `/logo.png`), `components/Footer.tsx` (added stacked
-portrait-black logo lockup), `app/page.tsx`/`app/vendor/page.tsx`/`app/services/page.tsx`/
-`app/contact/page.tsx`/`app/prepare/page.tsx`/`components/FeaturedCarousel.tsx`/
-`components/PackagingGuidelines.tsx` (display-font applied to hero/heading text),
-`lib/email/templates/order-confirmation.ts` (`COLORS.gold` updated to the real brand hex). New
-assets in `public/images/brand/` (6 of 12 logo lockup variants, extracted from the brand guide PDF).
-Full detail in the Current Milestone (item 9) and the new "Brand tokens" Shared Contract entry
-above, including the two flagged-but-not-fixed items (the logo "seam" visual limitation, and the
-deliberate decision not to repaint `slate-900`/`slate-950` sections to Forest Green/Black).
-`npx tsc --noEmit` clean; `npm run lint`'s 46 errors/2 warnings are all pre-existing and in files
-this task never touched. Not click-tested against a fresh full rebuild yet. **Not committed,
-pushed, or deployed** — awaiting explicit instruction.
+**Committed, pushed to `origin/main`, and deployed to production (`4f5a344`, deployment
+`dpl_HtrWwrESJzh7snQLYcgANXEnF3EK`) — official brand identity rollout**: `app/globals.css` (brand
+color tokens + `amber-*` remap + `--seal`/`--vault`/`--font-display` updates), `app/layout.tsx`
+(Fraunces font load, standing in for the brand guide's paid "Recoleta Regular"),
+`components/Navbar.tsx` (real horizontal-black logo lockup, replacing `/logo.png`),
+`components/Footer.tsx` (added stacked portrait-black logo lockup),
+`app/page.tsx`/`app/vendor/page.tsx`/`app/services/page.tsx`/`app/contact/page.tsx`/
+`app/prepare/page.tsx`/`components/FeaturedCarousel.tsx`/`components/PackagingGuidelines.tsx`
+(display-font applied to hero/heading text), `lib/email/templates/order-confirmation.ts`
+(`COLORS.gold` updated to the real brand hex), and 6 of 12 logo lockup variants extracted into
+`public/images/brand/`. Full detail in the Current Milestone (item 9) and the "Brand tokens" Shared
+Contract entry above, including the two flagged-but-not-fixed items at the time (the logo "seam"
+visual limitation, and the deliberate decision not to repaint `slate-900`/`slate-950` sections to
+Forest Green/Black — the seam has since been resolved for real, see below; the Forest Green/Black
+repaint remains an open, undecided item).
 
-**Uncommitted — homepage hero made visual-first**: `app/page.tsx`'s hero pill badge, `{siteConfig.name}`
-heading, and "Making Grading Easy" subheadline are removed; a centered `next/image` render of
-`/images/brand/logo-portrait-black.png` (`priority`, `w-[320px] md:w-[420px]`) is now the section's
-sole visual element, with the existing "Start a Submission"/"Browse the Shop" buttons unchanged
-directly beneath it. Full detail in the Current Milestone (item 10) above. `npx tsc --noEmit`
-clean. Click-tested live in the dev server. **Not committed, pushed, or deployed.**
+**Committed, pushed to `origin/main`, and deployed to production (`8bb25d6`) — homepage hero made
+visual-first**: `app/page.tsx`'s hero pill badge, `{siteConfig.name}` heading, and "Making Grading
+Easy" subheadline were removed; a centered `next/image` render (at the time,
+`/images/brand/logo-portrait-black.png`, later superseded — see below) became the section's sole
+visual element, with the existing "Start a Submission"/"Browse the Shop" buttons unchanged directly
+beneath it. Full detail in the Current Milestone (item 10) above.
 
-**Uncommitted — site-wide logo switched to a real transparent PNG**: `public/images/cuppascards-logo.png`
-(the user's supplied source file, re-processed with a one-off `sharp` chroma-key script after it
-turned out to have a baked-in checkerboard instead of a real alpha channel — see Current Milestone
-item 11 for the exact thresholds) is now the canonical logo everywhere: `components/Navbar.tsx`,
-`components/Footer.tsx`, `app/page.tsx`'s hero, and a new shared `EMAIL_LOGO_URL`/`EMAIL_LOGO_HTML`
-pair in `lib/email/templates/order-confirmation.ts` used by all 9 grading-lifecycle/receipt
-templates plus the inline auction-won email in `lib/email/send-order-confirmation.ts` (replacing
-their old plain-text "CuppasCards" header line). The six `public/images/brand/*.png` crops from the
-earlier rebrand task are now fully unreferenced (left on disk, not deleted). `npx tsc --noEmit`
-clean; `npm run lint` at the same pre-existing 46-error baseline. Click-tested live: Navbar, Hero,
-and Footer all render the real logo with no checkerboard and no solid-background seam. **Not
-committed, pushed, or deployed.**
+**Committed, pushed to `origin/main`, and deployed to production (`725c85f`) — site-wide logo
+switched to a transparent PNG, take one**: `public/images/cuppascards-logo.png` (the user's first
+supplied source file, re-processed with a one-off `sharp` chroma-key script after it turned out to
+have a baked-in checkerboard instead of a real alpha channel) became the canonical logo everywhere:
+`components/Navbar.tsx`, `components/Footer.tsx`, `app/page.tsx`'s hero, and a new shared
+`EMAIL_LOGO_URL`/`EMAIL_LOGO_HTML` pair in `lib/email/templates/order-confirmation.ts` used by all 9
+grading-lifecycle/receipt templates plus the inline auction-won email in
+`lib/email/send-order-confirmation.ts` (replacing their old plain-text "CuppasCards" header line).
+The six `public/images/brand/*.png` crops from the rebrand task became fully unreferenced (left on
+disk, not deleted). Full detail in the Current Milestone (item 11) above.
+
+**Uncommitted — site-wide logo switched to a transparent PNG, take two (final)**: the chroma-keyed
+file from `725c85f` above has been overwritten in place at the same
+`public/images/cuppascards-logo.png` path with a properly pre-cleaned source the user supplied
+(`Stock photos/Cuppalogo background removed.png`), independently verified to have a genuine varying
+alpha channel before overwriting. Same path as before, so **no code changes were needed** — every
+call site from item 11 (Navbar, Footer, Hero, all 10 email templates) picks this up automatically.
+Full detail, including the dev-server-stop-before-`rm -rf .next` cache purge, in the Current
+Milestone (item 12) above. `npx tsc --noEmit` clean (binary-only change). Click-tested live in a
+fresh browser tab: no checkerboard, no seam, gold/green intact. **Not yet committed, pushed, or
+deployed.**
+
+**Uncommitted — hero rebuilt as a layered large-background-logo design, hero copy restored**:
+`app/page.tsx`'s hero section now stacks a large, low-opacity (`opacity-10`) full-bleed logo
+watermark (`z-0`, `next/image` `fill` + `object-contain`, `pointer-events-none`) behind a
+foreground content layer (`z-10`) that restores the pill badge and subheadline item 10 had removed,
+plus the unchanged CTA buttons. Full detail in the Current Milestone (item 13) above.
+`npx tsc --noEmit` clean; `npm run lint` at the same pre-existing baseline. Click-tested live,
+including an actual click-through on "Start a Submission" confirming it still navigates to
+`/dashboard` (buttons are not blocked by the watermark layer). **Not yet committed, pushed, or
+deployed.**
 
 - Untracked, not yet triaged into the repo structure: `Stock photos/`, `TheCardApi.txt`,
-  `claude context.txt`, `cuppa cards logo temp logo.jpeg`, `termsofservice.txt`, `zernio.txt`,
-  `public/images/` (brand logo assets, see above).
+  `claude context.txt`, `cuppa cards logo temp logo.jpeg`, `termsofservice.txt`, `zernio.txt`.
 
 ## Blocked / Needs a Decision
 

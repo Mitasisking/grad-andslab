@@ -13,19 +13,35 @@ export default function HomePage() {
     <div className="min-h-screen bg-slate-900 text-white selection:bg-amber-500 selection:text-slate-900">
       
       {/* Hero Section */}
-      <section className="relative pt-32 pb-20 md:pt-48 md:pb-32 overflow-hidden">
-        <div className="max-w-6xl mx-auto px-6 relative z-10 text-center">
-          {/* Real transparent-background brand PNG -- replaces the earlier
-              solid-background logo-portrait-black.png crop, so there's no
-              "logo card" seam against this section's bg-slate-900. */}
-          <Image
-            src="/images/cuppascards-logo.png"
-            alt={siteConfig.name}
-            width={257}
-            height={163}
-            priority
-            className="w-[280px] sm:w-[360px] md:w-[440px] h-auto mx-auto mb-10"
-          />
+      <section className="relative min-h-[80vh] flex items-center overflow-hidden">
+        {/* Background layer: the brand logo as a large, low-opacity watermark.
+            object-contain (not object-cover) keeps the whole crown+wordmark
+            mark visible rather than cropping it at different breakpoints --
+            this is a decorative background pattern, not content, so alt is
+            deliberately empty (the Navbar's logo already carries the real
+            alt={siteConfig.name} text for assistive tech). pointer-events-none
+            plus z-0 (below the z-10 content layer) guarantee it never
+            intercepts clicks meant for the buttons below. */}
+        <Image
+          src="/images/cuppascards-logo.png"
+          alt=""
+          fill
+          sizes="100vw"
+          priority
+          className="absolute inset-0 z-0 object-contain opacity-10 pointer-events-none select-none"
+        />
+
+        {/* Foreground layer: hero copy + CTAs, always on top of the watermark. */}
+        <div className="relative z-10 max-w-6xl mx-auto px-6 py-20 text-center">
+          <div className="inline-block mb-4 px-4 py-1.5 rounded-full bg-slate-800 border border-slate-700 text-[11px] font-semibold text-emerald-400 tracking-wide uppercase">
+            South Africa&apos;s Premier Grading Service.
+          </div>
+          <p
+            className="text-xl md:text-2xl text-slate-300 max-w-2xl mx-auto mb-10 leading-relaxed"
+            style={{ fontFamily: 'var(--font-display)' }}
+          >
+            Making Grading Easy
+          </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
             <Link
               href="/dashboard"
@@ -33,16 +49,18 @@ export default function HomePage() {
             >
               Start a Submission
             </Link>
-            <Link 
-              href="/shop" 
+            <Link
+              href="/shop"
               className="w-full sm:w-auto bg-slate-800 hover:bg-slate-700 text-white font-bold text-lg px-8 py-4 rounded-xl border border-slate-700 transition"
             >
               Browse the Shop
             </Link>
           </div>
         </div>
-        
-        {/* Background decorative glow */}
+
+        {/* Ambient decorative glow, unchanged from before -- sits behind both
+            the watermark and the content since it's the most-negative z-index
+            in this stack. */}
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-amber-500/5 rounded-full blur-3xl -z-10 pointer-events-none"></div>
       </section>
 
