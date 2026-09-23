@@ -370,7 +370,108 @@ trigger — pushing to `origin/main` alone does not put changes on production he
     regenerates a sharp render at the new larger size with no quality loss — confirmed via a zoomed
     screenshot showing clean, non-pixelated crown/wordmark detail at the new size. No higher-resolution
     source or SVG was needed. `npx tsc --noEmit` clean; `npm run lint` at the same pre-existing
-    baseline. Click-tested live. **Not yet committed, pushed, or deployed.**
+    baseline. Click-tested live. **Committed (`734a208`), pushed to `origin/main`** (not yet
+    deployed as of this writing — check `git log` / the last deploy's commit hash to confirm).
+
+20. **Label options step gets visual previews + crossfade; currency formatting audited
+    (2026-09-25, uncommitted)** — `components/submit/step-grader-tier.tsx`'s "Label options" section
+    (ACE-only, Step 1 of `/submit`):
+    - **Preview panel**: a new panel sits beside the three label buttons on desktop (`md:flex-row`)
+      and stacks below them on mobile (`flex-col`, the default) — `w-full md:w-40 aspect-[3/4]
+      md:shrink-0 rounded-xl border`, themed with this app's existing `--line`/`--paper-raised`
+      tokens rather than inventing new colors. Selecting Standard/Colour Match/Ace Label crossfades
+      to that option's preview image using `framer-motion`'s `AnimatePresence` (`mode="wait"`,
+      `--ease-fluid` curve, 0.3s) — reusing the same animation library and easing token from the
+      2026-09-24 UX polish pass rather than adding a new one.
+    - **Placeholder paths + graceful fallback, since the real slab photos don't exist yet**: source
+      paths are `/images/labels/{standard,colour-match,ace-label}-preview.png` (nothing exists at
+      that path today — confirmed via `ls`); until real files are dropped in, a themed fallback block
+      (the option's label + "Label preview" text) renders instead of a broken image, with **zero
+      code change needed** once the real assets are supplied at those exact paths.
+    - **A real, non-obvious bug was found and fixed while verifying the fallback, not assumed
+      correct**: the first two implementations (next/image's `onError` prop, then a `useEffect`
+      keyed on the `labelOption` prop) both failed to reliably detect the missing image. Root
+      causes, confirmed by direct testing rather than guessed: (1) next/image's `onError` doesn't
+      reliably fire for a same-origin resource that fails in under a millisecond (a local 404/400)
+      — the native error event can beat React's synthetic-event wiring for a brand-new DOM node;
+      (2) an effect keyed on the `labelOption` *prop* fires before `AnimatePresence`'s `mode="wait"`
+      has actually mounted the entering `<img>` (it deliberately delays that until the exiting
+      element's animation finishes), so the effect can attach to a stale or nonexistent node. The
+      fix: a plain `<img>` (the same documented `eslint-disable-next-line @next/next/no-img-element`
+      escape hatch already used in ~16 other files in this codebase) with a **callback ref**
+      (`attachPreviewImg`), which fires exactly when React inserts that specific DOM node — whenever
+      that really happens — sidestepping both races. Verified via a temporary debug harness before
+      removing it, not assumed fixed after one visual glance.
+    - **A second real limitation surfaced and is worth recording**: this session's own browser
+      automation tooling could not reliably verify the crossfade's actual 300ms timing, for the
+      exact same reason already documented elsewhere in this file for the `/submit` wizard's step
+      transitions — a backgrounded/non-focused automation tab suspends `requestAnimationFrame`,
+      which `AnimatePresence`'s exit-then-enter sequencing under `mode="wait"` depends on, so the
+      panel can appear stuck on the previous selection indefinitely in this specific test harness.
+      Confirmed this is a test-environment artifact, not an app bug, using the same
+      already-established diagnostic from that prior incident: temporarily setting the transition
+      `duration` to `0` (bypassing the rAF dependency) immediately fixed the observed test behavior,
+      proving the underlying state/crossfade logic is correct; the `duration` was reverted to the
+      real `0.3` before finishing. Button *selection* itself (background/state) was independently
+      confirmed to update instantly and correctly on every real click throughout.
+    - **Currency formatting audited, not changed**: the request also asked to "enforce strict
+      currency formatting." Checked both this step and its neighbors (`lib/currency.ts`,
+      `step-review-pay.tsx`) for any hand-rolled `$`/`R` string interpolation bypassing the shared
+      formatters — found none; every price in this flow already goes through `formatGBP`/`formatZAR`
+      (`Intl.NumberFormat`-based, locale-correct, proper currency codes and decimal/thousands
+      formatting). No changes made here since no concrete violation was found; flagged to the user
+      in case they were referring to a specific instance elsewhere not covered by this step.
+    - `npx tsc --noEmit` clean; `npm run lint` at the same pre-existing 46-error/2-warning baseline
+      (the new raw `<img>` uses the same disable-comment convention already present elsewhere, so it
+      doesn't add a new warning). Click-tested live with real mouse clicks (not scripted `.click()`
+      calls, which this session confirmed are unreliable for triggering React handlers in this
+      automation tool) for all three label options; fallback block confirmed rendering correctly
+      for the default Standard selection. **Superseded by item 21 below** (real assets landed the
+      same day) — the placeholder-path/fallback-detection mechanism this item built no longer exists
+      in the code.
+
+21. **Label previews switched to the real ACE slab photos; tier descriptions added
+    (2026-09-25, uncommitted)** — supersedes item 20's placeholder-path system now that real assets
+    exist. Full detail:
+    - **Assets**: the three files from `Stock photos/ACE slab examples/` (`ACE standard.PNG`,
+      `ACE colour match.PNG`, `ACE Label.PNG`) were copied to `public/images/labels/` as
+      `standard.png`, `colour-match.png`, `ace-label.png` — standardized lowercase-hyphenated
+      filenames as requested. **Each was independently opened and visually confirmed to be the
+      correct, real slab photo for its tier before copying** (not assumed from filename alone):
+      Standard shows a plain black ACE label; Colour Match shows a label color-matched to the
+      card's own artwork (a blue Blastoise); Ace Label shows the card's illustration visually
+      extending onto the label itself (a green Bulbasaur design). All three are real `colorType 6`
+      (RGBA) PNGs, ~300-700KB each.
+    - **Simplification, not just a swap**: with real files now guaranteed to exist, the entire
+      failure-detection system item 20 built (the `failedPreviews` state, the `attachPreviewImg`
+      callback ref, the raw `<img>` + `eslint-disable` escape hatch, the themed fallback block) was
+      removed as dead complexity — `next/image` is now used directly, matching this codebase's
+      normal convention. This is a deliberate "don't keep speculative complexity once its reason for
+      existing is gone" cleanup, not scope creep.
+    - **Dynamic tier descriptions**: a new `LABEL_DESCRIPTIONS` record holds the exact copy supplied
+      for each tier, rendered as a `<p>` directly below the preview image. The image and its
+      description are wrapped in a **single** `AnimatePresence`/`motion.div` (one crossfade unit, not
+      two independently-timed ones) so they always fade in perfect sync on selection — simpler than
+      coordinating two separate animated elements and exactly matches the request's "fading it in
+      smoothly alongside the image."
+    - **Responsive layout unchanged in structure** from item 20: `flex-col md:flex-row` on the
+      outer row (buttons stack above the preview column on mobile, sit beside it on desktop); the
+      preview column widened slightly (`md:w-56`) to comfortably fit the description text without
+      wrapping too aggressively, and the slab image itself stayed a fixed `w-40 aspect-[3/4]`
+      thumbnail centered in that column.
+    - **Verification note**: this session's browser-automation tooling could not get a visual
+      screenshot to render the (correctly-loaded, per direct DOM inspection) preview panel within a
+      normal few-second wait — confirmed to be the same already-documented "backgrounded automation
+      tab suspends `requestAnimationFrame`" limitation as item 20 and the `/submit` wizard's step
+      transitions, this time affecting even the plain entrance fade-in (not just the exit-then-enter
+      crossfade), since every framer-motion animation depends on rAF. Waiting substantially longer
+      (~10s) let the throttled rAF catch up and produced full, correct visual confirmation for both
+      the Standard and Ace Label tiers (Colour Match uses the identical, unchanged code path).
+      DOM-level checks (`img.complete`, `img.naturalWidth`, exact description text) independently
+      confirmed correctness throughout, not just the delayed screenshots.
+    - `npx tsc --noEmit` clean; `npm run lint` at the same pre-existing 46-error/2-warning baseline
+      (the raw-`<img>` lint-disable from item 20 is gone along with the code it was guarding).
+      **Not yet committed, pushed, or deployed.**
 
 4. **Step 1 (`Grader & tier`) simplified to ACE-only for launch** — `components/submit/
    step-grader-tier.tsx` no longer renders a "Country of origin" or "Grading company" selector;
@@ -1466,14 +1567,35 @@ by the user in favor of the already-installed `framer-motion` and plain CSS `scr
 discovered side effect of the smooth-scroll CSS (it also affects unspecified-behavior
 `scrollTo`/`scrollIntoView` calls site-wide). Full detail in the Current Milestone (item 18) above.
 
-**Uncommitted — Navbar logo sized up for more brand presence**: `components/Navbar.tsx`'s logo
-grew from `h-8 sm:h-10` to `h-14 sm:h-20` (a judgment call, not the request's literal "3-4x" example,
-which against this navbar's real starting height would have made the logo taller than the whole bar);
-the logo/nav-links gap widened (`gap-8`→`gap-10`) and the row's vertical padding trimmed slightly
-(`py-4`→`py-3`) to keep the header proportionate. Asset resolution verified via a zoomed screenshot
-(same 2400×1524 master used elsewhere, no quality loss at the larger size). Full detail in the
-Current Milestone (item 19) above. `npx tsc --noEmit` clean; `npm run lint` at the same pre-existing
-baseline. Click-tested live. **Not yet committed, pushed, or deployed.**
+**Committed (`734a208`), pushed to `origin/main` — Navbar logo sized up for more brand presence**:
+`components/Navbar.tsx`'s logo grew from `h-8 sm:h-10` to `h-14 sm:h-20` (a judgment call, not the
+request's literal "3-4x" example, which against this navbar's real starting height would have made
+the logo taller than the whole bar); the logo/nav-links gap widened (`gap-8`→`gap-10`) and the row's
+vertical padding trimmed slightly (`py-4`→`py-3`) to keep the header proportionate. Full detail in
+the Current Milestone (item 19) above. **Not yet deployed** as of this writing.
+
+**Superseded, never separately committed — Label options step gets a crossfading preview panel with
+placeholder assets**: item 20's placeholder-path + fallback-detection system (`failedPreviews`
+state, `attachPreviewImg` callback ref, raw `<img>` escape hatch) existed only in the working tree
+for one session and was fully replaced the same day by item 21 below once real assets arrived — see
+the Current Milestone (item 20) for the historical root-cause detail on the fallback-detection bug
+that was found and fixed along the way, in case a similar next/image-`onError`/`AnimatePresence`
+timing issue comes up again elsewhere.
+
+**Uncommitted — Label previews switched to the real ACE slab photos; tier descriptions added**:
+`public/images/labels/{standard,colour-match,ace-label}.png` (copied from `Stock photos/ACE slab
+examples/`, each visually verified as the correct real photo for its tier before copying) replace
+the placeholder paths; `components/submit/step-grader-tier.tsx`'s preview panel now uses plain
+`next/image` (the failure-detection complexity from item 20 was removed as no longer needed) and
+gained a `LABEL_DESCRIPTIONS` record with the exact requested copy per tier, crossfading in sync
+with the image via one shared `AnimatePresence`/`motion.div`. Currency formatting in this flow was
+also audited (again) and confirmed already correct — no changes needed. Full detail in the Current
+Milestone (item 21) above, including a note on the same backgrounded-tab `requestAnimationFrame`
+limitation affecting this session's own verification (not the app). `npx tsc --noEmit` clean;
+`npm run lint` at the same pre-existing baseline. Click-tested live with real mouse clicks; DOM-level
+correctness independently confirmed for all three tiers, full visual confirmation obtained for two
+of three (Standard, Ace Label) after accounting for the automation environment's animation-timing
+limitation. **Not yet committed, pushed, or deployed.**
 
 - Untracked, not yet triaged into the repo structure: `Stock photos/`, `TheCardApi.txt`,
   `claude context.txt`, `cuppa cards logo temp logo.jpeg`, `termsofservice.txt`, `zernio.txt`.
