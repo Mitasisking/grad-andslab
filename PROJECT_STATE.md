@@ -204,6 +204,154 @@ trigger — pushing to `origin/main` alone does not put changes on production he
       buttons fully legible, "Start a Submission" click-navigates correctly. **Not yet committed,
       pushed, or deployed.**
 
+14. **Hero visual refinement — pill badge removed, background logo made bold (2026-09-22,
+    uncommitted)** — two adjustments to item 13's layout, on explicit visual-review feedback that
+    the opacity-10 watermark read as "too dull":
+    - The pill badge ("South Africa's Premier Grading Service.") is removed entirely — the section
+      now reads as just the logo and the two CTAs, with the "Making Grading Easy" subheadline as the
+      only remaining text.
+    - The background logo's opacity is raised from `opacity-10` to `opacity-80` (same `fill`,
+      `object-contain`, `pointer-events-none`, `z-0` positioning as item 13 — only the opacity class
+      changed). At this level the gold crown/C mark and the green "CARDS" wordmark are clearly
+      readable as branding, not just an ambient texture; the "Making Grading Easy" subheadline now
+      visually overlaps part of the crown mark but stays legible (light text over the mark's darker
+      negative space). The CTA buttons are unaffected regardless of background opacity, since they
+      have their own fully opaque backgrounds. **Re-verified by actually clicking "Start a
+      Submission"** (not just inspecting z-index) that it still navigates to `/dashboard` at the new
+      opacity — confirms the click-through guarantee from item 13 still holds.
+    - `npx tsc --noEmit` clean; `npm run lint` at the same pre-existing 46-error baseline. Click-tested
+      live at the higher opacity via a zoomed screenshot to inspect legibility up close. **Not yet
+      committed, pushed, or deployed.**
+
+15. **Hero finalized — all floating text removed, CTAs reframe the logo left/right (2026-09-24,
+    uncommitted)** — completes the hero's evolution into a pure logo-plus-CTAs layout:
+    - The "Making Grading Easy" subheadline (the last remaining text over the logo, after item 14
+      removed the pill badge) is deleted outright — the hero now carries zero text content, only the
+      logo and the two buttons.
+    - The CTA container changed from a centered `flex-col sm:flex-row items-center justify-center`
+      row to `w-full max-w-7xl mx-auto px-4 md:px-12` wrapping `flex-col sm:flex-row items-center
+      justify-center sm:justify-between` — on `sm`+ screens this pushes "Start a Submission" to the
+      left edge and "Browse the Shop" to the right edge of a wide 7xl-max container, framing the
+      centered logo rather than sitting on top of it. No extra vertical-alignment logic was needed:
+      the section's own pre-existing `flex items-center` (from item 13) already centers this button
+      row vertically at the same point the `fill`+`object-contain` logo centers itself, so the two
+      align for free. Below `sm` the row falls back to `justify-center` (still `flex-col`, unchanged
+      from before), stacking the buttons centered rather than pinning them to opposite screen edges
+      on narrow viewports, per the request's own mobile-handling guidance.
+    - **Verified past just reading the CSS**: clicked "Browse the Shop" live and confirmed
+      client-side navigation to `/shop` succeeded with the new container structure. The mobile
+      stacking behavior (`flex-col` below `sm`) was **not** independently screenshotted this round —
+      an attempt to resize this session's shared browser tab to a phone-width viewport didn't take
+      effect (`window.innerWidth` stayed at the desktop size afterward) — but it reuses the exact
+      same `flex-col sm:flex-row` responsive pattern already live-verified elsewhere in this hero
+      and codebase, so this is a reasoned-but-not-screenshotted confidence, not a blind assumption.
+    - `npx tsc --noEmit` clean; `npm run lint` at the same pre-existing 46-error baseline. **Not yet
+      committed, pushed, or deployed.**
+
+16. **"The Easiest Way to Grade" feature-card copy updated (2026-09-24, uncommitted)** —
+    `app/page.tsx`'s three step cards below the hero got pure text updates, exact strings as
+    requested, no layout/icon/heading/number-badge changes:
+    - Card 1 (Submit Online): pricing changed from the stale `"$19.95 per card"` to
+      `"R425 per card"` — matches the site's real single-currency (ZAR) launch pricing rather than
+      the old placeholder USD figure.
+    - Card 2 (Secure Logistics): the `"via DHL with full fine-art insurance included"` clause is
+      dropped, now ending at `"...express ship your submissions."`
+    - Card 3 (Slabs to Your Door): `"Once graded, "` is dropped and `"your address"` becomes
+      `"you"` — now `"Track your order's progress live on your dashboard. We handle all import
+      customs and deliver the pristine slabs right back to you."`
+    - `npx tsc --noEmit` clean; `npm run lint` at the same pre-existing 46-error baseline.
+      Click-tested live: all three cards render the new copy with unchanged layout/icons/badges.
+      **Not yet committed, pushed, or deployed.**
+
+17. **Card 1 copy streamlined further, dropping the price line (2026-09-24, uncommitted)** —
+    supersedes item 16's Card 1 text: `"Choose your turnaround tier starting from just R425 per
+    card"` is dropped entirely, leaving just `"Use our integrated TCGdex database to quickly search
+    and add your cards to your digital queue."` Cards 2 and 3 (from item 16) and all layout/badge/grid
+    structure are untouched. `npx tsc --noEmit` clean; `npm run lint` at the same pre-existing
+    baseline. Click-tested live. **Not yet committed, pushed, or deployed.**
+
+18. **Global UX/UI polish — pilot pass on homepage + shared `ui/` primitives (2026-09-24,
+    uncommitted)** — the user asked for a broad "make the whole app feel premium and fluid" pass
+    (fluid scrolling/easing, scroll-triggered entrance animations, micro-interactions, spatial
+    rhythm/depth). Before touching anything, three scoping questions were put to the user via
+    `AskUserQuestion` rather than guessing, because the literal request had real risk/ambiguity:
+    (1) it asked for GSAP + ScrollTrigger, but this codebase already has `framer-motion` installed
+    and in live use (the submit wizard's step transitions) — running two animation libraries for
+    overlapping jobs was flagged; (2) it asked for a global smooth-scroll library (Lenis), which
+    intercepts scroll on every route including `/submit`, which already has a documented
+    `scrollIntoView()`-based interaction and past rAF/backgrounded-tab animation issues earlier this
+    session; (3) "global" polish assumes one shared Button/Card component used everywhere, but this
+    codebase's actual shared `components/ui/button.tsx` (shadcn-based) coexists with dozens of pages
+    using raw inline Tailwind buttons instead. **The user chose, for all three: use framer-motion
+    (skip GSAP), skip Lenis in favor of CSS `scroll-behavior: smooth` + custom easing curves only,
+    and scope this pass to the homepage + shared `ui/` primitives as a pilot rather than all ~79
+    routes at once.** What actually shipped, strictly presentational/interaction-layer, no logic
+    changes:
+    - **Easing tokens** (`app/globals.css`): `--ease-fluid` (`cubic-bezier(0.16, 1, 0.3, 1)`, a soft
+      decelerate for things appearing/reacting to input) and `--ease-fluid-in-out`
+      (`cubic-bezier(0.65, 0, 0.35, 1)`, for two-way state toggles) are defined in `:root` and
+      re-exposed in `@theme inline` as Tailwind utilities (`ease-fluid`, `ease-fluid-in-out`) — this
+      project's existing Tailwind v4 CSS-first theme convention (same pattern as the brand-color
+      tokens), so no `tailwind.config` file was needed or created.
+    - **Smooth in-page scrolling**: `html { scroll-behavior: smooth }` added, gated behind
+      `@media (prefers-reduced-motion: no-preference)` so it never overrides a visitor's own
+      OS-level motion preference. **Real behavioral consequence discovered during verification and
+      worth flagging explicitly**: per the CSSOM View spec, this makes the browser interpret *every*
+      unspecified-behavior `window.scrollTo()`/`scrollIntoView()` call site-wide as smooth instead of
+      instant (confirmed directly: a plain `window.scrollTo(0,0)` no longer completed synchronously
+      during testing). No existing call site in this codebase specifies `behavior: 'instant'`
+      explicitly, and the one documented `scrollIntoView({ behavior: 'smooth' })` call in
+      `wizard.tsx`'s `joinBatch` was already smooth on purpose, so nothing regresses today — but any
+      future plain scroll-jump anywhere in the app will now animate. Flagged here rather than
+      silently absorbed, per this project's own "surface real discoveries, don't guess" pattern.
+    - **New shared primitive** — `components/AnimatedSection.tsx` (client component): a generic
+      `motion.div` wrapper (`framer-motion`, already a dependency) that fades up (`opacity 0→1`,
+      `y: 24→0`) once scrolled into view (`whileInView`, `viewport={{ once: true }}`), using
+      `--ease-fluid`'s exact curve, with an optional `delay` prop for staggering siblings. Deliberately
+      generic (no section-specific markup) so it can wrap any block. `app/page.tsx` stays a Server
+      Component — only this small wrapper is a Client Component, matching this codebase's established
+      "thin server page + small client boundary" pattern (`login`/`submit` pages) rather than
+      converting the whole homepage to `'use client'`.
+    - **`app/page.tsx` homepage pilot**: the "How It Works" heading block and each of the 3 feature
+      cards (staggered `delay={0, 0.1, 0.2}`) and the WhatsApp CTA block are now wrapped in
+      `<AnimatedSection>`. The two hero CTAs and the WhatsApp link gained `transition-all duration-200
+      ease-fluid active:scale-[0.97]` (a gentle press-scale + organic-timed color/shadow fade,
+      replacing the bare `transition` class). The three feature cards gained
+      `transition-all duration-300 ease-fluid hover:-translate-y-1 hover:shadow-xl hover:shadow-black/20`
+      (a soft lift + diffuse shadow on hover, softened border to `border-slate-800/70`) and their
+      number-badge scale-on-hover now also uses `ease-fluid`. Section vertical padding increased
+      (`py-24`→`py-28 md:py-32` for "How It Works", `py-20 md:py-24`→`py-24 md:py-28` for the
+      WhatsApp CTA) for more breathing room between sections, per the request's "spatial rhythm" ask.
+    - **`components/ui/button.tsx`** (the shared primitive, actually used in 10 files — `submit`
+      wizard steps, `admin/events`, `admin/test-emails`, `my-account` pages, `dashboard` — more than
+      "barely used" as first assumed, so this was spot-checked live on `/submit` afterward): every
+      variant's base classes gained `duration-200 ease-fluid active:scale-[0.97]` (a gentle press
+      effect) plus `hover:shadow-md` on the variants that already had a resting `shadow-xs`, for a
+      subtle elevation-on-hover depth cue. No variant color, size, or logic changed.
+    - **`components/Navbar.tsx`** (the other shared primitive, mounted on every non-auth page): gained
+      a `useState`+scroll-listener `isScrolled` flag that adds `border-slate-800 shadow-lg
+      shadow-black/30` once `window.scrollY > 8`, fading in via `transition-all duration-300
+      ease-fluid` — the "navigation header on scroll" depth cue named explicitly in the request. At
+      rest the border is `border-transparent`/`shadow-none` (same layout box, no shift). Every
+      existing plain `transition` class on Navbar's links/buttons (13 occurrences) also picked up
+      `ease-fluid`. **Independently verified via `getBoundingClientRect`/`getComputedStyle`
+      inspection** (not just visual screenshots) that the shadow classes are genuinely absent at
+      `scrollY: 0` and genuinely present at `scrollY: 300` — ruling out a "shadow always on" bug that
+      an early, flawed JS `window.scrollTo()`-based test run (confounded by the new `scroll-behavior:
+      smooth`, see above) had initially suggested.
+    - **Explicitly deferred, per the user's own scoping choice** — not done in this pass: GSAP/
+      ScrollTrigger, Lenis, any change outside the homepage + the two shared `ui`/`Navbar` primitives
+      (vendor, services, shop, auctions, admin dashboards, submit wizard's own card/step styling,
+      etc.), and a shared `Card` component (none exists in this codebase; inventing one wasn't asked
+      for and the homepage's three feature cards were polished in place instead).
+    - `npx tsc --noEmit` clean; `npm run lint` at the same pre-existing 46-error/2-warning baseline
+      (none in a file this task touched). Click-tested live: fresh-tab homepage load (avoiding a
+      stale-cache artifact in an old tab, same class of issue as the earlier logo work), fade-up
+      entrance animations confirmed via a mid-transition screenshot and a settled-state screenshot,
+      Navbar scroll-shadow confirmed programmatically, and `/submit`'s Step 1 spot-checked for the
+      `Button` component change with no visual regression. **Not yet committed, pushed, or
+      deployed.**
+
 4. **Step 1 (`Grader & tier`) simplified to ACE-only for launch** — `components/submit/
    step-grader-tier.tsx` no longer renders a "Country of origin" or "Grading company" selector;
    `app/submit/wizard.tsx`'s `region`/`company` are now plain `'sa'`/`'ACE'` constants (not
@@ -900,6 +1048,26 @@ field that drives routing/matching logic, never the name.
   replaced, verify the replacement has a real alpha channel (PNG `colorType` 4 or 6) before assuming
   it's transparent — a checkerboard pattern visible in an image *editor* does not guarantee this.
 - **`event_settings`** is a Postgres singleton-row table (`id boolean primary key default true`, `check(id)`) — the same trick as any single-row settings table; there is deliberately no way to have zero or multiple rows.
+- **UX/UI polish conventions (2026-09-24)** — `--ease-fluid`/`--ease-fluid-in-out` (`app/globals.css`,
+  exposed as Tailwind's `ease-fluid`/`ease-fluid-in-out` utilities via `@theme inline`) are this
+  project's one standard easing pair for hover/press/fade transitions; use them instead of bare
+  `transition`/default `ease` on new interactive elements, and prefer migrating an existing bare
+  `transition` to `ease-fluid` opportunistically rather than leaving mixed easings on the same page.
+  `components/AnimatedSection.tsx` is the one shared scroll-entrance-animation wrapper (a
+  `framer-motion` `motion.div`, fade-up + `viewport once`) — **`framer-motion` is this app's only
+  animation library; do not add GSAP, ScrollTrigger, or any other animation runtime alongside it**
+  (explicitly decided over GSAP when scoping the polish pass, to avoid two libraries doing
+  overlapping jobs). **Global smooth scroll (Lenis or similar) was explicitly declined** in favor of
+  plain CSS `scroll-behavior: smooth` (reduced-motion-gated) — do not add a scroll-hijacking library
+  without re-confirming with the user, since `/submit`'s wizard already depends on a plain
+  `scrollIntoView()` call and has a documented history of animation/rAF timing issues in backgrounded
+  tabs. Note `scroll-behavior: smooth` itself already makes every *unspecified-behavior*
+  `window.scrollTo()`/`scrollIntoView()` call site-wide animate instead of jump instantly (per the
+  CSSOM View spec) — be aware of this when adding new scroll-jump code; pass `{ behavior: 'instant' }`
+  explicitly if a jump must not animate. The homepage + `components/ui/button.tsx` +
+  `components/Navbar.tsx` got this treatment as a deliberate pilot; the rest of the app (vendor,
+  services, shop, auctions, admin, the submit wizard's own styling) has **not** been touched and
+  should not be assumed to match this new baseline until a follow-up task explicitly extends it.
 
 ---
 
@@ -1217,26 +1385,69 @@ grading-lifecycle/receipt templates plus the inline auction-won email in
 The six `public/images/brand/*.png` crops from the rebrand task became fully unreferenced (left on
 disk, not deleted). Full detail in the Current Milestone (item 11) above.
 
-**Uncommitted — site-wide logo switched to a transparent PNG, take two (final)**: the chroma-keyed
-file from `725c85f` above has been overwritten in place at the same
-`public/images/cuppascards-logo.png` path with a properly pre-cleaned source the user supplied
-(`Stock photos/Cuppalogo background removed.png`), independently verified to have a genuine varying
-alpha channel before overwriting. Same path as before, so **no code changes were needed** — every
-call site from item 11 (Navbar, Footer, Hero, all 10 email templates) picks this up automatically.
-Full detail, including the dev-server-stop-before-`rm -rf .next` cache purge, in the Current
-Milestone (item 12) above. `npx tsc --noEmit` clean (binary-only change). Click-tested live in a
-fresh browser tab: no checkerboard, no seam, gold/green intact. **Not yet committed, pushed, or
+**Committed, pushed to `origin/main`, and deployed to production (`725c85f`) — site-wide logo
+switched to a transparent PNG, take one**: the sharp chroma-keyed file became the canonical logo
+everywhere (Navbar, Footer, Hero, all 10 email templates). Full detail in the Current Milestone
+(item 11) above.
+
+**Committed to `main` (`2953c04`, not yet pushed/deployed as of this writing — check `git status`/
+`git log origin/main..main` to confirm current push state) — site-wide logo finalized + hero
+rebuilt as a layered large-background-logo design**: `public/images/cuppascards-logo.png`
+overwritten in place with the user's properly pre-cleaned source
+(`Stock photos/Cuppalogo background removed.png` — see Current Milestone item 12), and
+`app/page.tsx`'s hero rebuilt into a `opacity-10` full-bleed logo watermark (`z-0`, `next/image`
+`fill` + `object-contain`, `pointer-events-none`) behind a `z-10` foreground layer restoring the
+pill badge and subheadline item 10 had removed, plus the unchanged CTA buttons (see Current
+Milestone item 13).
+
+**Uncommitted — hero visual refinement: pill badge removed, background logo opacity raised**:
+`app/page.tsx`'s hero pill badge ("South Africa's Premier Grading Service.") is removed entirely;
+the background logo's opacity is raised from `opacity-10` to `opacity-80` (same `fill`,
+`object-contain`, `pointer-events-none`, `z-0` positioning — only the opacity class changed). Full
+detail in the Current Milestone (item 14) above. `npx tsc --noEmit` clean; `npm run lint` at the
+same pre-existing baseline. Click-tested live at the new opacity, including re-confirming
+"Start a Submission" still click-navigates to `/dashboard`. **Not yet committed, pushed, or
 deployed.**
 
-**Uncommitted — hero rebuilt as a layered large-background-logo design, hero copy restored**:
-`app/page.tsx`'s hero section now stacks a large, low-opacity (`opacity-10`) full-bleed logo
-watermark (`z-0`, `next/image` `fill` + `object-contain`, `pointer-events-none`) behind a
-foreground content layer (`z-10`) that restores the pill badge and subheadline item 10 had removed,
-plus the unchanged CTA buttons. Full detail in the Current Milestone (item 13) above.
+**Uncommitted — hero finalized: all floating text removed, CTAs reframe the logo left/right**:
+`app/page.tsx`'s "Making Grading Easy" subheadline is deleted (the hero now has zero text content);
+the CTA container is now `w-full max-w-7xl mx-auto px-4 md:px-12` with `flex-col sm:flex-row
+items-center justify-center sm:justify-between`, pushing the two buttons to opposite edges on `sm`+
+screens to frame the centered logo, falling back to a centered stack below `sm`. Full detail in the
+Current Milestone (item 15) above. `npx tsc --noEmit` clean; `npm run lint` at the same
+pre-existing baseline. Click-tested live: "Browse the Shop" click-navigates to `/shop` correctly
+with the new container. **Not yet committed, pushed, or deployed.**
+
+**Uncommitted — "The Easiest Way to Grade" feature-card copy updated**: `app/page.tsx`'s three step
+cards' descriptions changed to the exact requested strings (Card 1's stale `$19.95` USD placeholder
+→ `R425 per card`; Card 2 drops the DHL/insurance clause; Card 3 drops "Once graded," and changes
+"your address" → "you") — text-only, no layout/icon/heading changes. Full detail in the Current
+Milestone (item 16) above. `npx tsc --noEmit` clean; `npm run lint` at the same pre-existing
+baseline. Click-tested live. **Not yet committed, pushed, or deployed.**
+
+**Uncommitted — Card 1 copy streamlined further**: `app/page.tsx`'s Card 1 (Submit Online) drops
+the `"Choose your turnaround tier starting from just R425 per card"` clause entirely, leaving just
+the TCGdex-search sentence. Supersedes item 16's Card 1 text; Cards 2/3 and all layout untouched.
+Full detail in the Current Milestone (item 17) above. `npx tsc --noEmit` clean; `npm run lint` at
+the same pre-existing baseline. Click-tested live. **Not yet committed, pushed, or deployed.**
+
+**Uncommitted — global UX/UI polish pilot (homepage + shared `ui/` primitives)**: new
+`components/AnimatedSection.tsx` (framer-motion fade-up-on-scroll wrapper); `app/globals.css` gained
+`--ease-fluid`/`--ease-fluid-in-out` tokens (exposed as Tailwind utilities) and a reduced-motion-gated
+`scroll-behavior: smooth`; `app/page.tsx`'s "How It Works" heading, its 3 feature cards (staggered),
+and the WhatsApp CTA block now use `<AnimatedSection>`, plus eased/press-scale CTAs and
+lift+shadow-on-hover cards with more section padding; `components/ui/button.tsx` (used in 10 files
+including the `/submit` wizard) gained a press-scale + eased transitions + hover elevation on every
+variant; `components/Navbar.tsx` gained a scroll-triggered shadow/border depth cue plus `ease-fluid`
+on its existing hover transitions. GSAP/ScrollTrigger and Lenis were explicitly declined by the user
+in favor of the already-installed `framer-motion` and plain CSS `scroll-behavior: smooth` — see the
+new "UX/UI polish conventions" Shared Contract entry above for the reasoning and for a real
+discovered side effect of the smooth-scroll CSS (it also affects unspecified-behavior
+`scrollTo`/`scrollIntoView` calls site-wide). Full detail in the Current Milestone (item 18) above.
 `npx tsc --noEmit` clean; `npm run lint` at the same pre-existing baseline. Click-tested live,
-including an actual click-through on "Start a Submission" confirming it still navigates to
-`/dashboard` (buttons are not blocked by the watermark layer). **Not yet committed, pushed, or
-deployed.**
+including a spot-check of `/submit`'s Step 1 for the shared Button change and a programmatic
+(not just visual) verification of the Navbar's scroll-shadow toggling correctly. **Not yet
+committed, pushed, or deployed.**
 
 - Untracked, not yet triaged into the repo structure: `Stock photos/`, `TheCardApi.txt`,
   `claude context.txt`, `cuppa cards logo temp logo.jpeg`, `termsofservice.txt`, `zernio.txt`.

@@ -62,6 +62,16 @@
    * as the tail of the stack in case the Fraunces variable is ever
    * unavailable (e.g. font loading disabled). */
   --font-display: var(--font-fraunces), Georgia, 'Iowan Old Style', 'Palatino Linotype', 'Book Antiqua', serif;
+
+  /* UX/UI polish pass (2026-09-24): a shared "organic" easing curve for
+   * every hover/press/fade transition site-wide, replacing the browser's
+   * default linear/ease timing. `--ease-fluid` is a soft decelerate (quick
+   * start, gentle settle) for things appearing/reacting to input; the
+   * `-in-out` variant is for two-way state toggles (e.g. a border or
+   * background color flipping between two states) where both the start and
+   * end should feel equally gentle. */
+  --ease-fluid: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-fluid-in-out: cubic-bezier(0.65, 0, 0.35, 1);
 }
 
 @theme inline {
@@ -91,6 +101,21 @@
   --color-amber-400: var(--brand-gold);
   --color-amber-500: #f2b812;
   --color-amber-600: #d9a000;
+
+  /* Exposes the two custom easing curves above as Tailwind utilities
+   * (ease-fluid, ease-fluid-in-out), usable directly in any
+   * transition-*-ease-fluid className. */
+  --ease-fluid: var(--ease-fluid);
+  --ease-fluid-in-out: var(--ease-fluid-in-out);
+}
+
+/* Smooth in-page scrolling (anchor links, scrollIntoView) site-wide,
+ * without a scroll-hijacking library -- respects prefers-reduced-motion so
+ * it never overrides a visitor's own OS-level motion preference. */
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
+  }
 }
 
 body {

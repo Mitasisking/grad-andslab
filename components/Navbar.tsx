@@ -25,8 +25,19 @@ export default function Navbar() {
   // reconcile once the effect below resolves it -- same pattern `user`/
   // `isAdmin` already rely on, not a new hydration risk.
   const [firstName, setFirstName] = useState<string | null>(null)
+  // Drives a subtle shadow/border fade-in once the page scrolls past the
+  // very top -- a soft depth cue for this sticky header (2026-09-24 UX
+  // polish pass), not present at rest so the homepage hero reads clean.
+  const [isScrolled, setIsScrolled] = useState(false)
   const pathname = usePathname()
   const router = useRouter()
+
+  useEffect(() => {
+    const handleScroll = () => setIsScrolled(window.scrollY > 8)
+    handleScroll()
+    window.addEventListener('scroll', handleScroll, { passive: true })
+    return () => window.removeEventListener('scroll', handleScroll)
+  }, [])
 
   useEffect(() => {
     const checkUser = async () => {
@@ -107,7 +118,11 @@ export default function Navbar() {
   if (pathname === '/login' || pathname === '/signup') return null
 
   return (
-    <nav className="print:hidden bg-slate-950 border-b border-slate-800 text-white sticky top-0 z-50">
+    <nav
+      className={`print:hidden bg-slate-950 text-white sticky top-0 z-50 border-b transition-all duration-300 ease-fluid ${
+        isScrolled ? 'border-slate-800 shadow-lg shadow-black/30' : 'border-transparent shadow-none'
+      }`}
+    >
       <div className="max-w-6xl mx-auto px-6 py-4 flex justify-between items-center">
         
         {/* Left Side: Logo & Main Links */}
@@ -121,7 +136,7 @@ export default function Navbar() {
               RGBA PNG (colorType 6) before being used here -- see
               PROJECT_STATE.md for the full detail. No more "logo card" seam
               against this navbar's bg-slate-950. */}
-          <Link href="/" className="shrink-0 opacity-100 hover:opacity-80 transition">
+          <Link href="/" className="shrink-0 opacity-100 hover:opacity-80 transition ease-fluid">
             <Image
               src="/images/cuppascards-logo.png"
               alt={siteConfig.name}
@@ -133,19 +148,19 @@ export default function Navbar() {
           </Link>
           
           <div className="hidden md:flex gap-6 text-sm font-medium text-slate-300">
-            <Link href="/submit" className={`hover:text-amber-400 transition ${pathname === '/submit' ? 'text-amber-400' : ''}`}>
+            <Link href="/submit" className={`hover:text-amber-400 transition ease-fluid ${pathname === '/submit' ? 'text-amber-400' : ''}`}>
               Submit
             </Link>
-            <Link href="/dashboard" className={`hover:text-amber-400 transition ${pathname === '/dashboard' ? 'text-amber-400' : ''}`}>
+            <Link href="/dashboard" className={`hover:text-amber-400 transition ease-fluid ${pathname === '/dashboard' ? 'text-amber-400' : ''}`}>
               {submissionsLabel}
             </Link>
-            <Link href="/shop" className={`hover:text-amber-400 transition ${pathname === '/shop' ? 'text-amber-400' : ''}`}>
+            <Link href="/shop" className={`hover:text-amber-400 transition ease-fluid ${pathname === '/shop' ? 'text-amber-400' : ''}`}>
               Shop
             </Link>
-            <Link href="/vendor" className={`hover:text-amber-400 transition ${pathname === '/vendor' ? 'text-amber-400' : ''}`}>
+            <Link href="/vendor" className={`hover:text-amber-400 transition ease-fluid ${pathname === '/vendor' ? 'text-amber-400' : ''}`}>
               Vendor
             </Link>
-            <Link href="/contact" className={`hover:text-amber-400 transition ${pathname === '/contact' ? 'text-amber-400' : ''}`}>
+            <Link href="/contact" className={`hover:text-amber-400 transition ease-fluid ${pathname === '/contact' ? 'text-amber-400' : ''}`}>
               Contact
             </Link>
           </div>
@@ -159,7 +174,7 @@ export default function Navbar() {
               target="_blank"
               rel="noopener noreferrer"
               aria-label={`${siteConfig.name} on Facebook`}
-              className="text-slate-500 hover:text-amber-400 transition"
+              className="text-slate-500 hover:text-amber-400 transition ease-fluid"
             >
               <FacebookIcon className="w-4 h-4" />
             </a>
@@ -168,7 +183,7 @@ export default function Navbar() {
               target="_blank"
               rel="noopener noreferrer"
               aria-label={`${siteConfig.name} on Instagram`}
-              className="text-slate-500 hover:text-amber-400 transition"
+              className="text-slate-500 hover:text-amber-400 transition ease-fluid"
             >
               <InstagramIcon className="w-4 h-4" />
             </a>
@@ -177,7 +192,7 @@ export default function Navbar() {
               target="_blank"
               rel="noopener noreferrer"
               aria-label={`${siteConfig.name} on TikTok`}
-              className="text-slate-500 hover:text-amber-400 transition"
+              className="text-slate-500 hover:text-amber-400 transition ease-fluid"
             >
               <TiktokIcon className="w-4 h-4" />
             </a>
@@ -186,7 +201,7 @@ export default function Navbar() {
           {isAdmin && (
             <Link 
               href="/admin" 
-              className={`text-xs font-bold px-3 py-1.5 rounded-full border transition ${pathname === '/admin' ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' : 'text-slate-400 border-slate-700 hover:text-emerald-400 hover:border-emerald-500/50'}`}
+              className={`text-xs font-bold px-3 py-1.5 rounded-full border transition ease-fluid ${pathname === '/admin' ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' : 'text-slate-400 border-slate-700 hover:text-emerald-400 hover:border-emerald-500/50'}`}
             >
               Admin Portal
             </Link>
@@ -195,16 +210,16 @@ export default function Navbar() {
           {user ? (
             <button 
               onClick={handleLogout}
-              className="text-sm font-medium text-slate-400 hover:text-white transition"
+              className="text-sm font-medium text-slate-400 hover:text-white transition ease-fluid"
             >
               Log Out
             </button>
           ) : (
             <div className="flex gap-4">
-              <Link href="/login" className="text-sm font-medium text-slate-300 hover:text-white transition">
+              <Link href="/login" className="text-sm font-medium text-slate-300 hover:text-white transition ease-fluid">
                 Log In
               </Link>
-              <Link href="/signup" className="text-sm font-medium bg-amber-500 text-slate-950 px-4 py-2 rounded-lg hover:bg-amber-400 transition">
+              <Link href="/signup" className="text-sm font-medium bg-amber-500 text-slate-950 px-4 py-2 rounded-lg hover:bg-amber-400 transition ease-fluid">
                 Sign Up
               </Link>
             </div>
