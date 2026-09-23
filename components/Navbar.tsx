@@ -123,10 +123,10 @@ export default function Navbar() {
         isScrolled ? 'border-slate-800 shadow-lg shadow-black/30' : 'border-transparent shadow-none'
       }`}
     >
-      <div className="max-w-6xl mx-auto px-6 py-4 flex justify-between items-center">
-        
+      <div className="max-w-6xl mx-auto px-6 py-3 flex justify-between items-center">
+
         {/* Left Side: Logo & Main Links */}
-        <div className="flex items-center gap-8">
+        <div className="flex items-center gap-10">
           {/* Real transparent-background brand PNG. The file originally
               supplied for this task had the checkerboard baked into its
               opaque RGB pixels (PNG colorType 2, no alpha channel) rather
@@ -135,18 +135,28 @@ export default function Navbar() {
               preserves the high-chroma gold/green brand colors) into a true
               RGBA PNG (colorType 6) before being used here -- see
               PROJECT_STATE.md for the full detail. No more "logo card" seam
-              against this navbar's bg-slate-950. */}
+              against this navbar's bg-slate-950.
+              Sized up from h-8/h-10 to h-14/h-20 on explicit request for a
+              more prominent brand presence -- the underlying file is the
+              same 2400x1524 master used everywhere else on the site (not a
+              pre-cropped small asset), so Next's image optimizer regenerates
+              a sharp version at this larger render size with no quality
+              loss; nothing needed re-sourcing at higher resolution. The
+              outer row's own items-center keeps it vertically centered
+              against the nav links regardless of height, and the row gap
+              was widened (gap-8 -> gap-10) so the bigger mark doesn't crowd
+              them. */}
           <Link href="/" className="shrink-0 opacity-100 hover:opacity-80 transition ease-fluid">
             <Image
               src="/images/cuppascards-logo.png"
               alt={siteConfig.name}
               width={257}
               height={163}
-              className="h-8 sm:h-10 w-auto object-contain"
+              className="h-14 sm:h-20 w-auto object-contain"
               priority
             />
           </Link>
-          
+
           <div className="hidden md:flex gap-6 text-sm font-medium text-slate-300">
             <Link href="/submit" className={`hover:text-amber-400 transition ease-fluid ${pathname === '/submit' ? 'text-amber-400' : ''}`}>
               Submit

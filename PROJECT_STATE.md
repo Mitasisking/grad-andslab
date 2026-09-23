@@ -349,8 +349,28 @@ trigger — pushing to `origin/main` alone does not put changes on production he
       stale-cache artifact in an old tab, same class of issue as the earlier logo work), fade-up
       entrance animations confirmed via a mid-transition screenshot and a settled-state screenshot,
       Navbar scroll-shadow confirmed programmatically, and `/submit`'s Step 1 spot-checked for the
-      `Button` component change with no visual regression. **Not yet committed, pushed, or
-      deployed.**
+      `Button` component change with no visual regression. **Committed (`f7140f9`), pushed to
+      `origin/main`, and deployed to production** (`dpl_FZBi4NNnKssSmdHTWGxs2b1gW3vD`).
+
+19. **Navbar logo sized up for more brand presence (2026-09-24, uncommitted)** —
+    `components/Navbar.tsx`'s logo grew from `h-8 sm:h-10` (32px/40px) to `h-14 sm:h-20` (56px/80px)
+    on explicit feedback that it read as "too small." The literal request suggested "3-4x" as an
+    example (its own illustration used `h-6` → `h-20`), which taken completely literally against
+    this navbar's actual starting point (`h-10`, not `h-6`) would mean an `h-32`–`h-40` (128-160px)
+    logo — taller than the entire navbar itself and clearly not what a real premium site header looks
+    like. Used judgment instead: landed on `h-14 sm:h-20`, roughly doubling the size (a large, clearly
+    noticeable jump) while keeping the header proportionate, and explicitly matched the request's own
+    `h-20` example value for the desktop breakpoint. Also widened the gap between the logo and the nav
+    links (`gap-8` → `gap-10`) so the bigger mark doesn't crowd them, and trimmed the row's vertical
+    padding slightly (`py-4` → `py-3`) so the navbar doesn't grow taller than it needs to now that the
+    logo itself carries more of the height. No change was needed to keep it left-aligned/vertically
+    centered — the existing `flex items-center` row already guarantees that regardless of logo height.
+    **Asset resolution verified, not assumed**: `/images/cuppascards-logo.png` is the same 2400×1524
+    master used everywhere else on the site (not a small pre-cropped crop), so Next's image optimizer
+    regenerates a sharp render at the new larger size with no quality loss — confirmed via a zoomed
+    screenshot showing clean, non-pixelated crown/wordmark detail at the new size. No higher-resolution
+    source or SVG was needed. `npx tsc --noEmit` clean; `npm run lint` at the same pre-existing
+    baseline. Click-tested live. **Not yet committed, pushed, or deployed.**
 
 4. **Step 1 (`Grader & tier`) simplified to ACE-only for launch** — `components/submit/
    step-grader-tier.tsx` no longer renders a "Country of origin" or "Grading company" selector;
@@ -1431,23 +1451,29 @@ the TCGdex-search sentence. Supersedes item 16's Card 1 text; Cards 2/3 and all 
 Full detail in the Current Milestone (item 17) above. `npx tsc --noEmit` clean; `npm run lint` at
 the same pre-existing baseline. Click-tested live. **Not yet committed, pushed, or deployed.**
 
-**Uncommitted — global UX/UI polish pilot (homepage + shared `ui/` primitives)**: new
-`components/AnimatedSection.tsx` (framer-motion fade-up-on-scroll wrapper); `app/globals.css` gained
-`--ease-fluid`/`--ease-fluid-in-out` tokens (exposed as Tailwind utilities) and a reduced-motion-gated
-`scroll-behavior: smooth`; `app/page.tsx`'s "How It Works" heading, its 3 feature cards (staggered),
-and the WhatsApp CTA block now use `<AnimatedSection>`, plus eased/press-scale CTAs and
-lift+shadow-on-hover cards with more section padding; `components/ui/button.tsx` (used in 10 files
-including the `/submit` wizard) gained a press-scale + eased transitions + hover elevation on every
-variant; `components/Navbar.tsx` gained a scroll-triggered shadow/border depth cue plus `ease-fluid`
-on its existing hover transitions. GSAP/ScrollTrigger and Lenis were explicitly declined by the user
-in favor of the already-installed `framer-motion` and plain CSS `scroll-behavior: smooth` — see the
-new "UX/UI polish conventions" Shared Contract entry above for the reasoning and for a real
+**Committed (`f7140f9`), pushed to `origin/main`, and deployed to production
+(`dpl_FZBi4NNnKssSmdHTWGxs2b1gW3vD`) — global UX/UI polish pilot (homepage + shared `ui/`
+primitives)**: new `components/AnimatedSection.tsx` (framer-motion fade-up-on-scroll wrapper);
+`app/globals.css` gained `--ease-fluid`/`--ease-fluid-in-out` tokens (exposed as Tailwind utilities)
+and a reduced-motion-gated `scroll-behavior: smooth`; `app/page.tsx`'s "How It Works" heading, its 3
+feature cards (staggered), and the WhatsApp CTA block used `<AnimatedSection>`, plus eased/press-scale
+CTAs and lift+shadow-on-hover cards with more section padding; `components/ui/button.tsx` (used in 10
+files including the `/submit` wizard) gained a press-scale + eased transitions + hover elevation on
+every variant; `components/Navbar.tsx` gained a scroll-triggered shadow/border depth cue plus
+`ease-fluid` on its existing hover transitions. GSAP/ScrollTrigger and Lenis were explicitly declined
+by the user in favor of the already-installed `framer-motion` and plain CSS `scroll-behavior: smooth`
+— see the "UX/UI polish conventions" Shared Contract entry above for the reasoning and a real
 discovered side effect of the smooth-scroll CSS (it also affects unspecified-behavior
 `scrollTo`/`scrollIntoView` calls site-wide). Full detail in the Current Milestone (item 18) above.
-`npx tsc --noEmit` clean; `npm run lint` at the same pre-existing baseline. Click-tested live,
-including a spot-check of `/submit`'s Step 1 for the shared Button change and a programmatic
-(not just visual) verification of the Navbar's scroll-shadow toggling correctly. **Not yet
-committed, pushed, or deployed.**
+
+**Uncommitted — Navbar logo sized up for more brand presence**: `components/Navbar.tsx`'s logo
+grew from `h-8 sm:h-10` to `h-14 sm:h-20` (a judgment call, not the request's literal "3-4x" example,
+which against this navbar's real starting height would have made the logo taller than the whole bar);
+the logo/nav-links gap widened (`gap-8`→`gap-10`) and the row's vertical padding trimmed slightly
+(`py-4`→`py-3`) to keep the header proportionate. Asset resolution verified via a zoomed screenshot
+(same 2400×1524 master used elsewhere, no quality loss at the larger size). Full detail in the
+Current Milestone (item 19) above. `npx tsc --noEmit` clean; `npm run lint` at the same pre-existing
+baseline. Click-tested live. **Not yet committed, pushed, or deployed.**
 
 - Untracked, not yet triaged into the repo structure: `Stock photos/`, `TheCardApi.txt`,
   `claude context.txt`, `cuppa cards logo temp logo.jpeg`, `termsofservice.txt`, `zernio.txt`.
