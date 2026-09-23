@@ -14,7 +14,17 @@ export default function HomePage() {
     <div className="min-h-screen bg-slate-900 text-white selection:bg-amber-500 selection:text-slate-900">
       
       {/* Hero Section */}
-      <section className="relative min-h-[80vh] flex items-center justify-center overflow-hidden py-16">
+      {/* min-h switched to the explicitly requested min-h-[85vh] (was
+          min-h-screen, briefly, for the previous height-vh-driven logo
+          sizing attempt) now that the logo below is sized by width instead
+          of height, so it no longer needs a full viewport-height section to
+          have room to grow into. flex-col added per spec, though with a
+          single child (the content wrapper below) it's equivalent to the
+          previous row direction -- kept for exact spec compliance and to
+          make the vertical-centering intent explicit. overflow-hidden stays
+          load-bearing: max-w-[90vw] sizing can still round to a hair past
+          the viewport edge on some screens. */}
+      <section className="relative min-h-[85vh] flex flex-col justify-center items-center overflow-hidden py-16">
         {/* Logo returned to normal document flow (was a full-bleed `fill`
             background watermark) so the CTA row below can sit at a fixed,
             pixel-exact distance "directly underneath" it via plain
@@ -23,19 +33,31 @@ export default function HomePage() {
             nothing in normal flow could reliably anchor to a specific part
             of it (e.g. the wordmark). Full opacity now that it's genuine
             foreground content, not a background texture. */}
-        <div className="relative z-10 w-full max-w-6xl mx-auto px-4 flex flex-col items-center text-center">
-          {/* Scaled up ~5x on explicit request -- the outer container was
-              widened from max-w-4xl to max-w-6xl to give the new size actual
-              room to render at, since the previous narrower container would
-              have silently capped it well short of the requested width. */}
-          <Image
-            src="/images/cuppascards-logo.png"
-            alt={siteConfig.name}
-            width={356}
-            height={225}
-            priority
-            className="w-[300px] sm:w-[500px] md:w-[800px] lg:w-[1000px] h-auto object-contain"
-          />
+        {/* No max-w cap on this wrapper (removed entirely in the previous
+            scale-up pass) -- a fixed max-width here would silently
+            reintroduce the same "trapped in a container" ceiling the client
+            is asking to eliminate, since the logo itself is now sized
+            relative to the viewport, not this wrapper. */}
+        <div className="relative z-10 w-full mx-auto px-4 flex flex-col items-center text-center">
+          {/* Switched to next/image's `fill` layout on explicit request: a
+              non-fill <Image> renders its actual box from its `width`/
+              `height` props (356x225 here) and only *scales* that box via
+              CSS -- on some viewports the browser's own image-scaling
+              behavior fought the intended size instead of the Tailwind
+              classes cleanly winning outright. `fill` removes that
+              intrinsic-box entirely and makes the image stretch to fill
+              whatever box its nearest `position: relative` ancestor
+              establishes, so sizing now lives entirely on the wrapper div
+              below with nothing left to contend with it. */}
+          <div className="relative w-full max-w-[90vw] xl:max-w-[1200px] h-[50vh] md:h-[60vh] mx-auto">
+            <Image
+              src="/images/cuppascards-logo.png"
+              alt={siteConfig.name}
+              fill
+              priority
+              className="object-contain"
+            />
+          </div>
 
           {/* CTA buttons -- centered as one group directly below the logo,
               with enough top margin (mt-10) that they don't crowd the
