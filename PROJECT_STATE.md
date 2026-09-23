@@ -567,8 +567,12 @@ trigger — pushing to `origin/main` alone does not put changes on production he
       totalDeclaredValueZAR → secursusInsuranceLegFeeZAR → JSX); and the independently-confirmed
       arithmetic above. **This should be spot-checked live in a real browser session before this
       ships to production**, since it directly affects the checkout total charged via Payfast.
-      **Committed (`b26c728`) and pushed to `origin/main`, together with items 22-23 (hero CTA
-      repositioning and 5x logo scale) in the same commit. Not yet deployed.**
+      **Committed (`b26c728`), pushed to `origin/main`, together with items 22-23 (hero CTA
+      repositioning and 5x logo scale) in the same commit, and deployed to production
+      (`dpl_4hzXNid3Vwi3HjSnACZRp98xhkNQ`, aliased to `website-three-iota-83.vercel.app`). Note:
+      item 23's logo scaling shipped in this commit but was itself superseded by items 25-27 before
+      this deploy went out, so the currently-live hero logo reflects item 27's `fill`-layout
+      version, not item 23's.**
 
 25. **Hero logo scaled up extremely, viewport-driven, to eliminate remaining negative space
     (2026-09-23, uncommitted)** — `app/page.tsx`'s hero logo (`Image` at line ~31) moved from a
@@ -660,8 +664,11 @@ trigger — pushing to `origin/main` alone does not put changes on production he
       rendered hero across breakpoints before any further hero changes or before committing**, since
       `fill` layouts are exactly the kind of change (no compile-time size checking, purely a runtime
       CSS-box result) that can silently produce a stretched, cropped, or oversized result that
-      neither `tsc` nor `eslint` would ever catch.
-      **Not yet committed, pushed, or deployed.**
+      neither `tsc` nor `eslint` would ever catch. User confirmed the rendered result "looks great"
+      before this was committed. **Committed (`8c25594`), pushed to `origin/main`, and deployed to
+      production (`dpl_4hzXNid3Vwi3HjSnACZRp98xhkNQ`, aliased to
+      `website-three-iota-83.vercel.app`; build compiled clean, all routes generated with no
+      errors).**
 
 4. **Step 1 (`Grader & tier`) simplified to ACE-only for launch** — `components/submit/
    step-grader-tier.tsx` no longer renders a "Country of origin" or "Grading company" selector;
@@ -1785,7 +1792,8 @@ limitation affecting this session's own verification (not the app). `npx tsc --n
 `npm run lint` at the same pre-existing baseline. Click-tested live with real mouse clicks; DOM-level
 correctness independently confirmed for all three tiers, full visual confirmation obtained for two
 of three (Standard, Ace Label) after accounting for the automation environment's animation-timing
-limitation. **Committed (`74d65be`), pushed to `origin/main`, not yet deployed.**
+limitation. **Committed (`74d65be`), pushed to `origin/main`, and deployed to production
+(`dpl_4hzXNid3Vwi3HjSnACZRp98xhkNQ`, aliased to `website-three-iota-83.vercel.app`).**
 
 **Hero CTAs moved to sit directly beneath the logo**: `app/page.tsx`'s hero logo left its full-bleed
 `fill`-background positioning (used since item 13) and returned to a normal-flow, intrinsically-sized
@@ -1793,16 +1801,19 @@ limitation. **Committed (`74d65be`), pushed to `origin/main`, not yet deployed.*
 with the two CTA buttons directly after it (`mt-10`) instead of framing it left/right. Full detail in
 the Current Milestone (item 22) above. `npx tsc --noEmit` clean; `npm run lint` at the same
 pre-existing baseline. Click-tested live — no animation/rAF caveats apply to this section.
-**Committed (`b26c728`), pushed to `origin/main`, not yet deployed.**
+**Committed (`b26c728`), pushed to `origin/main`, and deployed to production
+(`dpl_4hzXNid3Vwi3HjSnACZRp98xhkNQ`, aliased to `website-three-iota-83.vercel.app`).**
 
 **Hero logo scaled up ~5x**: `app/page.tsx`'s logo width classes changed to `w-[300px] sm:w-[500px]
 md:w-[800px] lg:w-[1000px]` (exact values from the request), wrapping container widened `max-w-4xl` →
 `max-w-6xl` so the new size isn't silently capped. Full detail, including how a misleading first
 screenshot and an initial wrong-element measurement were both caught and corrected before concluding
 the change was actually already correct, in the Current Milestone (item 23) above. `npx tsc --noEmit`
-clean; `npm run lint` at the same pre-existing baseline. **Superseded by item 25's viewport-driven
-sizing below, still committed as its own step in history. Committed (`b26c728`), pushed to
-`origin/main`, not yet deployed.**
+clean; `npm run lint` at the same pre-existing baseline. **Superseded before this shipped — by the
+time this commit was deployed, the hero logo sizing had already moved on through items 25-26 to
+item 27's `fill`-layout version, so this ~5x pixel-breakpoint sizing was never actually live in
+production; it's a historical step, not a shipped state. Committed (`b26c728`), pushed to
+`origin/main`.**
 
 **Mandatory Secursus fine-art insurance added to checkout**: `lib/submission-types.ts` gained
 `SECURSUS_INSURANCE_RATE`, `secursusInsuranceLegFeeZAR()`, and `SECURSUS_INSURANCE_LEG_LABELS`;
@@ -1816,8 +1827,10 @@ scripted browser automation (Step 1's card-name/set-name validation gate would n
 scripted DOM events), in the Current Milestone (item 24) above. `npx tsc --noEmit` clean; `npm run
 lint` at the same pre-existing baseline. Pure arithmetic independently verified (R1000 declared value
 → R150/leg → R300 total) via a standalone script; **recommend a real live spot-check before this
-ships**, since it affects the Payfast checkout total. **Committed (`b26c728`), pushed to
-`origin/main`, not yet deployed.**
+ships**, since it affects the Payfast checkout total — **this has not been live-verified in
+production yet even though it is now deployed**. **Committed (`b26c728`), pushed to `origin/main`,
+and deployed to production (`dpl_4hzXNid3Vwi3HjSnACZRp98xhkNQ`, aliased to
+`website-three-iota-83.vercel.app`).**
 
 **Superseded same session, never separately committed — Hero logo scaled up extremely via viewport
 units (height-driven)**: item 25's `w-full max-w-[1200px] sm:w-[90vw] h-[45vh] sm:h-[55vh]
@@ -1834,18 +1847,17 @@ logo was "still visually restricted" by the non-`fill` Image's intrinsic `width`
 The logo-asset-already-current finding (MD5-confirmed byte-identical to `Stock photos/Cuppalogo
 background removed.png`) still stands. See the Current Milestone (item 26) for historical detail.
 
-**Uncommitted — Hero logo switched to `next/image`'s `fill` layout**: `app/page.tsx`'s hero `Image`
-(line ~57) dropped its `width={356}`/`height={225}` props and gained `fill`, now stretching to fill
-a new dedicated wrapper `div` (`relative w-full max-w-[90vw] xl:max-w-[1200px] h-[50vh] md:h-[60vh]
+**Hero logo switched to `next/image`'s `fill` layout**: `app/page.tsx`'s hero `Image` (line ~57)
+dropped its `width={356}`/`height={225}` props and gained `fill`, now stretching to fill a new
+dedicated wrapper `div` (`relative w-full max-w-[90vw] xl:max-w-[1200px] h-[50vh] md:h-[60vh]
 mx-auto` — the exact classes from the request) instead of rendering its own intrinsic box scaled by
 CSS. The `Image`'s own className simplified to just `object-contain`. CTA `mt-10` spacing kept
 unchanged (already satisfies the request's "e.g. `mt-8`" example). Full detail in the Current
 Milestone (item 27) above. `npx tsc --noEmit` clean; `npm run lint` at the same pre-existing
-baseline. **Not live-checked in a browser this round** — this is the third consecutive hero-logo
-pass without a visual check; **strongly recommend a real look across breakpoints before any further
-hero changes or before committing**, since a `fill` layout's actual rendered result (stretched,
-cropped, or correctly proportioned) has no compile-time check. **Not yet committed, pushed, or
-deployed.**
+baseline. User confirmed the rendered result "looks great" before this was committed. **Committed
+(`8c25594`), pushed to `origin/main`, and deployed to production
+(`dpl_4hzXNid3Vwi3HjSnACZRp98xhkNQ`, aliased to `website-three-iota-83.vercel.app`; build compiled
+clean, all routes generated with no errors). This is the current live state of the hero logo.**
 
 - Untracked, not yet triaged into the repo structure: `Stock photos/`, `TheCardApi.txt`,
   `claude context.txt`, `cuppa cards logo temp logo.jpeg`, `termsofservice.txt`, `zernio.txt`.
