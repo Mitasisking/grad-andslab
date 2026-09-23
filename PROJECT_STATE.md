@@ -471,6 +471,102 @@ trigger — pushing to `origin/main` alone does not put changes on production he
       confirmed correctness throughout, not just the delayed screenshots.
     - `npx tsc --noEmit` clean; `npm run lint` at the same pre-existing 46-error/2-warning baseline
       (the raw-`<img>` lint-disable from item 20 is gone along with the code it was guarding).
+      **Committed (`74d65be`), pushed to `origin/main`** (not yet deployed as of this writing — check
+      `git log` / the last deploy's commit hash to confirm).
+
+22. **Hero CTAs moved from framing the logo to sitting directly beneath it (2026-09-25,
+    uncommitted)** — `app/page.tsx`'s hero, on explicit visual-review feedback that the buttons
+    should anchor under the "CUPPASCARDS" wordmark instead of flanking the logo left/right:
+    - **The logo left normal-flow entirely and came back to it.** Since item 13's redesign, the
+      logo had been a full-bleed `fill` background (`absolute inset-0`) spanning the whole
+      `min-h-[80vh]` section, with the CTA row sharing the section's own vertical center via
+      `flex items-center` — that's what let the buttons frame the logo left/right for items 13-15.
+      A `fill` background's rendered bounds shift with the section's actual height, so nothing in
+      normal document flow could reliably anchor "directly underneath" one specific part of it (the
+      wordmark) across different viewport heights. The fix: the logo is a normal, intrinsically-sized
+      `<Image>` again (`w-[280px] sm:w-[360px] md:w-[440px] h-auto`, same size as it's been since
+      item 14, just no longer `fill`/absolute), inside a centered flex column
+      (`flex flex-col items-center`) with the CTA row directly after it in the DOM and `mt-10` for
+      breathing room — "directly underneath" is now pixel-exact by construction, not approximated.
+    - **Opacity restored to 100%** (was `opacity-80` as a background watermark since item 14) — now
+      that it's genuine foreground content rather than a background texture competing with anything
+      layered on top of it, full opacity is the correct default and reads bolder than the 80%
+      background version did.
+    - **CTA row**: `flex flex-col sm:flex-row justify-center items-center gap-4 mt-10` — centered as
+      one group (replacing the old wide `max-w-7xl` + `justify-between` framing layout), stacking
+      vertically below `sm` and sitting side by side from `sm` up, matching the request's own
+      suggested implementation almost verbatim. Button styling/behavior (colors, press-scale, hover
+      shadow) is unchanged from item 14/18.
+    - `npx tsc --noEmit` clean; `npm run lint` at the same pre-existing baseline. Click-tested live:
+      logo renders sharp and prominent, both buttons sit centered directly beneath the wordmark with
+      clear spacing, and "Browse the Shop" click-navigates to `/shop` correctly. This section has no
+      framer-motion animation, so none of the rAF-throttling caveats noted in items 20/21 applied
+      here — rendered correctly on the very first screenshot with no extra wait needed. **Not yet
+      committed, pushed, or deployed.**
+
+23. **Hero logo scaled up ~5x (2026-09-25, uncommitted)** — `app/page.tsx`'s logo width classes
+    changed from `w-[280px] sm:w-[360px] md:w-[440px]` to `w-[300px] sm:w-[500px] md:w-[800px]
+    lg:w-[1000px]` (the exact breakpoint values given in the request), `h-auto object-contain`
+    unchanged. The wrapping container was widened from `max-w-4xl` to `max-w-6xl` — without that,
+    the new, much wider size would have silently been capped well short of the requested width by
+    the narrower parent, since the image itself isn't `fill` (see item 22). CTA spacing
+    (`mt-10` between the logo and the button row) was left unchanged — already within the request's
+    own suggested `mt-8`–`mt-12` range and confirmed still reads as a clean gap at the new size.
+    **Verified past a misleading first glance**: an initial screenshot looked like the logo hadn't
+    grown much, but that was the whole (very tall, `min-h-[80vh]`) hero being scaled down for the
+    screenshot, not a real sizing bug — a mistaken `document.querySelectorAll('img')` match against
+    the *Navbar's* logo (same `alt={siteConfig.name}` text) initially returned a misleadingly small
+    125px reading too. Re-checked correctly by inspecting all three "CuppasCards"-alt images on the
+    page and identifying the actual Hero one by its DOM position: confirmed rendering at exactly
+    `1000px` wide at a ≥1024px (`lg`) viewport, matching the requested value precisely. `npx tsc
+    --noEmit` clean; `npm run lint` at the same pre-existing baseline. **Not yet committed, pushed,
+    or deployed.**
+
+24. **Mandatory Secursus fine-art insurance added to checkout (2026-09-23, uncommitted)** — two new
+    Order Summary line items in `components/submit/step-review-pay.tsx`, charged as 15% of the
+    submission's total declared card value per leg of the international journey (30% in total).
+    - **No new "Total Declared Value" input was added** — the request asked for one "if it doesn't
+      exist yet," but it already does: every card in Step 1 already has its own required-in-practice
+      "Declared value (R)" input (`components/submit/card-shipment-row.tsx`, ZAR-denominated,
+      feeding `submission_items.declared_value`), and `app/api/submissions/route.ts` already sums
+      these server-side into `submissions.total_declared_value` at creation time. Adding a second,
+      separate "total" input would have created two competing sources of truth for the same figure.
+      Instead, `step-review-pay.tsx` computes `totalDeclaredValueZAR = cards.reduce((sum, c) => sum
+      + (c.declaredValue || 0), 0)` — the exact same formula the server already uses — so the Order
+      Summary shown to the customer always matches what actually gets persisted.
+    - **New shared pricing logic** (`lib/submission-types.ts`): `SECURSUS_INSURANCE_RATE = 0.15`,
+      `secursusInsuranceLegFeeZAR(totalDeclaredValueZAR)` (a plain multiply), and
+      `SECURSUS_INSURANCE_LEG_LABELS` (`outbound`/`returnLeg` label pair), following the exact same
+      constant/function/labels-record pattern already established for the domestic and international
+      courier fees in this same file. **Deliberately not region-parameterized** like every other fee
+      function here (which all take a `ProductRegion` and branch USD/GBP/ZAR) — declared value is
+      always ZAR regardless of region (same established convention as `GradingEmailCard.declaredValue`
+      elsewhere in this codebase), so there's no other currency to convert from.
+    - **Order Summary**: two new lines ("Secursus Insurance: Outbound to UK (15%)" / "...Return to SA
+      (15%)") inserted between the existing International Courier Fees lines and "Total due today",
+      each rendered with `formatZAR` directly (not `formatByRegion`) — deliberately always Rands, per
+      the request's explicit "no GBP/USD conversions" requirement, regardless of what region a
+      submission is ever priced in. The insurance total is folded into `serviceFee` (not just
+      `total`), matching the precedent that costs covering the *international* leg of the journey
+      (grading, label, CuppasCards services, international courier) are part of `serviceFee`, while
+      only the domestic/local courier legs are excluded from it and added solely to `total` — since
+      insurance covers the same international round trip the courier legs do, it follows that
+      existing grouping rather than inventing a new one.
+    - **Verification**: `npx tsc --noEmit` and `npm run lint` both clean (same pre-existing 46-error
+      baseline). The pure calculation was independently checked against a known input (R1000 declared
+      value → R150 per leg → R300 total) and confirmed exact. **A full live click-through to Step 3's
+      Order Summary was attempted but not completed** — Step 1's `canAdvance` gate requires a
+      non-empty card name/set name (checked directly in `app/submit/wizard.tsx`), and several
+      attempts to satisfy it via scripted DOM events (setting input values + dispatching
+      input/blur events, clicking the tier selector) did not reliably update the wizard's React
+      state in this browser-automation session — the same class of friction already documented
+      elsewhere in this file for scripted `.click()` calls not registering as trusted React events.
+      Rather than continue fighting the automation environment, correctness here rests on: exact
+      structural match to the already-live, working International Courier Fees pattern immediately
+      above it in the same file; a clean type-check across the whole new data flow (cards →
+      totalDeclaredValueZAR → secursusInsuranceLegFeeZAR → JSX); and the independently-confirmed
+      arithmetic above. **This should be spot-checked live in a real browser session before this
+      ships to production**, since it directly affects the checkout total charged via Payfast.
       **Not yet committed, pushed, or deployed.**
 
 4. **Step 1 (`Grader & tier`) simplified to ACE-only for launch** — `components/submit/
@@ -1595,7 +1691,38 @@ limitation affecting this session's own verification (not the app). `npx tsc --n
 `npm run lint` at the same pre-existing baseline. Click-tested live with real mouse clicks; DOM-level
 correctness independently confirmed for all three tiers, full visual confirmation obtained for two
 of three (Standard, Ace Label) after accounting for the automation environment's animation-timing
-limitation. **Not yet committed, pushed, or deployed.**
+limitation. **Committed (`74d65be`), pushed to `origin/main`, not yet deployed.**
+
+**Uncommitted — Hero CTAs moved to sit directly beneath the logo**: `app/page.tsx`'s hero logo left
+its full-bleed `fill`-background positioning (used since item 13) and returned to a normal-flow,
+intrinsically-sized `<Image>` at full opacity (was `opacity-80` as a background texture), inside a
+centered flex column with the two CTA buttons directly after it (`mt-10`) instead of framing it
+left/right. Full detail in the Current Milestone (item 22) above. `npx tsc --noEmit` clean;
+`npm run lint` at the same pre-existing baseline. Click-tested live — no animation/rAF caveats apply
+to this section. **Not yet committed, pushed, or deployed.**
+
+**Uncommitted — Hero logo scaled up ~5x**: `app/page.tsx`'s logo width classes changed to
+`w-[300px] sm:w-[500px] md:w-[800px] lg:w-[1000px]` (exact values from the request), wrapping
+container widened `max-w-4xl` → `max-w-6xl` so the new size isn't silently capped. Full detail,
+including how a misleading first screenshot and an initial wrong-element measurement were both
+caught and corrected before concluding the change was actually already correct, in the Current
+Milestone (item 23) above. `npx tsc --noEmit` clean; `npm run lint` at the same pre-existing
+baseline. **Not yet committed, pushed, or deployed.**
+
+**Uncommitted — Mandatory Secursus fine-art insurance added to checkout**: `lib/submission-types.ts`
+gained `SECURSUS_INSURANCE_RATE`, `secursusInsuranceLegFeeZAR()`, and
+`SECURSUS_INSURANCE_LEG_LABELS`; `components/submit/step-review-pay.tsx`'s Order Summary gained two
+new ZAR-only line items ("Secursus Insurance: Outbound to UK (15%)" / "...Return to SA (15%)"),
+computed from the existing per-card declared values (no new input field needed — the total already
+existed conceptually via `submissions.total_declared_value`) and folded into `serviceFee`. Full
+detail, including why this fee is deliberately not region-parameterized like every other fee in that
+file, and an explicit disclosure that live click-through verification to Step 3 could not be
+completed via this session's scripted browser automation (Step 1's card-name/set-name validation
+gate would not register through scripted DOM events), in the Current Milestone (item 24) above. `npx
+tsc --noEmit` clean; `npm run lint` at the same pre-existing baseline. Pure arithmetic independently
+verified (R1000 declared value → R150/leg → R300 total) via a standalone script; **recommend a real
+live spot-check before this ships**, since it affects the Payfast checkout total. **Not yet
+committed, pushed, or deployed.**
 
 - Untracked, not yet triaged into the repo structure: `Stock photos/`, `TheCardApi.txt`,
   `claude context.txt`, `cuppa cards logo temp logo.jpeg`, `termsofservice.txt`, `zernio.txt`.

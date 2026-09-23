@@ -356,6 +356,32 @@ export const LOCAL_IN_PERSON_LEG_LABELS = {
   returnLeg: 'Local Return: In-Person Collection',
 }
 
+/**
+ * Mandatory fine-art insurance via Secursus, covering the submission's cards
+ * for both legs of the same international journey the courier fees above
+ * cover (SA to ACE Grading's UK facility, and back) -- charged as 15% of the
+ * submission's total declared card value, applied once per leg (so 30% of
+ * declared value in total across both). Deliberately ZAR-only, unlike every
+ * other fee in this file, which is region-parameterized (USD/GBP/ZAR): the
+ * declared value it's calculated from (submission_items.declared_value,
+ * summed server-side into submissions.total_declared_value by
+ * app/api/submissions/route.ts) is itself always ZAR regardless of the
+ * submission's region -- see PROJECT_STATE.md's Active File Manifest note on
+ * GradingEmailCard.declaredValue for the same convention elsewhere in this
+ * codebase -- so there is no GBP/USD figure to convert from or to.
+ */
+export const SECURSUS_INSURANCE_RATE = 0.15
+
+export function secursusInsuranceLegFeeZAR(totalDeclaredValueZAR: number): number {
+  return totalDeclaredValueZAR * SECURSUS_INSURANCE_RATE
+}
+
+/** Order Summary line-item labels for the two Secursus insurance legs (components/submit/step-review-pay.tsx). */
+export const SECURSUS_INSURANCE_LEG_LABELS = {
+  outbound: 'Secursus Insurance: Outbound to UK (15%)',
+  returnLeg: 'Secursus Insurance: Return to SA (15%)',
+}
+
 // ----------------------------------------------------------------------------
 // Phase 3 — tracking dashboard & admin intake/grading
 // Row shapes below mirror `select('*')` against supabase/migrations/0001_init_schema.sql

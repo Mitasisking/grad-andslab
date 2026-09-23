@@ -14,38 +14,34 @@ export default function HomePage() {
     <div className="min-h-screen bg-slate-900 text-white selection:bg-amber-500 selection:text-slate-900">
       
       {/* Hero Section */}
-      <section className="relative min-h-[80vh] flex items-center overflow-hidden">
-        {/* Background layer: the brand logo as a bold, high-opacity feature
-            element (raised from an earlier subtle opacity-10 watermark on
-            explicit request, since the gold/green colors were too dull to
-            read as branding at that level). object-contain (not
-            object-cover) keeps the whole crown+wordmark mark visible rather
-            than cropping it at different breakpoints -- this is a decorative
-            background pattern, not content, so alt is deliberately empty
-            (the Navbar's logo already carries the real alt={siteConfig.name}
-            text for assistive tech). pointer-events-none plus z-0 (below the
-            z-10 content layer) guarantee it never intercepts clicks meant
-            for the buttons below. */}
-        <Image
-          src="/images/cuppascards-logo.png"
-          alt=""
-          fill
-          sizes="100vw"
-          priority
-          className="absolute inset-0 z-0 object-contain opacity-80 pointer-events-none select-none"
-        />
+      <section className="relative min-h-[80vh] flex items-center justify-center overflow-hidden py-16">
+        {/* Logo returned to normal document flow (was a full-bleed `fill`
+            background watermark) so the CTA row below can sit at a fixed,
+            pixel-exact distance "directly underneath" it via plain
+            margin-top, regardless of viewport height -- a `fill`-positioned
+            background's rendered bounds shift with the section's height, so
+            nothing in normal flow could reliably anchor to a specific part
+            of it (e.g. the wordmark). Full opacity now that it's genuine
+            foreground content, not a background texture. */}
+        <div className="relative z-10 w-full max-w-6xl mx-auto px-4 flex flex-col items-center text-center">
+          {/* Scaled up ~5x on explicit request -- the outer container was
+              widened from max-w-4xl to max-w-6xl to give the new size actual
+              room to render at, since the previous narrower container would
+              have silently capped it well short of the requested width. */}
+          <Image
+            src="/images/cuppascards-logo.png"
+            alt={siteConfig.name}
+            width={356}
+            height={225}
+            priority
+            className="w-[300px] sm:w-[500px] md:w-[800px] lg:w-[1000px] h-auto object-contain"
+          />
 
-        {/* Foreground layer: just the two CTAs now -- no text content sits
-            over the logo any more (the pill badge and "Making Grading Easy"
-            subheadline are both gone on explicit request). On desktop the
-            wide max-w-7xl + justify-between frame the logo by pushing the
-            buttons to opposite edges; the section's own `flex items-center`
-            centers this row vertically, so it lines up with the logo's own
-            center for free without any extra positioning math. Below `sm`
-            the row collapses to a centered stack so the buttons never
-            crowd the logo mark on narrow screens. */}
-        <div className="relative z-10 w-full max-w-7xl mx-auto px-4 md:px-12 py-10">
-          <div className="flex flex-col sm:flex-row items-center justify-center sm:justify-between gap-4">
+          {/* CTA buttons -- centered as one group directly below the logo,
+              with enough top margin (mt-10) that they don't crowd the
+              wordmark. Stacks vertically on mobile (flex-col), sits side by
+              side from `sm` up. */}
+          <div className="flex flex-col sm:flex-row justify-center items-center gap-4 mt-10 w-full sm:w-auto">
             <Link
               href="/dashboard"
               className="w-full sm:w-auto bg-brand-gold hover:bg-[#d9a000] text-black font-bold text-lg px-8 py-4 rounded-xl border-2 border-black transition-all duration-200 ease-fluid active:scale-[0.97] shadow-[0_0_20px_rgba(253,200,47,0.25)] hover:shadow-[0_0_25px_rgba(253,200,47,0.45)]"
@@ -61,9 +57,7 @@ export default function HomePage() {
           </div>
         </div>
 
-        {/* Ambient decorative glow, unchanged from before -- sits behind both
-            the watermark and the content since it's the most-negative z-index
-            in this stack. */}
+        {/* Ambient decorative glow, unchanged from before. */}
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-amber-500/5 rounded-full blur-3xl -z-10 pointer-events-none"></div>
       </section>
 

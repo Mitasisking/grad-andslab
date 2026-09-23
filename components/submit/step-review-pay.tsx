@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { AddAddressForm } from '@/components/submit/add-address-form'
-import { formatByRegion } from '@/lib/currency'
+import { formatByRegion, formatZAR } from '@/lib/currency'
 import {
   ACE_LABEL_OPTIONS,
   DOMESTIC_COURIER_LABEL,
@@ -11,12 +11,14 @@ import {
   INTERNATIONAL_COURIER_LEG_LABELS,
   LOCAL_COURIER_LEG_LABELS,
   LOCAL_IN_PERSON_LEG_LABELS,
+  SECURSUS_INSURANCE_LEG_LABELS,
   TIER_OPTIONS_BY_COMPANY,
   cleanAndPolishFeeForRegion,
   domesticCourierLegFeeForRegion,
   inspectionFeeForRegion,
   internationalCourierLegFeeForRegion,
   labelOptionFeeForRegion,
+  secursusInsuranceLegFeeZAR,
   tierPriceForRegion,
 } from '@/lib/submission-types'
 import type {
@@ -119,7 +121,21 @@ export function StepReviewPay({
   const internationalCourierLabels = INTERNATIONAL_COURIER_LEG_LABELS[submissionType]
   const internationalCourierTotal = internationalLegFee * 2
 
-  const serviceFee = gradingSubtotal + labelOptionSubtotal + cuppasServicesSubtotal + internationalCourierTotal
+  // Mandatory Secursus fine-art insurance, covering the same international
+  // round trip as the courier legs above -- 15% of the submission's total
+  // declared card value, charged once per leg (so 30% of declared value in
+  // total). totalDeclaredValueZAR mirrors exactly what
+  // app/api/submissions/route.ts computes server-side (a sum of each card's
+  // own declaredValue) so the Order Summary shown here matches what actually
+  // gets stored as submissions.total_declared_value. Always ZAR, regardless
+  // of region -- see secursusInsuranceLegFeeZAR's own comment in
+  // lib/submission-types.ts for why.
+  const totalDeclaredValueZAR = cards.reduce((sum, c) => sum + (c.declaredValue || 0), 0)
+  const secursusInsuranceLegFee = secursusInsuranceLegFeeZAR(totalDeclaredValueZAR)
+  const secursusInsuranceTotal = secursusInsuranceLegFee * 2
+
+  const serviceFee =
+    gradingSubtotal + labelOptionSubtotal + cuppasServicesSubtotal + internationalCourierTotal + secursusInsuranceTotal
   const total = serviceFee + localCourierTotal
   const canCheckout = Boolean(addressId)
 
@@ -388,7 +404,20 @@ export function StepReviewPay({
             <span style={{ fontVariantNumeric: 'tabular-nums' }}>{formatByRegion(internationalLegFee, region)}</span>
           </div>
 
-          {/* 6. Total Due Today */}
+          {/* 6. Secursus Insurance -- always ZAR (formatZAR, not
+              formatByRegion), since it's calculated directly off the
+              declared card values, which are themselves always ZAR
+              regardless of region. */}
+          <div className="flex justify-between gap-4">
+            <span>{SECURSUS_INSURANCE_LEG_LABELS.outbound}</span>
+            <span style={{ fontVariantNumeric: 'tabular-nums' }}>{formatZAR(secursusInsuranceLegFee)}</span>
+          </div>
+          <div className="flex justify-between gap-4">
+            <span>{SECURSUS_INSURANCE_LEG_LABELS.returnLeg}</span>
+            <span style={{ fontVariantNumeric: 'tabular-nums' }}>{formatZAR(secursusInsuranceLegFee)}</span>
+          </div>
+
+          {/* 7. Total Due Today */}
           <div
             className="flex justify-between gap-4 pt-2 mt-2 border-t text-[15px]"
             style={{ borderColor: 'var(--line)' }}
