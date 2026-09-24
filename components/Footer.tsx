@@ -25,8 +25,6 @@ export function Footer() {
             <Link href="/vendor" className="hover:text-amber-400 transition">Vendor Inquiries</Link>
             <Link href="/terms" className="hover:text-amber-400 transition">Terms &amp; Conditions</Link>
             <Link href="/privacy" className="hover:text-amber-400 transition">Privacy Policy</Link>
-            <Link href="/refund-policy" className="hover:text-amber-400 transition">Refund Policy</Link>
-            <Link href="/shipping-policy" className="hover:text-amber-400 transition">Shipping Policy</Link>
             <Link href="/contact" className="hover:text-amber-400 transition">Contact Us</Link>
           </div>
           <div className="flex items-center gap-4">
