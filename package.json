@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "simulate": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --import ./scripts/lib/register-ts-paths.mjs scripts/simulate-platform.ts"
+    "simulate": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --import ./scripts/lib/register-ts-paths.mjs scripts/simulate-platform.ts",
+    "audit:submissions": "node --env-file=.env.local --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --import ./scripts/lib/register-ts-paths.mjs scripts/audit-submission-payments.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.125.0",
