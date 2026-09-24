@@ -1099,7 +1099,15 @@ up today — not a to-do list.
   styling (`bg-neutral-950`, arrows, dot indicators, slab card layout) was not touched — verified
   live that it renders cleanly here since `app/shop/layout.tsx`'s wrapper is already on the same
   dark `--paper`/`--ink` theme as the rest of the app, not a literal light "paper" background as
-  the CSS variable's name might suggest.
+  the CSS variable's name might suggest. **Heading removed (2026-09-24, uncommitted)**: the
+  "Premium Grails" eyebrow and "The {siteConfig.name} Vault" `<h2>` were deleted from
+  `components/FeaturedCarousel.tsx` (their only render site), along with the now-unused
+  `siteConfig` import. The carousel itself (cards, arrows, dots, auto-rotate) is unchanged; the
+  `<section>` gained `aria-label="Featured products"` in place of the lost heading, its padding
+  was tightened from `py-16 md:py-20` to `py-10 md:py-12` so the heading-less band doesn't read as
+  empty space, and it gained `mb-8` so the category pills no longer butt directly against its
+  bottom border. The admin product form's "Shows in 'The … Vault' shop page carousel" helper text
+  (`app/admin/shop/product-form-modal.tsx`) still uses the Vault name as an internal label.
 - `components/shop/*` (browser, grid, filters, sports-card-filters, category-tabs,
   subcategory-pills, region-toggle, product-type-toggle, cart-button, add-to-cart-button) —
   **launch rollout, "hide not delete"**: `category-tabs.tsx`'s `CATEGORIES` array has "Pokémon
@@ -1391,7 +1399,12 @@ field that drives routing/matching logic, never the name.
 
 ## Uncommitted work in the tree right now
 
-**Nothing is currently uncommitted.** Everything through commit `5e0d906` ("Gate all /admin routes
+**Uncommitted (2026-09-24) — Shop carousel heading removed**: `components/FeaturedCarousel.tsx`
+(and this file). See the `app/shop/page.tsx` Shop bullet in the Active File Manifest above.
+`npx tsc --noEmit` and `npx eslint components/FeaturedCarousel.tsx` pass clean. Not yet
+click-tested live, committed, pushed, or deployed.
+
+**Earlier work, all committed:** Everything through commit `5e0d906` ("Gate all /admin routes
 behind a centralized admin-role check": `app/admin/layout.tsx`, `app/login/page.tsx` + new
 `app/login/login-form.tsx`, on top of `c5351a6` and `970ebb4` — the landing page section reorder,
 the hero copy update, the Google/Apple OAuth addition, the Submission Method Step 1→Step 2

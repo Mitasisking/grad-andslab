@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react'
 import { formatByRegion } from '@/lib/currency'
-import { siteConfig } from '@/lib/site-config'
 import type { FeaturedProduct } from '@/lib/shop/featured-products'
 
 const CATEGORY_LABEL: Record<string, string> = {
@@ -76,18 +75,8 @@ export function FeaturedCarousel({ products }: { products: FeaturedProduct[] }) 
   }
 
   return (
-    <section className="py-16 md:py-20 bg-neutral-950 border-y border-slate-800">
+    <section aria-label="Featured products" className="py-10 md:py-12 mb-8 bg-neutral-950 border-y border-slate-800">
       <div className="max-w-6xl mx-auto px-6">
-        <div className="text-center mb-10">
-          <p className="text-amber-400 text-xs font-bold uppercase tracking-widest mb-2">Premium Grails</p>
-          <h2
-            className="text-3xl md:text-4xl font-black text-white tracking-tight"
-            style={{ fontFamily: 'var(--font-display)' }}
-          >
-            The {siteConfig.name} Vault
-          </h2>
-        </div>
-
         <div
           className="relative"
           onMouseEnter={() => setPaused(true)}
