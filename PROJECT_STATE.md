@@ -1402,6 +1402,19 @@ field that drives routing/matching logic, never the name.
 
 ## Uncommitted work in the tree right now
 
+**Uncommitted (2026-09-24) — Mobile horizontal scroll fixed (site-wide, via the footer)**. The
+`/services` sideways scroll reported earlier was not specific to `/services`: measured at 390px on
+production, `/`, `/services` and `/contact` all had `scrollWidth` 405, caused solely by the footer's
+"Follow Us" row (label + four labelled social links ≈ 435px in one non-wrapping row, spanning
+x = −30…405). Hiding that row removed the overflow; hiding the `/services` hero's 800px glow made
+no difference (it sits inside an `overflow-hidden` section — the earlier note blaming it was
+wrong). Fix in `components/Footer.tsx` only: the row is `flex-col sm:flex-row` and the links
+`flex-wrap sm:flex-nowrap` (a plain `flex-wrap` also wrapped WhatsApp onto a second line at desktop
+widths, so wrapping is limited to below `sm`). Verified on a local production build: no overflow at
+320/390/640/768/1024/1280px on `/services`, and none at 390px on `/` and `/shop`; links wrap to two
+lines only below 640px. eslint clean, `npx next build` clean. Not yet committed, pushed, or
+deployed.
+
 **Committed `028ad04` + `f056780`, pushed, deployed as `dpl_9rxG8bQTEZnuLEByT1z7TbKrTxgW` (2026-09-24)
 — Order Summary consolidated + confirmation emails itemised correctly**.
 - `components/submit/step-review-pay.tsx` (presentation only): the two local courier legs, two
@@ -1583,8 +1596,9 @@ as a "don't", as `/prepare` already does). Hidden on `/prepare` (already renders
 like the footer so it never prints onto packing slips. `npx tsc --noEmit` clean, eslint clean on
 both files, `npx next build` clean. Verified on local `next start`: renders directly above
 `<footer>` on `/services` with 8 items, absent on `/prepare`, single column at 390px wide.
-Pre-existing (not from this change): at 390px `/services` scrolls horizontally, caused by its
-hero's decorative absolute element and the footer's "Follow Us" social row (13px too wide). Confirmed
+Pre-existing (not from this change): at 390px pages scrolled horizontally because of the footer's
+"Follow Us" social row (the hero glow originally also blamed here turned out not to contribute) —
+fixed separately, see the mobile horizontal scroll entry. Confirmed
 live on production via curl (section present, no "toploaders").
 
 **Nothing from the 2026-09-24 shop/footer/color work is uncommitted.** The four commits below
