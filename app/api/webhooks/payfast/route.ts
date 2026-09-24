@@ -4,6 +4,33 @@ import { getSupabaseServerClient } from '@/lib/supabase-server'
 import { getPayfastConfig, payfastEncode } from '@/lib/payments/payfast'
 import { sendSubmissionConfirmationEmail, sendShopOrderConfirmationEmail } from '@/lib/email/send-order-confirmation'
 import { sendOrderConfirmedEmail } from '@/lib/email/send-grading-update'
+import {
+  SUBMISSION_ITEM_PRICING_COLUMNS,
+  SUBMISSION_PRICING_COLUMNS,
+  computeSubmissionPricing,
+  pricingInputFromRows,
+  toCents,
+} from '@/lib/submission-pricing'
+import type { SubmissionItemPricingRow, SubmissionPricingRow } from '@/lib/submission-pricing'
+import type { SupabaseClient } from '@supabase/supabase-js'
+
+/** The submission's total in integer cents, recomputed from its stored rows -- or null if it can't be priced. */
+async function expectedSubmissionTotalCents(supabase: SupabaseClient, submissionId: string): Promise<number | null> {
+  const [{ data: submission }, { data: items }] = await Promise.all([
+    supabase.from('submissions').select(SUBMISSION_PRICING_COLUMNS).eq('id', submissionId).maybeSingle(),
+    supabase.from('submission_items').select(SUBMISSION_ITEM_PRICING_COLUMNS).eq('submission_id', submissionId),
+  ])
+  if (!submission || !items?.length) return null
+  try {
+    return toCents(
+      computeSubmissionPricing(
+        pricingInputFromRows(submission as unknown as SubmissionPricingRow, items as SubmissionItemPricingRow[]),
+      ).total,
+    )
+  } catch {
+    return null
+  }
+}
 
 /**
  * Payfast's ITN (Instant Transaction Notification) -- the SA-storefront
@@ -96,6 +123,26 @@ export async function POST(request: NextRequest) {
   // order a webhook replay claims failed after it already really failed
   // once.
   if (flow === 'grading_submission') {
+    // Defense in depth on top of app/api/submissions/checkout/route.ts
+    // (which already sends Payfast the server-computed amount in a signed
+    // redirect): a "COMPLETE" notification only marks the submission paid
+    // if amount_gross matches the total recomputed from the stored rows.
+    // A mismatch leaves it 'pending' and logs loudly for an admin to
+    // reconcile, rather than capturing an underpaid submission.
+    if (succeeded) {
+      const expectedCents = await expectedSubmissionTotalCents(supabase, mPaymentId)
+      const paidCents = Math.round(Number(params.get('amount_gross')) * 100)
+      if (expectedCents === null || paidCents !== expectedCents) {
+        console.error('Payfast ITN: grading submission amount mismatch -- left pending', {
+          submissionId: mPaymentId,
+          expectedCents,
+          paidCents,
+          pfPaymentId: params.get('pf_payment_id'),
+        })
+        return NextResponse.json({ received: true })
+      }
+    }
+
     const { data: updated } = await supabase
       .from('submissions')
       .update({ payment_status: succeeded ? 'captured' : 'failed' })

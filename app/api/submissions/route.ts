@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseRouteClient } from '@/lib/supabase-route-client'
 import { REGION_EXCHANGE_RATE_TO_ZAR, REGION_OPTIONS, REGION_TAX_RATE } from '@/lib/shop/product-type'
+import { SubmissionPricingError, computeSubmissionPricing } from '@/lib/submission-pricing'
 import type {
   AceLabelOption,
   CardType,
@@ -69,7 +70,6 @@ interface CreateSubmissionBody {
   region: ProductRegion
   addressId: string
   courier: string
-  serviceFee: number
   needsCleanAndPolish: boolean
   needsSemiRigids: boolean
   interestedInConsignment: boolean
@@ -156,15 +156,39 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Address not found for this account' }, { status: 400 })
   }
 
-  const totalDeclaredValue = body.items.reduce((sum, item) => sum + item.declaredValue, 0)
+  // The fee is computed here, never taken from the client: the browser used
+  // to send its own serviceFee, which was stored and posted to the ledger
+  // as-is. lib/submission-pricing.ts is the same function the Review & Pay
+  // step renders its Order Summary from, and it also rejects an unknown
+  // company/tier or a negative/non-numeric declared value.
+  let pricing
+  try {
+    pricing = computeSubmissionPricing({
+      gradingCompany: body.gradingCompany,
+      tier: body.tier,
+      region: body.region,
+      submissionType,
+      aceLabelOption,
+      intakeChannel,
+      needsCleanAndPolish: Boolean(body.needsCleanAndPolish),
+      cards: body.items.map((item) => ({ declaredValue: Number(item.declaredValue), preCheckOptIn: Boolean(item.preCheckOptIn) })),
+    })
+  } catch (err) {
+    if (err instanceof SubmissionPricingError) {
+      return NextResponse.json({ error: err.message }, { status: 400 })
+    }
+    throw err
+  }
+  const serviceFee = pricing.serviceFee
+  const totalDeclaredValue = pricing.totalDeclaredValueZAR
 
-  // Bookkeeping only -- doesn't change body.serviceFee, what the customer
-  // is actually charged (app/api/submissions/checkout/route.ts). Rates are
-  // static placeholders (lib/shop/product-type.ts's REGION_TAX_RATE /
-  // REGION_EXCHANGE_RATE_TO_ZAR), not real jurisdiction/FX figures yet.
+  // Bookkeeping only -- doesn't change what the customer is charged
+  // (app/api/submissions/checkout/route.ts). Rates are static placeholders
+  // (lib/shop/product-type.ts's REGION_TAX_RATE / REGION_EXCHANGE_RATE_TO_ZAR),
+  // not real jurisdiction/FX figures yet.
   const taxRate = REGION_TAX_RATE[body.region]
   const exchangeRate = REGION_EXCHANGE_RATE_TO_ZAR[body.region]
-  const taxCollected = Math.round(body.serviceFee * taxRate * 100) / 100
+  const taxCollected = Math.round(serviceFee * taxRate * 100) / 100
 
   // qr_code_token is generated server-side by Postgres (default gen_random_uuid())
   // and only ever read back here — the client never supplies or invents it.
@@ -181,7 +205,7 @@ export async function POST(request: NextRequest) {
       address_id: body.addressId,
       shipping_address_snapshot: address,
       total_declared_value: totalDeclaredValue,
-      service_fee: body.serviceFee,
+      service_fee: serviceFee,
       payment_status: 'pending',
       tax_rate: taxRate,
       tax_collected: taxCollected,
@@ -242,7 +266,7 @@ export async function POST(request: NextRequest) {
   // a bookkeeping failure here shouldn't fail a real submission the
   // customer already paid to create, but it is logged so it doesn't
   // disappear silently.
-  const feeZar = body.serviceFee * exchangeRate
+  const feeZar = serviceFee * exchangeRate
   const taxZar = taxCollected * exchangeRate
   const { error: ledgerError } = await supabase.rpc('post_submission_ledger_entries', {
     p_submission_id: submission.id,

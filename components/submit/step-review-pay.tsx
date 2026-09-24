@@ -13,14 +13,8 @@ import {
   LOCAL_IN_PERSON_LEG_LABELS,
   SECURSUS_INSURANCE_LEG_LABELS,
   TIER_OPTIONS_BY_COMPANY,
-  cleanAndPolishFeeForRegion,
-  domesticCourierLegFeeForRegion,
-  inspectionFeeForRegion,
-  internationalCourierLegFeeForRegion,
-  labelOptionFeeForRegion,
-  secursusInsuranceLegFeeZAR,
-  tierPriceForRegion,
 } from '@/lib/submission-types'
+import { computeSubmissionPricing } from '@/lib/submission-pricing'
 import type {
   AceLabelOption,
   CardEntry,
@@ -78,65 +72,46 @@ export function StepReviewPay({
 
   const tierMeta = TIER_OPTIONS_BY_COMPANY[gradingCompany].find((t) => t.value === tier)!
 
-  // Everything here is priced in the country-of-origin's currency (region,
-  // hardcoded to 'sa' in app/submit/wizard.tsx for the launch rollout), and
-  // api/submissions/checkout charges Payfast the matching ZAR amount to
-  // stay consistent with what's shown here.
-  const perCardFee = tierPriceForRegion(tierMeta, region)
-  const gradingSubtotal = perCardFee * cards.length
+  // All pricing comes from lib/submission-pricing.ts -- the same function
+  // the server uses to store submissions.service_fee and to decide what
+  // Payfast charges, so the Order Summary below always matches the real
+  // charge. Priced in the country-of-origin's currency (region, hardcoded to
+  // 'sa' in app/submit/wizard.tsx for the launch rollout); the Secursus
+  // insurance legs are always ZAR.
+  const {
+    gradingSubtotal,
+    labelOptionSubtotal,
+    cardsWithPrepCount,
+    cuppasServicesSubtotal,
+    domesticLegFee,
+    internationalLegFee,
+    secursusInsuranceLegFee,
+    total,
+  } = computeSubmissionPricing({
+    gradingCompany,
+    tier,
+    region,
+    submissionType,
+    aceLabelOption: labelOption,
+    intakeChannel: inPersonMode ? 'in_person_event' : 'online_shipment',
+    needsCleanAndPolish,
+    cards: cards.map((c) => ({ declaredValue: c.declaredValue || 0, preCheckOptIn: c.preCheckOptIn })),
+  })
 
-  // Label options only apply to ACE (components/submit/step-grader-tier.tsx
-  // hides the selector for every other company); labelOption otherwise
-  // stays at its 'standard' (free) default and contributes nothing. Unlike
-  // the CuppasCards Services line below, this line is always shown in the
-  // Order Summary (even at R 0,00 for the free Standard option) so the
-  // customer can see which label was chosen.
+  // Label options only apply to ACE; this line is always shown in the Order
+  // Summary (even at R 0,00 for the free Standard option) so the customer
+  // can see which label was chosen.
   const labelOptionMeta = ACE_LABEL_OPTIONS.find((o) => o.value === labelOption)!
-  const labelOptionSubtotal = gradingCompany === 'ACE' ? labelOptionFeeForRegion(labelOptionMeta, region) * cards.length : 0
 
   // "CuppasCards Services" collapses the two mutually-exclusive pre-grading
-  // add-ons (components/submit/step-addons.tsx's handleToggleCleanAndPolish/
-  // handleTogglePerCardPrep) into a single Order Summary line, since a
-  // submission can only ever have one of the two active at a time.
-  const cardsWithPrepCount = cards.filter((c) => c.preCheckOptIn).length
-  const inspectionSubtotal = cardsWithPrepCount * inspectionFeeForRegion(region)
-  const cleanAndPolishSubtotal = needsCleanAndPolish ? cleanAndPolishFeeForRegion(region) : 0
-  const cuppasServicesSubtotal = needsCleanAndPolish ? cleanAndPolishSubtotal : inspectionSubtotal
+  // add-ons (components/submit/step-addons.tsx) into a single line.
   const cuppasServicesLabel = needsCleanAndPolish
     ? 'Full Clean & Polish'
     : cardsWithPrepCount > 0
       ? `Pre-grading preparation × ${cardsWithPrepCount}`
       : 'Pre-grading preparation'
 
-  // Domestic leg (customer <-> HQ), via The Courier Guy's Pudo Locker-to-
-  // Locker service -- billed as two separate legs, zero-rated entirely when
-  // the customer instead chooses in-person drop-off in "Ship from" below.
-  const domesticLegFee = domesticCourierLegFeeForRegion(region)
-  const localCourierTotal = inPersonMode ? 0 : domesticLegFee * 2
-
-  // International leg (SA <-> ACE Grading's UK facility) -- billed as two
-  // separate legs regardless of delivery method, since every submission
-  // still has to make the same round trip to the grader.
-  const internationalLegFee = internationalCourierLegFeeForRegion(submissionType, region)
   const internationalCourierLabels = INTERNATIONAL_COURIER_LEG_LABELS[submissionType]
-  const internationalCourierTotal = internationalLegFee * 2
-
-  // Mandatory Secursus fine-art insurance, covering the same international
-  // round trip as the courier legs above -- 15% of the submission's total
-  // declared card value, charged once per leg (so 30% of declared value in
-  // total). totalDeclaredValueZAR mirrors exactly what
-  // app/api/submissions/route.ts computes server-side (a sum of each card's
-  // own declaredValue) so the Order Summary shown here matches what actually
-  // gets stored as submissions.total_declared_value. Always ZAR, regardless
-  // of region -- see secursusInsuranceLegFeeZAR's own comment in
-  // lib/submission-types.ts for why.
-  const totalDeclaredValueZAR = cards.reduce((sum, c) => sum + (c.declaredValue || 0), 0)
-  const secursusInsuranceLegFee = secursusInsuranceLegFeeZAR(totalDeclaredValueZAR)
-  const secursusInsuranceTotal = secursusInsuranceLegFee * 2
-
-  const serviceFee =
-    gradingSubtotal + labelOptionSubtotal + cuppasServicesSubtotal + internationalCourierTotal + secursusInsuranceTotal
-  const total = serviceFee + localCourierTotal
   const canCheckout = Boolean(addressId)
 
   async function beginCheckout() {
@@ -158,7 +133,6 @@ export function StepReviewPay({
         region,
         addressId,
         courier: inPersonMode ? IN_PERSON_DROPOFF_LABEL : DOMESTIC_COURIER_LABEL,
-        serviceFee,
         needsCleanAndPolish,
         needsSemiRigids,
         interestedInConsignment,
