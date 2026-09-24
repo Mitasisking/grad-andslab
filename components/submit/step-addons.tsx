@@ -1,8 +1,14 @@
 'use client'
 
 import { Button } from '@/components/ui/button'
-import { formatByRegion } from '@/lib/currency'
-import { SUBMISSION_TYPE_OPTIONS, cleanAndPolishFeeForRegion, inspectionFeeForRegion } from '@/lib/submission-types'
+import { formatByRegion, formatZAR } from '@/lib/currency'
+import {
+  SLAB_GUARD_FEE_ZAR,
+  SLAB_GUARD_LABEL,
+  SUBMISSION_TYPE_OPTIONS,
+  cleanAndPolishFeeForRegion,
+  inspectionFeeForRegion,
+} from '@/lib/submission-types'
 import type { CardEntry, ProductRegion, SubmissionType } from '@/lib/submission-types'
 
 interface YesNoQuestionProps {
@@ -88,6 +94,8 @@ interface Props {
   onSelectSubmissionType: (value: SubmissionType) => void
   needsCleanAndPolish: boolean
   onToggleCleanAndPolish: (value: boolean) => void
+  requiresSlabGuard: boolean
+  onToggleSlabGuard: (value: boolean) => void
   region: ProductRegion
   onNext: () => void
   onBack: () => void
@@ -100,6 +108,8 @@ export function StepAddOns({
   onSelectSubmissionType,
   needsCleanAndPolish,
   onToggleCleanAndPolish,
+  requiresSlabGuard,
+  onToggleSlabGuard,
   region,
   onNext,
   onBack,
@@ -265,6 +275,21 @@ export function StepAddOns({
             priceLabel={formatByRegion(cleanAndPolishFee, region)}
             value={needsCleanAndPolish}
             onChange={handleToggleCleanAndPolish}
+          />
+        </div>
+      </div>
+
+      <div>
+        <h2 className="text-[22px]" style={{ fontFamily: 'var(--font-display)', color: 'var(--ink)' }}>
+          {SLAB_GUARD_LABEL}
+        </h2>
+
+        <div className="mt-4 space-y-3">
+          <YesNoQuestion
+            question="Add a premium protective bumper to your final graded slab."
+            priceLabel={formatZAR(SLAB_GUARD_FEE_ZAR)}
+            value={requiresSlabGuard}
+            onChange={onToggleSlabGuard}
           />
         </div>
       </div>

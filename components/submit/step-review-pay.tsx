@@ -12,6 +12,7 @@ import {
   LOCAL_COURIER_LEG_LABELS,
   LOCAL_IN_PERSON_LEG_LABELS,
   SECURSUS_INSURANCE_LEG_LABELS,
+  SLAB_GUARD_LABEL,
   TIER_OPTIONS_BY_COMPANY,
 } from '@/lib/submission-types'
 import { computeSubmissionPricing } from '@/lib/submission-pricing'
@@ -38,6 +39,7 @@ interface Props {
   addressesLoaded: boolean
   addressId: string | null
   needsCleanAndPolish: boolean
+  requiresSlabGuard: boolean
   needsSemiRigids: boolean
   interestedInConsignment: boolean
   onSelectAddress: (id: string) => void
@@ -59,6 +61,7 @@ export function StepReviewPay({
   addressesLoaded,
   addressId,
   needsCleanAndPolish,
+  requiresSlabGuard,
   needsSemiRigids,
   interestedInConsignment,
   onSelectAddress,
@@ -83,6 +86,7 @@ export function StepReviewPay({
     labelOptionSubtotal,
     cardsWithPrepCount,
     cuppasServicesSubtotal,
+    slabGuardSubtotal,
     domesticLegFee,
     internationalLegFee,
     secursusInsuranceLegFee,
@@ -95,6 +99,7 @@ export function StepReviewPay({
     aceLabelOption: labelOption,
     intakeChannel: inPersonMode ? 'in_person_event' : 'online_shipment',
     needsCleanAndPolish,
+    requiresSlabGuard,
     cards: cards.map((c) => ({ declaredValue: c.declaredValue || 0, preCheckOptIn: c.preCheckOptIn })),
   })
 
@@ -134,6 +139,7 @@ export function StepReviewPay({
         addressId,
         courier: inPersonMode ? IN_PERSON_DROPOFF_LABEL : DOMESTIC_COURIER_LABEL,
         needsCleanAndPolish,
+        requiresSlabGuard,
         needsSemiRigids,
         interestedInConsignment,
         aceLabelOption: gradingCompany === 'ACE' ? labelOption : null,
@@ -342,6 +348,14 @@ export function StepReviewPay({
             <span>{cuppasServicesLabel}</span>
             <span style={{ fontVariantNumeric: 'tabular-nums' }}>{formatByRegion(cuppasServicesSubtotal, region)}</span>
           </div>
+
+          {/* 3b. Slab Guard -- always ZAR, only shown when chosen */}
+          {requiresSlabGuard && (
+            <div className="flex justify-between gap-4">
+              <span>{SLAB_GUARD_LABEL}</span>
+              <span style={{ fontVariantNumeric: 'tabular-nums' }}>{formatZAR(slabGuardSubtotal)}</span>
+            </div>
+          )}
 
           {/* 4. Local Courier Fees */}
           {inPersonMode ? (

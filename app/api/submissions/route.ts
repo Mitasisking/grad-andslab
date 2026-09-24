@@ -71,6 +71,7 @@ interface CreateSubmissionBody {
   addressId: string
   courier: string
   needsCleanAndPolish: boolean
+  requiresSlabGuard: boolean
   needsSemiRigids: boolean
   interestedInConsignment: boolean
   aceLabelOption: AceLabelOption | null
@@ -171,6 +172,7 @@ export async function POST(request: NextRequest) {
       aceLabelOption,
       intakeChannel,
       needsCleanAndPolish: Boolean(body.needsCleanAndPolish),
+      requiresSlabGuard: body.requiresSlabGuard === true,
       cards: body.items.map((item) => ({ declaredValue: Number(item.declaredValue), preCheckOptIn: Boolean(item.preCheckOptIn) })),
     })
   } catch (err) {
@@ -211,6 +213,7 @@ export async function POST(request: NextRequest) {
       tax_collected: taxCollected,
       exchange_rate_to_zar: exchangeRate,
       needs_clean_and_polish: Boolean(body.needsCleanAndPolish),
+      requires_slab_guard: body.requiresSlabGuard === true,
       needs_semi_rigids: Boolean(body.needsSemiRigids),
       interested_in_consignment: Boolean(body.interestedInConsignment),
       ace_label_option: aceLabelOption,

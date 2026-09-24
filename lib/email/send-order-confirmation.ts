@@ -4,6 +4,8 @@ import { renderOrderConfirmationEmail, COLORS, EMAIL_LOGO_HTML, escapeHtml } fro
 import { formatZAR } from '@/lib/currency'
 import {
   TIER_OPTIONS_BY_COMPANY,
+  SLAB_GUARD_FEE_ZAR,
+  SLAB_GUARD_LABEL,
   cleanAndPolishFeeForRegion,
   inspectionFeeForRegion,
   tierPriceForRegion,
@@ -65,7 +67,7 @@ export async function sendSubmissionConfirmationEmail(submissionId: string, rece
 
   const { data: submission } = await supabase
     .from('submissions')
-    .select('id, user_id, grading_company, tier, region, service_fee, tax_collected, needs_clean_and_polish')
+    .select('id, user_id, grading_company, tier, region, service_fee, tax_collected, needs_clean_and_polish, requires_slab_guard')
     .eq('id', submissionId)
     .single()
 
@@ -107,6 +109,9 @@ export async function sendSubmissionConfirmationEmail(submissionId: string, rece
   }
   if (submission.needs_clean_and_polish) {
     addOnLineItems.push({ label: 'Clean and Polish', amount: cleanAndPolishFeeForRegion(region) })
+  }
+  if (submission.requires_slab_guard) {
+    addOnLineItems.push({ label: SLAB_GUARD_LABEL, amount: SLAB_GUARD_FEE_ZAR })
   }
 
   const { subject, html } = renderOrderConfirmationEmail({

@@ -417,6 +417,7 @@ export interface SubmissionRow {
   region: ProductRegion
   needs_clean_and_polish: boolean
   needs_semi_rigids: boolean
+  requires_slab_guard: boolean
   interested_in_consignment: boolean
   /** Only ever set for grading_company = 'ACE' (supabase/migrations/0061_add_ace_label_option.sql's CHECK constraint enforces this); null for every other submission. */
   ace_label_option: AceLabelOption | null
@@ -464,6 +465,16 @@ export function cleanAndPolishFeeForRegion(region: ProductRegion): number {
   if (region === 'uk') return CLEAN_AND_POLISH_FEE_GBP
   return CLEAN_AND_POLISH_FEE_ZAR
 }
+
+/**
+ * Optional "Slab Guard" add-on (components/submit/step-addons.tsx): a
+ * premium protective bumper fitted to the returned graded slab. A flat R95
+ * per submission, charged in ZAR only -- like the Secursus insurance legs,
+ * it has no USD/GBP equivalent. Stored as submissions.requires_slab_guard
+ * (supabase/migrations/0067_add_slab_guard.sql).
+ */
+export const SLAB_GUARD_FEE_ZAR = 95
+export const SLAB_GUARD_LABEL = 'Slab Guard'
 
 /**
  * Flat per-card fee for the optional pre-grading inspection add-on
