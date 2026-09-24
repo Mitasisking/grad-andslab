@@ -1402,7 +1402,8 @@ field that drives routing/matching logic, never the name.
 
 ## Uncommitted work in the tree right now
 
-**Uncommitted (2026-09-24) — "Slab Guard" add-on (flat R95, ZAR)**. New Yes/No section below Full
+**Committed `0738787`, pushed, deployed as `dpl_9kiszpuXkX9fNd14jmrpBvaGukjU` (2026-09-24) —
+"Slab Guard" add-on (flat R95, ZAR)**. New Yes/No section below Full
 Clean & Polish in `components/submit/step-addons.tsx`, built from the same `YesNoQuestion`
 component (identical border/spacing/gold radios), heading "Slab Guard", copy "Add a premium
 protective bumper to your final graded slab.", price `formatZAR(SLAB_GUARD_FEE_ZAR)` = "R 95,00".
@@ -1423,7 +1424,11 @@ protective bumper to your final graded slab.", price `formatZAR(SLAB_GUARD_FEE_Z
   deploying first would break every grading checkout.
 - Simulation: ~20% of submissions opt in; independent re-derivation includes the R95; report gains
   a Slab Guard line (default run 48 × R95 = R 4 560,00, 1,383/1,383 invariants).
-- `tsc`/eslint clean on all touched files, `npx next build` clean. Not click-tested in the wizard.
+- `tsc`/eslint clean on all touched files, `npx next build` clean. Deployed via `vercel --prod` from a
+  clean tree at `a722343`; live `/submit` returns 200 and `/api/submissions/checkout` responds.
+  Could not confirm the Slab Guard copy in the live JS (the Add-ons step is a lazily loaded chunk
+  not listed in `/submit`'s HTML). **Not click-tested in the wizard** — next step is one real
+  submission: section shows R 95,00, "Yes" adds the Order Summary line, Payfast amount matches.
 - Pre-existing, not changed here: the submission confirmation email itemises grading + add-ons but
   not label fees, courier legs, or Secursus, and its "total" is `service_fee` (excludes the domestic
   courier legs the customer also paid).
