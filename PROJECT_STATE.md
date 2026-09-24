@@ -1402,7 +1402,10 @@ field that drives routing/matching logic, never the name.
 
 ## Uncommitted work in the tree right now
 
-**Uncommitted (2026-09-24) — Old policy pages redirect into the Terms**. `next.config.js`
+**Committed `829853b` + `5efb2bf`, pushed, deployed as `dpl_2AqjAF3tXALQWDVzfmJF5tkhkY4j` (2026-09-24) —
+Old policy pages redirect into the Terms**. (Split oddly: a failed `git add` let the staged page
+deletions land in the docs commit `829853b`; the redirects followed in `5efb2bf`. Nothing was
+deployed in between.) `next.config.js`
 `redirects()` gains `/shipping-policy` → `/terms#shipping-policy` and `/refund-policy` →
 `/terms#refund-policy`, both `permanent: true` (308, per the Next 16.3 docs in
 `node_modules/next/dist/docs/.../redirects.md`, which also note redirects run before the
@@ -1413,7 +1416,9 @@ generates 77 pages (was 79). Local builds needed `.next/types` and `.next/dev/ty
 once (stale generated validators still referenced the deleted pages; Vercel builds fresh).
 Verified on local `next start`: both return `308 Permanent Redirect` with `location:
 /terms#…`, following it lands on `/terms#refund-policy` with 200, and the existing `/batches`
-redirect still works. `tsc`/eslint clean. Not yet committed, pushed, or deployed.
+redirect still works. `tsc`/eslint clean. Re-verified on production: `/shipping-policy` and
+`/refund-policy` return 308 to `/terms#shipping-policy` / `/terms#refund-policy`, following lands on
+`/terms#refund-policy` with 200, and `/batches` → `/submit` still works.
 
 **Committed `e14f85c`, pushed, deployed as `dpl_4Y2YKNSK1GQ6n5rQAYtqtvgsFaem` (2026-09-24) — Inbound
 local courier leg no longer charged (customers ship to HQ themselves)**. `lib/submission-pricing.ts`: `localCourierTotal` is now the single return leg
