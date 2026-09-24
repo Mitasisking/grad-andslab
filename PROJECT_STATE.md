@@ -1402,7 +1402,8 @@ field that drives routing/matching logic, never the name.
 
 ## Uncommitted work in the tree right now
 
-**Uncommitted (2026-09-24) — Order Summary consolidated + confirmation emails itemised correctly**.
+**Committed `028ad04` + `f056780`, pushed, deployed as `dpl_9rxG8bQTEZnuLEByT1z7TbKrTxgW` (2026-09-24)
+— Order Summary consolidated + confirmation emails itemised correctly**.
 - `components/submit/step-review-pay.tsx` (presentation only): the two local courier legs, two
   international legs, and two Secursus legs each render as one line — "Local Courier (Round Trip)"
   (suffixed "· In-person" at R 0,00 for in-person drop-off), "International Courier (Round Trip)",
@@ -1426,7 +1427,10 @@ field that drives routing/matching logic, never the name.
 - Checked by rendering the template with a sample ACE order (Colour Match, 1 prep card, Slab
   Guard): line items sum exactly to `pricing.total` (R 2 655,00) and every new section renders.
   `tsc` clean, `npm run lint` at the 48-problem baseline, `npx next build` clean, simulation
-  1,383/1,383. No real email sent; not click-tested in the wizard.
+  1,383/1,383. Deployed from a clean tree at `0125de7`; live `/submit` 200 and checkout responds.
+  **Not yet verified end to end** (needs a logged-in session and a real payment): next step is one
+  small real submission with Slab Guard — three round-trip lines in the Order Summary, Payfast
+  amount matches, confirmation email itemises every leg and its total matches the charge.
 
 **Committed `0738787`, pushed, deployed as `dpl_9kiszpuXkX9fNd14jmrpBvaGukjU` (2026-09-24) —
 "Slab Guard" add-on (flat R95, ZAR)**. New Yes/No section below Full
