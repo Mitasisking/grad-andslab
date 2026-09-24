@@ -1402,6 +1402,34 @@ field that drives routing/matching logic, never the name.
 
 ## Uncommitted work in the tree right now
 
+**Uncommitted (2026-09-24) — Shop shipping fixed at R110 per order, server-side, ZAR only**. User set
+the rate (R110/order) and asked for the `create_order()` bypass to be closed. Changes:
+- New `lib/shop/shipping.ts`: `SHOP_SHIPPING_FLAT_RATE_ZAR = 110`, the one app-side constant.
+- `app/shop/checkout/page.tsx`: shows R110 shipping from that constant, formats everything with
+  `formatZAR` (no per-region formatting), and no longer sends `shippingCost` at all (was a
+  leftover `SHIPPING_FLAT_RATE = 6.5`).
+- `app/api/shop/orders/route.ts`: passes the constant as `p_shipping_cost` (never the client's
+  value) and 400s on any quantity that isn't a whole number ≥ 1.
+- `app/shop/page.tsx`: `activeRegion` is fixed to `'sa'`; `?region=` is ignored so the grid never
+  lists USD/GBP products that checkout would refuse.
+- **New migration `supabase/migrations/0066_server_side_shop_shipping.sql` — APPLIED to production
+  by the user in the Supabase SQL Editor on 2026-09-24 (reported "success").**
+  `create or replace` of `create_order()` with the same `(uuid, numeric, jsonb)` signature (so
+  deploy/migration order doesn't matter and the existing grant is kept) that **ignores**
+  `p_shipping_cost` and always charges `v_shipping_zar = 110.00`, rejects any product whose region
+  `is distinct from 'sa'`, validates every quantity as a whole number ≥ 1 before touching any row,
+  and stamps `region 'sa'`, `tax_rate 0.15`, `exchange_rate_to_zar 1`. Everything else is 0056's
+  definition verbatim. This session has no DB connection string or `psql`, so it cannot run DDL —
+  the user ran it in the Supabase SQL Editor. Since the live `create_order()` now ignores
+  `p_shipping_cost`, production shop orders are already charged R110 even before this app code
+  deploys — but the still-deployed checkout page displays R6,50 shipping until it does. Caveat: it replaces whatever
+  `create_order()` production currently has; if production had drifted from 0056, that drift is
+  overwritten. `supabase/apply-all.sql` was not updated.
+- `scripts/simulate-platform.ts` now imports the constant (default run: shop shipping R 7 920,00
+  across 72 paid orders; 1,382/1,382 invariants pass).
+- `npx tsc --noEmit` clean, `npm run lint` at the 48-problem baseline, `npx next build` clean.
+  Not click-tested. Not yet committed, pushed, or deployed.
+
 **Committed `fffc2e9`, pushed, deployed (2026-09-24) — In-memory platform simulation (`npm run
 simulate`)**: new
 `scripts/simulate-platform.ts` + `scripts/lib/register-ts-paths.mjs` + a `simulate` script in
