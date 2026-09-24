@@ -1402,7 +1402,9 @@ field that drives routing/matching logic, never the name.
 
 ## Uncommitted work in the tree right now
 
-**Uncommitted (2026-09-24) — "Cleaning Services" legend in the Add-ons step**. Not committed, not deployed.
+**Committed `9b3506f`, pushed, deployed as `dpl_DczyVBJPPk8najztGAoGRZnuikBM` (2026-09-24) — "Cleaning
+Services" legend in the Add-ons step**. Post-deploy: `/` and `/submit` 200; the new copy could not be
+confirmed in the live JS (the Add-ons step is a lazily loaded chunk not referenced from `/submit`'s HTML).
 - `lib/submission-types.ts`: `CleaningTierOption.description`, with the user-supplied copy for No clean /
   Half Clean / Full clean. Prices unchanged (R 0,00 / R 200,00 / R 500,00).
 - `components/submit/step-addons.tsx`: new `CleaningLegend` — a bordered "Cleaning Services" block below
