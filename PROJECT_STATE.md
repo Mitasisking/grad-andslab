@@ -1402,8 +1402,9 @@ field that drives routing/matching logic, never the name.
 
 ## Uncommitted work in the tree right now
 
-**Uncommitted (2026-09-24) — In-Person Drop-Off now pays the R110 domestic return leg**. Not committed,
-not deployed.
+**Committed `ae4633e`, pushed, deployed as `dpl_J3Bs8rnwcsxXKzF9KKQnRRFp9Cn2` (2026-09-24) — In-Person
+Drop-Off now pays the R110 domestic return leg**. Post-deploy: `/` and `/submit` 200, unauthenticated
+`/api/submissions` POST → 401.
 - `lib/submission-pricing.ts`: `localCourierTotal` = the domestic return leg (R110) for every submission;
   previously R0 for `intake_channel = 'in_person_event'`. The inbound leg to HQ is still never charged.
 - `components/submit/step-review-pay.tsx`: In-Person Drop-Off copy → "Bring your cards to us directly. We
