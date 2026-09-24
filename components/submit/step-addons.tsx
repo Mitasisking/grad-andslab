@@ -1,15 +1,74 @@
 'use client'
 
 import type { ReactNode } from 'react'
+import Image from 'next/image'
 import { Button } from '@/components/ui/button'
 import { formatZAR } from '@/lib/currency'
 import {
+  ACE_LABEL_OPTIONS,
   CLEANING_TIER_OPTIONS,
   SLAB_GUARD_FEE_ZAR,
   SLAB_GUARD_LABEL,
   SUBMISSION_TYPE_OPTIONS,
 } from '@/lib/submission-types'
-import type { CardEntry, SubmissionType } from '@/lib/submission-types'
+import type { CardEntry, GradingCompany, SubmissionType } from '@/lib/submission-types'
+
+/** "Free" / "+ R 25,00" -- label fees read as an upgrade on the included Standard label. */
+function labelPriceText(feeZAR: number): string {
+  return feeZAR === 0 ? 'Free' : `+ ${formatZAR(feeZAR)}`
+}
+
+/**
+ * One visual key for the three ACE labels, shown once above the per-card
+ * blocks so every card's compact Label radio group below can stay
+ * text-only: preview photo, name, price and the supplied description.
+ */
+function LabelLegend() {
+  return (
+    <div className="border rounded-[3px] p-4 sm:p-5" style={{ borderColor: 'var(--line)' }}>
+      <p className="text-[13px]" style={{ color: 'var(--ink)' }}>
+        Label options
+      </p>
+      <p className="text-[12px] mt-0.5" style={{ color: 'var(--ink-muted)' }}>
+        What each ACE slab label looks like. Choose one per card below.
+      </p>
+      <div className="grid sm:grid-cols-3 gap-4 mt-4">
+        {ACE_LABEL_OPTIONS.map((option) => (
+          <div key={option.value} className="flex sm:flex-col gap-3">
+            <div
+              className="relative w-20 sm:w-full aspect-[3/4] shrink-0 rounded-[3px] border overflow-hidden"
+              style={{ borderColor: 'var(--line)', background: 'var(--paper-raised)' }}
+            >
+              <Image
+                src={option.previewSrc}
+                alt={`${option.label} label example`}
+                fill
+                sizes="(min-width: 640px) 200px, 80px"
+                className="object-contain p-2"
+              />
+            </div>
+            <div className="min-w-0">
+              <p className="flex items-baseline justify-between gap-2">
+                <span className="text-[13.5px]" style={{ color: 'var(--ink)' }}>
+                  {option.label}
+                </span>
+                <span
+                  className="text-[12.5px] shrink-0"
+                  style={{ fontVariantNumeric: 'tabular-nums', color: 'var(--seal)' }}
+                >
+                  {labelPriceText(option.feeZAR)}
+                </span>
+              </p>
+              <p className="text-[12px] leading-relaxed mt-1" style={{ color: 'var(--ink-muted)' }}>
+                {option.description}
+              </p>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
 
 interface OptionTileProps {
   label: string
@@ -78,6 +137,8 @@ function OptionGroup({ heading, subtext, columnsClassName, children }: OptionGro
 }
 
 interface Props {
+  /** Label options are ACE-only -- see ACE_LABEL_OPTIONS. */
+  company: GradingCompany
   cards: CardEntry[]
   onUpdateCard: (id: string, patch: Partial<CardEntry>) => void
   submissionType: SubmissionType
@@ -86,7 +147,17 @@ interface Props {
   onBack: () => void
 }
 
-export function StepAddOns({ cards, onUpdateCard, submissionType, onSelectSubmissionType, onNext, onBack }: Props) {
+export function StepAddOns({
+  company,
+  cards,
+  onUpdateCard,
+  submissionType,
+  onSelectSubmissionType,
+  onNext,
+  onBack,
+}: Props) {
+  const showLabelOptions = company === 'ACE'
+
   return (
     <section className="space-y-6">
       <div>
@@ -147,10 +218,14 @@ export function StepAddOns({ cards, onUpdateCard, submissionType, onSelectSubmis
           Card add-ons
         </h2>
         <p className="text-[14px] mt-2 max-w-lg leading-relaxed" style={{ color: 'var(--ink-muted)' }}>
-          Choose a clean and Slab Guard for each card individually. Every card is placed in a new sleeve and semi
-          rigid before shipment to the grader.
+          {showLabelOptions
+            ? 'Choose a clean, Slab Guard and label for each card individually.'
+            : 'Choose a clean and Slab Guard for each card individually.'}{' '}
+          Every card is placed in a new sleeve and semi rigid before shipment to the grader.
         </p>
       </div>
+
+      {showLabelOptions && <LabelLegend />}
 
       <div className="space-y-4">
         {cards.map((card, i) => (
@@ -200,6 +275,28 @@ export function StepAddOns({ cards, onUpdateCard, submissionType, onSelectSubmis
                   onSelect={() => onUpdateCard(card.id, { requiresSlabGuard: false })}
                 />
               </OptionGroup>
+
+              {showLabelOptions && (
+                <>
+                  <div className="border-t" style={{ borderColor: 'var(--line)' }} />
+
+                  <OptionGroup
+                    heading="Label"
+                    subtext="The ACE label printed on this card's slab — see the key above."
+                    columnsClassName="sm:grid-cols-3"
+                  >
+                    {ACE_LABEL_OPTIONS.map((option) => (
+                      <OptionTile
+                        key={option.value}
+                        label={option.label}
+                        priceLabel={labelPriceText(option.feeZAR)}
+                        selected={card.labelOption === option.value}
+                        onSelect={() => onUpdateCard(card.id, { labelOption: option.value })}
+                      />
+                    ))}
+                  </OptionGroup>
+                </>
+              )}
             </div>
           </div>
         ))}

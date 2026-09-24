@@ -173,7 +173,6 @@ interface SimSubmission {
   createdAt: Date
   tier: SubmissionTier
   submissionType: SubmissionType
-  labelOption: AceLabelOption
   intakeChannel: IntakeChannel
   cards: SubmissionPricingCard[]
   pricing: SubmissionPricing
@@ -210,6 +209,11 @@ for (const client of clients) {
         ['full', 10],
       ]),
       requiresSlabGuard: chance(0.2),
+      labelOption: weighted<AceLabelOption>([
+        ['standard', 60],
+        ['colour_match', 25],
+        ['ace_label', 15],
+      ]),
     }))
     const input = {
       gradingCompany: 'ACE' as const,
@@ -218,11 +222,6 @@ for (const client of clients) {
       submissionType: weighted<SubmissionType>([
         ['batch', 85],
         ['individual', 15],
-      ]),
-      aceLabelOption: weighted<AceLabelOption>([
-        ['standard', 60],
-        ['colour_match', 25],
-        ['ace_label', 15],
       ]),
       intakeChannel: (client.prefersInPerson && chance(0.7) ? 'in_person_event' : 'online_shipment') as IntakeChannel,
       legacyCleanAndPolish: false,
@@ -235,7 +234,6 @@ for (const client of clients) {
       createdAt,
       tier,
       submissionType: input.submissionType,
-      labelOption: input.aceLabelOption,
       intakeChannel: input.intakeChannel,
       cards,
       pricing: computeSubmissionPricing(input),
@@ -258,13 +256,12 @@ for (const sub of submissions) {
     `${sub.id}: insurance ${rand(toCents(p.secursusInsuranceTotal))} != 2 x 15% of ${rand(declaredCents)}`,
   )
   const tierMeta = aceTiers.find((t) => t.value === sub.tier)!
-  const labelMeta = ACE_LABEL_OPTIONS.find((o) => o.value === sub.labelOption)!
   const components =
     toCents(tierMeta.basePriceZAR) * sub.cards.length +
-    toCents(labelMeta.feeZAR) * sub.cards.length +
     sub.cards.reduce(
       (sum, c) =>
         sum +
+        toCents(ACE_LABEL_OPTIONS.find((o) => o.value === c.labelOption)!.feeZAR) +
         toCents(CLEANING_TIER_OPTIONS.find((o) => o.value === c.cleaningTier)!.feeZAR) +
         (c.requiresSlabGuard ? toCents(SLAB_GUARD_FEE_ZAR) : 0),
       0,
@@ -667,8 +664,8 @@ line(
   `${paidSubmissions.reduce((n, s) => n + s.pricing.halfCleanCount, 0)} / ${paidSubmissions.reduce((n, s) => n + s.pricing.fullCleanCount, 0)}`,
 )
 line('  in-person drop-offs (paid)', String(paidSubmissions.filter((s) => s.intakeChannel === 'in_person_event').length))
-const labelCounts = ACE_LABEL_OPTIONS.map((o) => `${o.label} ${paidSubmissions.filter((s) => s.labelOption === o.value).length}`)
-line('  label tiers', labelCounts.join(', '))
+const labelCounts = ACE_LABEL_OPTIONS.map((o) => `${o.label} ${paidSubmissions.reduce((n, s) => n + s.pricing.labelCounts[o.value], 0)}`)
+line('  cards per label (paid)', labelCounts.join(', '))
 line('Shop checkout attempts', String(shopAttempts.length))
 line('  orders created / blocked', `${orders.length} / ${rejectedAttempts.length}`)
 line('  blocked: out of stock', String(oosRejections.length))

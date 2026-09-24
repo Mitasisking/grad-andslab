@@ -121,7 +121,7 @@ export async function sendOrderConfirmedEmail(submissionId: string): Promise<voi
 
   const { data: items } = await supabase
     .from('submission_items')
-    .select('card_name, set_name, card_number, declared_value, pre_check_opt_in, cleaning_tier, requires_slab_guard')
+    .select('card_name, set_name, card_number, declared_value, pre_check_opt_in, cleaning_tier, requires_slab_guard, ace_label_option')
     .eq('submission_id', submissionId)
 
   const { fullName, email } = await getContact(supabase, submission.user_id)

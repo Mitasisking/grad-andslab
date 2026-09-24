@@ -10,7 +10,7 @@ interface ManifestStep {
 
 const STEPS: ManifestStep[] = [
   { index: 0, label: 'Grader & tier', description: 'Choose a service and list your cards' },
-  { index: 1, label: 'Add-ons', description: 'Cleaning and Slab Guard per card' },
+  { index: 1, label: 'Add-ons', description: 'Cleaning, Slab Guard and label per card' },
   { index: 2, label: 'Review & pay', description: 'Address, courier, and payment' },
 ]
 

@@ -67,6 +67,8 @@ export interface CardEntry {
   cleaningTier: CleaningTier
   /** Per-card Slab Guard bumper (components/submit/step-addons.tsx) -- see SLAB_GUARD_FEE_ZAR. */
   requiresSlabGuard: boolean
+  /** Per-card ACE label (components/submit/step-addons.tsx) -- see ACE_LABEL_OPTIONS. */
+  labelOption: AceLabelOption
 }
 
 export interface ShippingAddress {
@@ -429,7 +431,11 @@ export interface SubmissionRow {
   needs_semi_rigids: boolean
   requires_slab_guard: boolean
   interested_in_consignment: boolean
-  /** Only ever set for grading_company = 'ACE' (supabase/migrations/0061_add_ace_label_option.sql's CHECK constraint enforces this); null for every other submission. */
+  /**
+   * Legacy per-submission label choice (0061_add_ace_label_option.sql),
+   * superseded by submission_items.ace_label_option (0069). New submissions
+   * store null; 0069 copied every existing value onto its items.
+   */
   ace_label_option: AceLabelOption | null
   intake_channel: IntakeChannel
   event_slug: string | null
@@ -522,14 +528,14 @@ export function legacyCleanAndPolishFeeForRegion(region: ProductRegion): number 
 }
 
 /**
- * ACE Grading's label options -- a per-submission choice (applies to every
- * card in the batch, same as needs_semi_rigids above, not per-card)
- * offered only when GradingCompany is 'ACE'. GBP is
- * the business-set official price; ZAR is ACE's own designated retail
- * price (R25/R75), NOT the ~18.5 USD/ZAR stand-in conversion used
- * elsewhere in this file -- ACE set these ZAR figures directly. USD is
- * still the usual derived stand-in (USD = GBP / 0.79) since no real
- * invoiced USD price has been set for this option yet.
+ * ACE Grading's label options -- a per-card choice
+ * (components/submit/step-addons.tsx), stored as
+ * submission_items.ace_label_option (supabase/migrations/0069_per_card_label_option.sql)
+ * and only charged when GradingCompany is 'ACE'. Charged and displayed in
+ * ZAR only (feeZAR), at ACE's own designated retail price (R25/R75).
+ * feeGBP is ACE's official price the ZAR figure is set against -- kept as
+ * the reference to re-derive feeZAR from if the GBP/ZAR rate moves. feeUSD
+ * is the usual derived stand-in (USD = GBP / 0.79). Neither is charged.
  */
 export type AceLabelOption = 'standard' | 'colour_match' | 'ace_label'
 
@@ -539,18 +545,51 @@ export interface LabelOptionMeta {
   feeUSD: number
   feeGBP: number
   feeZAR: number
+  /** Real slab-label example photo (public/images/labels/, sourced from "Stock photos/ACE slab examples/"). */
+  previewSrc: string
+  /** Exact copy supplied for each label tier, shown beside its preview image. */
+  description: string
 }
 
 export const ACE_LABEL_OPTIONS: LabelOptionMeta[] = [
-  { value: 'standard', label: 'Standard', feeUSD: 0, feeGBP: 0, feeZAR: 0 },
-  { value: 'colour_match', label: 'Colour Match', feeUSD: 1, feeGBP: 1, feeZAR: 25 },
-  { value: 'ace_label', label: 'Ace Label', feeUSD: 4, feeGBP: 3, feeZAR: 75 },
+  {
+    value: 'standard',
+    label: 'Standard',
+    feeUSD: 0,
+    feeGBP: 0,
+    feeZAR: 0,
+    previewSrc: '/images/labels/standard.png',
+    description:
+      'A clean, classic layout that displays all essential card information, set details, and the assigned grade in a traditional format.',
+  },
+  {
+    value: 'colour_match',
+    label: 'Colour Match',
+    feeUSD: 1,
+    feeGBP: 1,
+    feeZAR: 25,
+    previewSrc: '/images/labels/colour-match.png',
+    description:
+      "Features the same core information as the standard label, but the design and text colors are custom-printed using the two most prominent, matching colors pulled directly from the graded card's artwork.",
+  },
+  {
+    value: 'ace_label',
+    label: 'Ace Label',
+    feeUSD: 4,
+    feeGBP: 3,
+    feeZAR: 75,
+    previewSrc: '/images/labels/ace-label.png',
+    description:
+      'A premium, custom-illustrated label option where the artwork from the card seamlessly extends, continues, or connects onto the label itself. These unique designs are tailored to specific top-tier or community-voted cards and carry an additional fee.',
+  },
 ]
 
-export function labelOptionFeeForRegion(option: LabelOptionMeta, region: ProductRegion): number {
-  if (region === 'usa') return option.feeUSD
-  if (region === 'uk') return option.feeGBP
-  return option.feeZAR
+export function isAceLabelOption(value: unknown): value is AceLabelOption {
+  return ACE_LABEL_OPTIONS.some((o) => o.value === value)
+}
+
+export function labelOptionFeeZAR(option: AceLabelOption): number {
+  return ACE_LABEL_OPTIONS.find((o) => o.value === option)?.feeZAR ?? 0
 }
 
 /**
@@ -591,6 +630,7 @@ export interface SubmissionItemRow {
   pre_check_opt_in: boolean
   cleaning_tier: CleaningTier
   requires_slab_guard: boolean
+  ace_label_option: AceLabelOption
   grade_result: number | null
   grade_cert_number: string | null
   hi_res_photo_url: string | null

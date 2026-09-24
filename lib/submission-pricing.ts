@@ -1,5 +1,4 @@
 import {
-  ACE_LABEL_OPTIONS,
   LEGACY_SLAB_GUARD_FEE_ZAR,
   SLAB_GUARD_FEE_ZAR,
   TIER_OPTIONS_BY_COMPANY,
@@ -8,7 +7,8 @@ import {
   internationalCourierLegFeeForRegion,
   isCleaningTier,
   legacyCleanAndPolishFeeForRegion,
-  labelOptionFeeForRegion,
+  isAceLabelOption,
+  labelOptionFeeZAR,
   secursusInsuranceLegFeeZAR,
   tierPriceForRegion,
 } from '@/lib/submission-types'
@@ -37,6 +37,8 @@ export interface SubmissionPricingCard {
   declaredValue: number
   cleaningTier: CleaningTier
   requiresSlabGuard: boolean
+  /** Only charged for ACE; every other company's cards are priced as the free Standard label. */
+  labelOption: AceLabelOption
 }
 
 export interface SubmissionPricingInput {
@@ -44,8 +46,6 @@ export interface SubmissionPricingInput {
   tier: SubmissionTier
   region: ProductRegion
   submissionType: SubmissionType
-  /** Only meaningful for ACE; ignored (priced as free) for every other company. */
-  aceLabelOption: AceLabelOption | null
   intakeChannel: IntakeChannel
   /**
    * Retired submission-level add-ons (submissions.needs_clean_and_polish /
@@ -61,6 +61,9 @@ export interface SubmissionPricingInput {
 export interface SubmissionPricing {
   perCardFee: number
   gradingSubtotal: number
+  /** How many cards chose each label option (a non-ACE submission counts every card as 'standard'). */
+  labelCounts: Record<AceLabelOption, number>
+  /** Sum of every card's own label fee (ACE only). */
   labelOptionSubtotal: number
   halfCleanCount: number
   fullCleanCount: number
@@ -102,21 +105,25 @@ export function computeSubmissionPricing(input: SubmissionPricingInput): Submiss
   if (!input.cards.every((c) => Number.isFinite(c.declaredValue) && c.declaredValue >= 0)) {
     throw new SubmissionPricingError('Every declared value must be a number of zero or more')
   }
-  if (!input.cards.every((c) => isCleaningTier(c.cleaningTier) && typeof c.requiresSlabGuard === 'boolean')) {
-    throw new SubmissionPricingError('Every card needs a valid cleaning option and Slab Guard choice')
+  if (
+    !input.cards.every(
+      (c) => isCleaningTier(c.cleaningTier) && typeof c.requiresSlabGuard === 'boolean' && isAceLabelOption(c.labelOption),
+    )
+  ) {
+    throw new SubmissionPricingError('Every card needs a valid cleaning option, Slab Guard choice and label option')
   }
 
   const cardCount = input.cards.length
   const perCardFee = tierPriceForRegion(tierMeta, input.region)
   const gradingSubtotal = perCardFee * cardCount
 
-  // Label options only exist for ACE; any other company's submission is
-  // always priced as the free Standard label.
-  const labelOptionMeta =
-    input.gradingCompany === 'ACE'
-      ? (ACE_LABEL_OPTIONS.find((o) => o.value === input.aceLabelOption) ?? ACE_LABEL_OPTIONS[0])
-      : ACE_LABEL_OPTIONS[0]
-  const labelOptionSubtotal = labelOptionFeeForRegion(labelOptionMeta, input.region) * cardCount
+  // Label options (per card, ZAR only) only exist for ACE; any other
+  // company's cards are always priced as the free Standard label.
+  const cardLabel = (c: SubmissionPricingCard): AceLabelOption =>
+    input.gradingCompany === 'ACE' ? c.labelOption : 'standard'
+  const labelCounts: Record<AceLabelOption, number> = { standard: 0, colour_match: 0, ace_label: 0 }
+  for (const c of input.cards) labelCounts[cardLabel(c)]++
+  const labelOptionSubtotal = input.cards.reduce((sum, c) => sum + labelOptionFeeZAR(cardLabel(c)), 0)
 
   // Per-card add-ons (components/submit/step-addons.tsx): each card's own
   // cleaning choice and Slab Guard, summed across the submission. Always
@@ -161,6 +168,7 @@ export function computeSubmissionPricing(input: SubmissionPricingInput): Submiss
   return {
     perCardFee,
     gradingSubtotal,
+    labelCounts,
     labelOptionSubtotal,
     halfCleanCount,
     fullCleanCount,
@@ -183,17 +191,16 @@ export function computeSubmissionPricing(input: SubmissionPricingInput): Submiss
 
 /** Column subset of public.submissions that pricing depends on. */
 export const SUBMISSION_PRICING_COLUMNS =
-  'grading_company, tier, region, submission_type, ace_label_option, intake_channel, needs_clean_and_polish, requires_slab_guard'
+  'grading_company, tier, region, submission_type, intake_channel, needs_clean_and_polish, requires_slab_guard'
 
 /** Column subset of public.submission_items that pricing depends on. */
-export const SUBMISSION_ITEM_PRICING_COLUMNS = 'declared_value, cleaning_tier, requires_slab_guard'
+export const SUBMISSION_ITEM_PRICING_COLUMNS = 'declared_value, cleaning_tier, requires_slab_guard, ace_label_option'
 
 export interface SubmissionPricingRow {
   grading_company: GradingCompany
   tier: SubmissionTier
   region: ProductRegion
   submission_type: SubmissionType | null
-  ace_label_option: AceLabelOption | null
   intake_channel: IntakeChannel | null
   needs_clean_and_polish: boolean | null
   requires_slab_guard: boolean | null
@@ -203,6 +210,7 @@ export interface SubmissionItemPricingRow {
   declared_value: number | string
   cleaning_tier: CleaningTier | null
   requires_slab_guard: boolean | null
+  ace_label_option: AceLabelOption | null
 }
 
 /** Rebuilds the pricing input from stored rows, so the server can recompute a submission's total from the database alone. */
@@ -215,7 +223,6 @@ export function pricingInputFromRows(
     tier: submission.tier,
     region: submission.region,
     submissionType: submission.submission_type ?? 'batch',
-    aceLabelOption: submission.ace_label_option,
     intakeChannel: submission.intake_channel ?? 'online_shipment',
     legacyCleanAndPolish: Boolean(submission.needs_clean_and_polish),
     legacySlabGuard: Boolean(submission.requires_slab_guard),
@@ -224,6 +231,7 @@ export function pricingInputFromRows(
       declaredValue: Number(item.declared_value),
       cleaningTier: item.cleaning_tier ?? 'none',
       requiresSlabGuard: Boolean(item.requires_slab_guard),
+      labelOption: item.ace_label_option ?? 'standard',
     })),
   }
 }

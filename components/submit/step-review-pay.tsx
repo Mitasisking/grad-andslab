@@ -13,7 +13,6 @@ import {
 } from '@/lib/submission-types'
 import { computeSubmissionPricing } from '@/lib/submission-pricing'
 import type {
-  AceLabelOption,
   CardEntry,
   GradingCompany,
   ProductRegion,
@@ -27,7 +26,6 @@ interface Props {
   gradingCompany: GradingCompany
   submissionType: SubmissionType
   tier: SubmissionTier
-  labelOption: AceLabelOption
   inPersonMode: boolean
   eventSlug: string | null
   cards: CardEntry[]
@@ -47,7 +45,6 @@ export function StepReviewPay({
   gradingCompany,
   submissionType,
   tier,
-  labelOption,
   inPersonMode,
   eventSlug,
   cards,
@@ -75,6 +72,7 @@ export function StepReviewPay({
   // insurance legs are always ZAR.
   const {
     gradingSubtotal,
+    labelCounts,
     labelOptionSubtotal,
     halfCleanCount,
     fullCleanCount,
@@ -91,7 +89,6 @@ export function StepReviewPay({
     tier,
     region,
     submissionType,
-    aceLabelOption: labelOption,
     intakeChannel: inPersonMode ? 'in_person_event' : 'online_shipment',
     legacyCleanAndPolish: false,
     legacySlabGuard: false,
@@ -99,13 +96,16 @@ export function StepReviewPay({
       declaredValue: c.declaredValue || 0,
       cleaningTier: c.cleaningTier,
       requiresSlabGuard: c.requiresSlabGuard,
+      labelOption: c.labelOption,
     })),
   })
 
-  // Label options only apply to ACE; this line is always shown in the Order
-  // Summary (even at R 0,00 for the free Standard option) so the customer
-  // can see which label was chosen.
-  const labelOptionMeta = ACE_LABEL_OPTIONS.find((o) => o.value === labelOption)!
+  // Per-card label choices (ACE only) summed into one line, with the count
+  // of each label chosen -- shown even at R 0,00 when every card is on the
+  // free Standard label, so the customer can see what was chosen.
+  const labelLabel = `Labels (${ACE_LABEL_OPTIONS.filter((o) => labelCounts[o.value] > 0)
+    .map((o) => `${o.label} × ${labelCounts[o.value]}`)
+    .join(', ')})`
 
   // Per-card cleaning choices (components/submit/step-addons.tsx) summed
   // into one line, with the count of each paid tier in the label.
@@ -138,7 +138,6 @@ export function StepReviewPay({
         courier: inPersonMode ? IN_PERSON_DROPOFF_LABEL : DOMESTIC_COURIER_LABEL,
         needsSemiRigids,
         interestedInConsignment,
-        aceLabelOption: gradingCompany === 'ACE' ? labelOption : null,
         intakeChannel: inPersonMode ? 'in_person_event' : 'online_shipment',
         eventSlug: inPersonMode ? eventSlug : null,
         items: cards.map((c) => ({
@@ -155,6 +154,7 @@ export function StepReviewPay({
           marketValueSource: c.marketValueSource,
           cleaningTier: c.cleaningTier,
           requiresSlabGuard: c.requiresSlabGuard,
+          labelOption: c.labelOption,
         })),
       }),
     })
@@ -334,9 +334,7 @@ export function StepReviewPay({
           {/* 2. ACE Label Fees */}
           {gradingCompany === 'ACE' && (
             <div className="flex justify-between gap-4">
-              <span>
-                {labelOptionMeta.label} label × {cards.length}
-              </span>
+              <span>{labelLabel}</span>
               <span style={{ fontVariantNumeric: 'tabular-nums' }}>{formatZAR(labelOptionSubtotal)}</span>
             </div>
           )}

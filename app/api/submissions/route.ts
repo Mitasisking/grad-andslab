@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseRouteClient } from '@/lib/supabase-route-client'
 import { REGION_EXCHANGE_RATE_TO_ZAR, REGION_OPTIONS, REGION_TAX_RATE } from '@/lib/shop/product-type'
 import { SubmissionPricingError, computeSubmissionPricing } from '@/lib/submission-pricing'
-import { isCleaningTier } from '@/lib/submission-types'
+import { isAceLabelOption, isCleaningTier } from '@/lib/submission-types'
 import type {
   AceLabelOption,
   CardType,
@@ -16,7 +16,6 @@ import type {
 } from '@/lib/submission-types'
 
 const VALID_REGIONS = new Set(REGION_OPTIONS.map((r) => r.value))
-const VALID_ACE_LABEL_OPTIONS = new Set<AceLabelOption>(['standard', 'colour_match', 'ace_label'])
 const VALID_SUBMISSION_TYPES = new Set<SubmissionType>(['batch', 'individual'])
 
 function generateHandoverPin(): string {
@@ -37,6 +36,7 @@ interface SubmissionItemInput {
   marketValueSource: string | null
   cleaningTier: CleaningTier
   requiresSlabGuard: boolean
+  labelOption: AceLabelOption
 }
 
 const VALID_SPORTS: Sport[] = ['soccer', 'rugby', 'f1', 'nhl', 'nba', 'mlb', 'nfl']
@@ -66,6 +66,7 @@ function isValidItem(item: SubmissionItemInput): boolean {
   // Per-card add-ons are priced (lib/submission-pricing.ts), so a missing or
   // unknown choice is rejected rather than silently defaulted.
   if (!isCleaningTier(item.cleaningTier) || typeof item.requiresSlabGuard !== 'boolean') return false
+  if (!isAceLabelOption(item.labelOption)) return false
   return true
 }
 
@@ -78,7 +79,6 @@ interface CreateSubmissionBody {
   courier: string
   needsSemiRigids: boolean
   interestedInConsignment: boolean
-  aceLabelOption: AceLabelOption | null
   intakeChannel: IntakeChannel
   eventSlug: string | null
   items: SubmissionItemInput[]
@@ -116,27 +116,21 @@ export async function POST(request: NextRequest) {
   if (body.courier && hasControlCharacters(body.courier)) {
     return NextResponse.json({ error: 'Invalid characters in courier' }, { status: 400 })
   }
-  // Label options only exist for ACE (components/submit/step-grader-tier.tsx
-  // hides the selector for every other company, and 0061_add_ace_label_option.sql's
-  // CHECK constraint enforces this at the DB layer too) -- a non-ACE
-  // submission always gets null, regardless of what the client sent.
-  // An ACE submission with no valid option defaults to 'standard' (free),
-  // same default the wizard itself starts every customer on.
-  const aceLabelOption: AceLabelOption | null =
-    body.gradingCompany === 'ACE'
-      ? VALID_ACE_LABEL_OPTIONS.has(body.aceLabelOption as AceLabelOption)
-        ? (body.aceLabelOption as AceLabelOption)
-        : 'standard'
-      : null
+  // Label options are per card and only exist for ACE
+  // (components/submit/step-addons.tsx hides them for every other company)
+  // -- a non-ACE card is always stored as the free 'standard', regardless
+  // of what the client sent.
+  const labelOptionFor = (item: SubmissionItemInput): AceLabelOption =>
+    body.gradingCompany === 'ACE' ? item.labelOption : 'standard'
 
   // In-person event drop-off (0062_add_in_person_event_intake.sql) --
   // anything other than exactly 'in_person_event' from the client is
-  // treated as the normal online-shipment flow, same defensive default
-  // pattern as aceLabelOption above. event_slug only ever gets set
+  // treated as the normal online-shipment flow -- a defensive default
+  // rather than a rejected request. event_slug only ever gets set
   // alongside it; a handover PIN is only minted for an in-person
   // submission, since chk_submissions_event_fields_match_channel forbids
   // one on an online submission.
-  // Same defensive-default pattern as aceLabelOption/intakeChannel below --
+  // Same defensive-default pattern as intakeChannel below --
   // an invalid or missing value never fails the request, it just falls back
   // to 'batch' (the cheaper, previously-implicit default before this field
   // existed, matching supabase/migrations/0065_add_submission_type.sql's
@@ -173,7 +167,6 @@ export async function POST(request: NextRequest) {
       tier: body.tier,
       region: body.region,
       submissionType,
-      aceLabelOption,
       intakeChannel,
       legacyCleanAndPolish: false,
       legacySlabGuard: false,
@@ -181,6 +174,7 @@ export async function POST(request: NextRequest) {
         declaredValue: Number(item.declaredValue),
         cleaningTier: item.cleaningTier,
         requiresSlabGuard: item.requiresSlabGuard,
+        labelOption: labelOptionFor(item),
       })),
     })
   } catch (err) {
@@ -226,7 +220,9 @@ export async function POST(request: NextRequest) {
       requires_slab_guard: false,
       needs_semi_rigids: Boolean(body.needsSemiRigids),
       interested_in_consignment: Boolean(body.interestedInConsignment),
-      ace_label_option: aceLabelOption,
+      // Labels are per card now (submission_items below); this retired
+      // per-submission column only exists for pre-rework history.
+      ace_label_option: null,
       intake_channel: intakeChannel,
       event_slug: eventSlug,
       handover_pin: handoverPin,
@@ -255,6 +251,7 @@ export async function POST(request: NextRequest) {
       market_value_source: item.marketValueSource,
       cleaning_tier: item.cleaningTier,
       requires_slab_guard: item.requiresSlabGuard,
+      ace_label_option: labelOptionFor(item),
       pre_check_opt_in: item.cleaningTier !== 'none',
     })),
   )

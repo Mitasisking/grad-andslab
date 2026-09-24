@@ -1402,6 +1402,39 @@ field that drives routing/matching logic, never the name.
 
 ## Uncommitted work in the tree right now
 
+**Uncommitted (2026-09-24) — ACE label option moved from Step 1 to a per-card choice in Add-ons**.
+Not deployed; **migration 0069 APPLIED to production by the user**.
+- `components/submit/step-grader-tier.tsx`: "Label options" section (pills, preview image,
+  description, crossfade) removed; `labelOption`/`onSelectLabelOption` props gone. **The tier list
+  still shows £ per card + "(Est. conversion: R …)"** — the user asked to keep pound references
+  because the GBP/ZAR rate may change.
+- `components/submit/step-addons.tsx`: new `company` prop; for ACE, a "Label options" legend above
+  the cards (all three preview photos, name, ZAR price, the original description copy), and a third
+  per-card radio group "Label": Standard Free / Colour Match + R 25,00 / Ace Label + R 75,00.
+  Label prices are shown in ZAR only.
+- `lib/submission-types.ts`: `CardEntry.labelOption`; `ACE_LABEL_OPTIONS` gains `previewSrc` and
+  `description` (moved from step-grader-tier) and keeps `feeGBP`/`feeUSD` as the reference prices
+  ZAR is derived from (not charged); `isAceLabelOption`, `labelOptionFeeZAR`;
+  `labelOptionFeeForRegion` removed. `SubmissionItemRow.ace_label_option`.
+- `lib/submission-pricing.ts`: `aceLabelOption` input removed; each card carries `labelOption`,
+  charged in ZAR only for ACE (non-ACE cards price as Standard); new `labelCounts` output.
+  `ace_label_option` moved from `SUBMISSION_PRICING_COLUMNS` to `SUBMISSION_ITEM_PRICING_COLUMNS`.
+- `app/api/submissions/route.ts`: each item needs a valid `labelOption` (else 400); stored per item
+  (forced to 'standard' for non-ACE); `submissions.ace_label_option` now stored null.
+- Order Summary: "Labels (Colour Match × 1, Ace Label × 1)" line; confirmation email: one line per
+  label chosen with its count; `send-grading-update.ts` item select gains `ace_label_option`;
+  simulation labels per card (1323/1323 invariants); manifest rail Add-ons description →
+  "Cleaning, Slab Guard and label per card".
+- **New migration `supabase/migrations/0069_per_card_label_option.sql`**: `submission_items.ace_label_option
+  text not null default 'standard'` (CHECK standard/colour_match/ace_label), backfilled from each
+  parent's `submissions.ace_label_option`, so pre-rework submissions re-price as charged. Caveat
+  (same as 0068): a legacy non-SA submission's label now re-prices at the ZAR fee.
+- `tsc`/eslint clean. **Click-tested locally** (duration-0 workaround, reverted): Step 1 has no label
+  section and keeps £ tiers; Add-ons legend shows all three images; 2 cards (Basic, R1 000 + R2 000),
+  card 1 Colour Match, card 2 Ace Label + Half Clean + Slab Guard → Order Summary grading R850,
+  labels R100, cleaning R200, Slab Guard R110, courier R110, international R220, insurance R900 =
+  **R 2 490,00** (matches hand calculation). Pay not clicked.
+
 **Uncommitted (2026-09-24) — Add-ons step is now per card (cleaning tier + Slab Guard on every
 card)**. Not committed, not deployed; **migration 0068 APPLIED to production by the user**.
 - **Click-tested locally** (localhost:3000, logged in; rAF duration-0 workaround used, then reverted):

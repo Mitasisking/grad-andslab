@@ -12,7 +12,6 @@ import { StepReviewPay } from '@/components/submit/step-review-pay'
 import { fetchAddresses } from '@/lib/addresses-client'
 import { TIER_OPTIONS_BY_COMPANY } from '@/lib/submission-types'
 import type {
-  AceLabelOption,
   CardEntry,
   EventSettingsRow,
   GradingCompany,
@@ -49,6 +48,7 @@ function createEmptyCard(): CardEntry {
     isFetchingValue: false,
     cleaningTier: 'none',
     requiresSlabGuard: false,
+    labelOption: 'standard',
   }
 }
 
@@ -117,7 +117,6 @@ export function SubmissionWizard({ activePools, showBatchTracker }: Props) {
   const [step, setStep] = useState(0)
   const [submissionType, setSubmissionType] = useState<SubmissionType>('batch')
   const [tier, setTier] = useState<SubmissionTier | null>(initialTier)
-  const [labelOption, setLabelOption] = useState<AceLabelOption>('standard')
   const [cards, setCards] = useState<CardEntry[]>([createEmptyCard()])
   const [addresses, setAddresses] = useState<ShippingAddress[]>([])
   const [addressesLoaded, setAddressesLoaded] = useState(false)
@@ -234,10 +233,8 @@ export function SubmissionWizard({ activePools, showBatchTracker }: Props) {
                 <StepGraderTier
                   company={company}
                   tier={tier}
-                  labelOption={labelOption}
                   cards={cards}
                   onSelectTier={setTier}
-                  onSelectLabelOption={setLabelOption}
                   onUpdateCard={updateCard}
                   onAddCard={addCard}
                   onRemoveCard={removeCard}
@@ -249,6 +246,7 @@ export function SubmissionWizard({ activePools, showBatchTracker }: Props) {
 
               {step === 1 && (
                 <StepAddOns
+                  company={company}
                   cards={cards}
                   onUpdateCard={updateCard}
                   submissionType={submissionType}
@@ -264,7 +262,6 @@ export function SubmissionWizard({ activePools, showBatchTracker }: Props) {
                   gradingCompany={company}
                   submissionType={submissionType}
                   tier={tier}
-                  labelOption={labelOption}
                   inPersonMode={inPersonMode}
                   eventSlug={eventSlug}
                   cards={cards}

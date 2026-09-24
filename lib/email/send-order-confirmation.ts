@@ -125,8 +125,11 @@ export async function sendSubmissionConfirmationEmail(submissionId: string, rece
   const feeLineItems: { label: string; amount: number }[] = []
   if (pricing) {
     if (pricingRow.grading_company === 'ACE') {
-      const labelMeta = ACE_LABEL_OPTIONS.find((o) => o.value === pricingRow.ace_label_option) ?? ACE_LABEL_OPTIONS[0]
-      addOnLineItems.push({ label: `${labelMeta.label} label × ${cardRows.length}`, amount: pricing.labelOptionSubtotal })
+      // Per-card labels, one line per label chosen with its card count.
+      for (const option of ACE_LABEL_OPTIONS) {
+        const count = pricing.labelCounts[option.value]
+        if (count > 0) addOnLineItems.push({ label: `${option.label} label × ${count}`, amount: option.feeZAR * count })
+      }
     }
     // Per-card add-ons, one line per paid option with its card count.
     for (const [count, tier] of [
