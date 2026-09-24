@@ -3,15 +3,11 @@
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { AddAddressForm } from '@/components/submit/add-address-form'
-import { formatByRegion, formatZAR } from '@/lib/currency'
+import { formatZAR } from '@/lib/currency'
 import {
   ACE_LABEL_OPTIONS,
   DOMESTIC_COURIER_LABEL,
   IN_PERSON_DROPOFF_LABEL,
-  INTERNATIONAL_COURIER_LEG_LABELS,
-  LOCAL_COURIER_LEG_LABELS,
-  LOCAL_IN_PERSON_LEG_LABELS,
-  SECURSUS_INSURANCE_LEG_LABELS,
   SLAB_GUARD_LABEL,
   TIER_OPTIONS_BY_COMPANY,
 } from '@/lib/submission-types'
@@ -88,8 +84,9 @@ export function StepReviewPay({
     cuppasServicesSubtotal,
     slabGuardSubtotal,
     domesticLegFee,
-    internationalLegFee,
-    secursusInsuranceLegFee,
+    localCourierTotal,
+    internationalCourierTotal,
+    secursusInsuranceTotal,
     total,
   } = computeSubmissionPricing({
     gradingCompany,
@@ -116,7 +113,6 @@ export function StepReviewPay({
       ? `Pre-grading preparation × ${cardsWithPrepCount}`
       : 'Pre-grading preparation'
 
-  const internationalCourierLabels = INTERNATIONAL_COURIER_LEG_LABELS[submissionType]
   const canCheckout = Boolean(addressId)
 
   async function beginCheckout() {
@@ -314,7 +310,7 @@ export function StepReviewPay({
               {DOMESTIC_COURIER_LABEL}
             </span>
             <span className="text-[13px]" style={{ fontVariantNumeric: 'tabular-nums', color: 'var(--ink-muted)' }}>
-              {formatByRegion(domesticLegFee, region)} each way
+              {formatZAR(domesticLegFee)} each way
             </span>
           </div>
         </div>
@@ -330,7 +326,7 @@ export function StepReviewPay({
             <span>
               {gradingCompany} grading × {cards.length} ({tierMeta.label})
             </span>
-            <span style={{ fontVariantNumeric: 'tabular-nums' }}>{formatByRegion(gradingSubtotal, region)}</span>
+            <span style={{ fontVariantNumeric: 'tabular-nums' }}>{formatZAR(gradingSubtotal)}</span>
           </div>
 
           {/* 2. ACE Label Fees */}
@@ -339,14 +335,14 @@ export function StepReviewPay({
               <span>
                 {labelOptionMeta.label} label × {cards.length}
               </span>
-              <span style={{ fontVariantNumeric: 'tabular-nums' }}>{formatByRegion(labelOptionSubtotal, region)}</span>
+              <span style={{ fontVariantNumeric: 'tabular-nums' }}>{formatZAR(labelOptionSubtotal)}</span>
             </div>
           )}
 
           {/* 3. CuppasCards Services */}
           <div className="flex justify-between gap-4">
             <span>{cuppasServicesLabel}</span>
-            <span style={{ fontVariantNumeric: 'tabular-nums' }}>{formatByRegion(cuppasServicesSubtotal, region)}</span>
+            <span style={{ fontVariantNumeric: 'tabular-nums' }}>{formatZAR(cuppasServicesSubtotal)}</span>
           </div>
 
           {/* 3b. Slab Guard -- always ZAR, only shown when chosen */}
@@ -357,52 +353,22 @@ export function StepReviewPay({
             </div>
           )}
 
-          {/* 4. Local Courier Fees */}
-          {inPersonMode ? (
-            <>
-              <div className="flex justify-between gap-4">
-                <span>{LOCAL_IN_PERSON_LEG_LABELS.outbound}</span>
-                <span style={{ fontVariantNumeric: 'tabular-nums' }}>{formatByRegion(0, region)}</span>
-              </div>
-              <div className="flex justify-between gap-4">
-                <span>{LOCAL_IN_PERSON_LEG_LABELS.returnLeg}</span>
-                <span style={{ fontVariantNumeric: 'tabular-nums' }}>{formatByRegion(0, region)}</span>
-              </div>
-            </>
-          ) : (
-            <>
-              <div className="flex justify-between gap-4">
-                <span>{LOCAL_COURIER_LEG_LABELS.outbound}</span>
-                <span style={{ fontVariantNumeric: 'tabular-nums' }}>{formatByRegion(domesticLegFee, region)}</span>
-              </div>
-              <div className="flex justify-between gap-4">
-                <span>{LOCAL_COURIER_LEG_LABELS.returnLeg}</span>
-                <span style={{ fontVariantNumeric: 'tabular-nums' }}>{formatByRegion(domesticLegFee, region)}</span>
-              </div>
-            </>
-          )}
-
-          {/* 5. International Courier Fees */}
+          {/* 4-6. Courier legs and insurance, each shown as one round-trip
+              line. Presentation only: the per-leg amounts still come from
+              computeSubmissionPricing() and the per-leg labels in
+              lib/submission-types.ts are what the confirmation email
+              itemises for invoicing. */}
           <div className="flex justify-between gap-4">
-            <span>{internationalCourierLabels.outbound}</span>
-            <span style={{ fontVariantNumeric: 'tabular-nums' }}>{formatByRegion(internationalLegFee, region)}</span>
+            <span>{inPersonMode ? 'Local Courier (Round Trip) · In-person' : 'Local Courier (Round Trip)'}</span>
+            <span style={{ fontVariantNumeric: 'tabular-nums' }}>{formatZAR(localCourierTotal)}</span>
           </div>
           <div className="flex justify-between gap-4">
-            <span>{internationalCourierLabels.returnLeg}</span>
-            <span style={{ fontVariantNumeric: 'tabular-nums' }}>{formatByRegion(internationalLegFee, region)}</span>
-          </div>
-
-          {/* 6. Secursus Insurance -- always ZAR (formatZAR, not
-              formatByRegion), since it's calculated directly off the
-              declared card values, which are themselves always ZAR
-              regardless of region. */}
-          <div className="flex justify-between gap-4">
-            <span>{SECURSUS_INSURANCE_LEG_LABELS.outbound}</span>
-            <span style={{ fontVariantNumeric: 'tabular-nums' }}>{formatZAR(secursusInsuranceLegFee)}</span>
+            <span>International Courier (Round Trip)</span>
+            <span style={{ fontVariantNumeric: 'tabular-nums' }}>{formatZAR(internationalCourierTotal)}</span>
           </div>
           <div className="flex justify-between gap-4">
-            <span>{SECURSUS_INSURANCE_LEG_LABELS.returnLeg}</span>
-            <span style={{ fontVariantNumeric: 'tabular-nums' }}>{formatZAR(secursusInsuranceLegFee)}</span>
+            <span>Insurance</span>
+            <span style={{ fontVariantNumeric: 'tabular-nums' }}>{formatZAR(secursusInsuranceTotal)}</span>
           </div>
 
           {/* 7. Total Due Today */}
@@ -411,7 +377,7 @@ export function StepReviewPay({
             style={{ borderColor: 'var(--line)' }}
           >
             <span>Total due today</span>
-            <span style={{ fontVariantNumeric: 'tabular-nums' }}>{formatByRegion(total, region)}</span>
+            <span style={{ fontVariantNumeric: 'tabular-nums' }}>{formatZAR(total)}</span>
           </div>
         </div>
 
@@ -438,7 +404,7 @@ export function StepReviewPay({
           disabled={!canCheckout || creatingOrder}
           className="rounded-[3px]"
         >
-          {creatingOrder ? 'Redirecting to Payfast…' : `Pay ${formatByRegion(total, region)}`}
+          {creatingOrder ? 'Redirecting to Payfast…' : `Pay ${formatZAR(total)}`}
         </Button>
       </div>
     </section>
