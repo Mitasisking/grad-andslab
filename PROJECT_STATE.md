@@ -1099,7 +1099,7 @@ up today — not a to-do list.
   styling (`bg-neutral-950`, arrows, dot indicators, slab card layout) was not touched — verified
   live that it renders cleanly here since `app/shop/layout.tsx`'s wrapper is already on the same
   dark `--paper`/`--ink` theme as the rest of the app, not a literal light "paper" background as
-  the CSS variable's name might suggest. **Heading removed (2026-09-24, uncommitted)**: the
+  the CSS variable's name might suggest. **Heading removed (2026-09-24, committed `4b7ba33`, deployed `dpl_73WkFp7rToSQzJ19LQUhgTEeXkd6`)**: the
   "Premium Grails" eyebrow and "The {siteConfig.name} Vault" `<h2>` were deleted from
   `components/FeaturedCarousel.tsx` (their only render site), along with the now-unused
   `siteConfig` import. The carousel itself (cards, arrows, dots, auto-rotate) is unchanged; the
@@ -1108,7 +1108,7 @@ up today — not a to-do list.
   empty space, and it gained `mb-8` so the category pills no longer butt directly against its
   bottom border. The admin product form's "Shows in 'The … Vault' shop page carousel" helper text
   (`app/admin/shop/product-form-modal.tsx`) still uses the Vault name as an internal label.
-  **Carousel removed from `/shop` entirely (2026-09-24, uncommitted)** — the heading-removal
+  **Carousel removed from `/shop` entirely (2026-09-24, committed `15362a6`, deployed `dpl_4WVSmJwNbX6ki3eWe8Nee2uoDFR2`)** — the heading-removal
   change above was committed as `4b7ba33` and deployed (`dpl_73WkFp7rToSQzJ19LQUhgTEeXkd6`); after
   that, the user asked for the whole carousel off the page. `app/shop/page.tsx` no longer imports
   `FeaturedCarousel`/`getFeaturedProducts` or calls `getFeaturedProducts` (one fewer Supabase
@@ -1409,7 +1409,15 @@ field that drives routing/matching logic, never the name.
 
 ## Uncommitted work in the tree right now
 
-**Uncommitted (2026-09-24) — Global brand color system**: `app/globals.css` plus ~25 call sites.
+**Nothing from the 2026-09-24 shop/footer/color work is uncommitted.** The four commits below
+(`15362a6`, `754dbf9`, `0df58fd`, `7cd8a8f`) are pushed to `origin/main` (`4b7ba33..7cd8a8f`) and
+deployed to Vercel production as `dpl_4WVSmJwNbX6ki3eWe8Nee2uoDFR2` (built from `7cd8a8f`, aliased to
+`website-three-iota-83.vercel.app`). Verified live via curl: `/shop` has no carousel, the footer
+has no `/refund-policy` link, and the served CSS contains the new brand-color rules. Not
+click-tested in a browser on production.
+
+**Committed `0df58fd`, deployed (2026-09-24) — Global brand color system**: `app/globals.css` plus
+~25 call sites.
 - Tokens: kept the brand-guide Pantone values `--brand-gold #fdc82f` / `--brand-green #007a33`
   (logo PNG samples to ~#fcc134 / ~#107438 — compression drift, guide stays authoritative). New:
   `--brand-dark #0a0908` (formalizes the existing `--background`), `--brand-gold-hover #fed65e`,
@@ -1440,7 +1448,7 @@ field that drives routing/matching logic, never the name.
   Verified on `next start` locally: shop buttons/checkboxes/card borders/nav underline resolve to
   brand colors; focused button and text field both show the gold outline/border.
 
-**Uncommitted (2026-09-24) — Footer Refund/Shipping Policy links removed**:
+**Committed `754dbf9`, deployed (2026-09-24) — Footer Refund/Shipping Policy links removed**:
 `components/Footer.tsx` now lists only Vendor Inquiries, Terms & Conditions, Privacy Policy, and
 Contact Us. The link row is a `flex flex-wrap justify-center gap-x-6 gap-y-2` container, so the
 remaining four reflow with no gaps and no class changes were needed. `app/refund-policy/` and
@@ -1448,12 +1456,12 @@ remaining four reflow with no gaps and no class changes were needed. `app/refund
 they're now reachable by direct URL only. The Terms page has no dedicated refund/returns section,
 so the storefront currently surfaces no refund policy anywhere (payment gateways and SA's ECTA s43
 generally expect one to be accessible from the site — flagged to the user, their call).
-`npx tsc --noEmit` and `npx eslint components/Footer.tsx` pass clean. Not yet committed, pushed, or
-deployed.
+`npx tsc --noEmit` and `npx eslint components/Footer.tsx` pass clean. Pushed and deployed (see
+above). The missing-refund-policy concern is still open.
 
-**Uncommitted (2026-09-24) — Shop carousel removed from `/shop`**: `app/shop/page.tsx` (and this
-file). See the Shop bullet in the Active File Manifest above. `npx tsc --noEmit` and `npx eslint
-app/shop/page.tsx` pass clean. Not yet click-tested live, committed, pushed, or deployed. (The
+**Committed `15362a6`, deployed (2026-09-24) — Shop carousel removed from `/shop`**:
+`app/shop/page.tsx`. See the Shop bullet in the Active File Manifest above. `npx tsc --noEmit` and
+`npx eslint app/shop/page.tsx` pass clean; confirmed absent on production via curl. (The
 earlier heading-only removal is committed as `4b7ba33`, pushed, and deployed to production as
 `dpl_73WkFp7rToSQzJ19LQUhgTEeXkd6`.)
 
