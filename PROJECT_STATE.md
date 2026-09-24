@@ -1402,6 +1402,23 @@ field that drives routing/matching logic, never the name.
 
 ## Uncommitted work in the tree right now
 
+**Uncommitted (2026-09-24) — `/prepare` guide aligned with the Submission Best Practices copy**.
+- New `lib/packing-best-practices.ts` holds the 4 Do / 4 Don't items (`Practice = { lead, detail
+  }`), moved verbatim out of `components/SubmissionBestPractices.tsx`, which now imports them.
+  `components/PackagingGuidelines.tsx` (the `/prepare` Do/Don't cards) drops its own older lists
+  ("Include packing slip", "Check declared values (especially for PSA)", "Send in hard toploaders",
+  …) and renders the same shared items as bold lead + detail, keeping its gold/red card styling.
+  One source now feeds both surfaces; the site-wide section stays hidden on `/prepare`.
+- `app/prepare/page.tsx` numbered steps: penny sleeves are "clear, loose-fit" with the no
+  tight-fit/ETB/coloured-back rule; "Match the Packing Slip … digital packing slip" → "Maintain
+  Your Sequence … digital submission queue"; new "Include Your Order Number"; the cardboard-sandwich
+  step now allows painter's tape or a loose rubber band and forbids tight elastic bands and
+  Sellotape/sticky tape on semi-rigid tops; step 4 gains "Ship Tracked" (Pudo / The Courier Guy,
+  not the post office) and "Check Your Details" (return address on the dashboard). "Avoid
+  Toploaders" is kept — toploaders only ever appear as a "don't" (semi-rigids-only rule).
+- `tsc`/eslint clean, `npx next build` clean; prerendered `/prepare` HTML contains every new
+  phrase and none of the removed ones. Not yet committed, pushed, or deployed.
+
 **Committed `29bcaea`, pushed, deployed as `dpl_G4MDSdKfmeQToqbnhaKQiZ3vK4uV` (2026-09-24) — Mobile
 horizontal scroll fixed (site-wide, via the footer)**. The
 `/services` sideways scroll reported earlier was not specific to `/services`: measured at 390px on
