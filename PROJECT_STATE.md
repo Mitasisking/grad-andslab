@@ -1402,6 +1402,25 @@ field that drives routing/matching logic, never the name.
 
 ## Uncommitted work in the tree right now
 
+**Uncommitted (2026-09-24) — Shipping Policy and Refund & Return Policy added to `/terms`**. The
+user-supplied text is added verbatim as `app/terms/page.tsx` §5 "Shipping Policy"
+(`id="shipping-policy"`: 5.1 Domestic Shop Orders — R110 flat; 5.2 Grading Submission Logistics;
+5.3 Insurance — Secursus 15% applied twice, liability limited to the Secursus payout; 5.4 Customs —
+~20% duty + 15% VAT) and §6 "Refund & Return Policy" (`id="refund-policy"`: 6.1 Shop — sealed 7-day
+returns minus R110 + return shipping, singles final, damage reported within 24h; 6.2 Grading —
+refundable only before outbound dispatch, add-on fees non-refundable once work starts, no refunds for
+grade outcomes; 6.3 refunds in ZAR within 5–7 business days). Contact details renumbered to §7;
+"Last Updated" 16/09/2026 → 24/09/2026. `components/legal/legal-page.tsx` gained an optional `id`
+on `Section` (with `scroll-mt-24`) and a numbered `SubSection` heading. This restores an accessible
+refund policy (the footer's Refund/Shipping links were removed earlier), reachable as
+`/terms#refund-policy`. `tsc`/eslint clean, `npx next build` clean, prerendered `/terms` contains
+both anchors and every subsection. Not yet committed, pushed, or deployed.
+- Still outstanding: the old standalone `app/shipping-policy/` and `app/refund-policy/` pages still
+  exist (unlinked, direct URL only) and now contradict the Terms — e.g. `/shipping-policy` says
+  shipping is "calculated at checkout based on your location and the size of the order". Terms §3
+  also still says "(e.g., PCG)" (the service is ACE-only) and has a broader "not liable" line than
+  §5.3's Secursus-payout clause. Flagged to the user; not changed.
+
 **Uncommitted (2026-09-24) — `/prepare` guide aligned with the Submission Best Practices copy**.
 - New `lib/packing-best-practices.ts` holds the 4 Do / 4 Don't items (`Practice = { lead, detail
   }`), moved verbatim out of `components/SubmissionBestPractices.tsx`, which now imports them.
