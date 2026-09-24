@@ -1402,8 +1402,10 @@ field that drives routing/matching logic, never the name.
 
 ## Uncommitted work in the tree right now
 
-**Uncommitted (2026-09-24) — ACE label option moved from Step 1 to a per-card choice in Add-ons**.
-Not deployed; **migration 0069 APPLIED to production by the user**.
+**Committed `5b6ae78`, pushed, deployed as `dpl_9XjP4wEAbHcQAXcUhWAY1r55kxNk` (2026-09-24) — ACE label
+option moved from Step 1 to a per-card choice in Add-ons**. Migration 0069 APPLIED to production by
+the user before the deploy. Post-deploy smoke check: `/` and `/submit` 200, `/api/submissions`
+unauthenticated POST → 401, `/images/labels/ace-label.png` 200.
 - `components/submit/step-grader-tier.tsx`: "Label options" section (pills, preview image,
   description, crossfade) removed; `labelOption`/`onSelectLabelOption` props gone. **The tier list
   still shows £ per card + "(Est. conversion: R …)"** — the user asked to keep pound references
@@ -1435,8 +1437,9 @@ Not deployed; **migration 0069 APPLIED to production by the user**.
   labels R100, cleaning R200, Slab Guard R110, courier R110, international R220, insurance R900 =
   **R 2 490,00** (matches hand calculation). Pay not clicked.
 
-**Uncommitted (2026-09-24) — Add-ons step is now per card (cleaning tier + Slab Guard on every
-card)**. Not committed, not deployed; **migration 0068 APPLIED to production by the user**.
+**Committed `efab410`, pushed, deployed as `dpl_9XjP4wEAbHcQAXcUhWAY1r55kxNk` (2026-09-24, same deploy
+as `5b6ae78` above) — Add-ons step is now per card (cleaning tier + Slab Guard on every card)**.
+Migration 0068 APPLIED to production by the user before the deploy.
 - **Click-tested locally** (localhost:3000, logged in; rAF duration-0 workaround used, then reverted):
   2 cards (ACE Basic, Standard label, declared R1 000 + R2 000), card 1 Half Clean + Slab Guard Yes,
   card 2 Half → Full clean (radios exclusive) + No. Order Summary: grading R850, label R0,
