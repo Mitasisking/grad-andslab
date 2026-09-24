@@ -1402,6 +1402,27 @@ field that drives routing/matching logic, never the name.
 
 ## Uncommitted work in the tree right now
 
+**Uncommitted (2026-09-24) — Inbound local courier leg no longer charged (customers ship to HQ
+themselves)**. `lib/submission-pricing.ts`: `localCourierTotal` is now the single return leg
+(`domesticLegFee`, R110) instead of `domesticLegFee * 2`; still R0 for in-person drop-off. Since
+checkout and the Payfast webhook both recompute from this function, the charged total drops by
+R110 for every online submission (e.g. ACE Basic, 1 card, Ace Label, R1,000 declared: R1 240 →
+R1 130; in-person R1 020, unchanged). Order Summary line is now "Local Courier (Return)" ("… ·
+In-person collection" at R 0,00), the Courier box is titled "Return courier" and shows R 110,00
+(was "each way"), and the "Courier Delivery" option says customers ship to us with a tracked courier
+of their choice and we return via The Courier Guy — Pudo. `LOCAL_COURIER_LEG_LABELS.outbound` →
+"Drop-off to HQ (arranged by customer)"; the confirmation email lists only the return leg.
+Simulation labels updated (1,383/1,383). `tsc`/eslint clean, `npx next build` clean. Not yet
+committed, pushed, or deployed.
+- Transition: a pending submission whose customer still has the old Review page open will get
+  checkout's 409 "price has changed, refresh" (by design). A Payfast payment already in flight at
+  the old amount when this deploys would hit the webhook's amount check and stay `pending` for an
+  admin to reconcile (none are expected — no submission has ever been paid).
+- Terms §5.2 updated to match, with the user's approval: the "calculated at R 110,00 each way"
+  sentence is now "The standard courier fee for the return leg from our facility to your address is
+  R 110,00. Clients arrange and pay for their own shipping to our intake facility." (Last Updated
+  was already 24/09/2026.)
+
 **Uncommitted (2026-09-24) — Shipping Policy and Refund & Return Policy added to `/terms`**. The
 user-supplied text is added verbatim as `app/terms/page.tsx` §5 "Shipping Policy"
 (`id="shipping-policy"`: 5.1 Domestic Shop Orders — R110 flat; 5.2 Grading Submission Logistics;
