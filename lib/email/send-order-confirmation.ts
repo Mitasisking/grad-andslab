@@ -136,13 +136,14 @@ export async function sendSubmissionConfirmationEmail(submissionId: string, rece
       addOnLineItems.push({ label: SLAB_GUARD_LABEL, amount: pricing.slabGuardSubtotal })
     }
 
+    // Only the return leg is charged -- customers ship to HQ themselves.
     const inPerson = pricingRow.intake_channel === 'in_person_event'
-    const localLabels = inPerson ? LOCAL_IN_PERSON_LEG_LABELS : LOCAL_COURIER_LEG_LABELS
-    const localLegFee = inPerson ? 0 : pricing.domesticLegFee
     const internationalLabels = INTERNATIONAL_COURIER_LEG_LABELS[pricingRow.submission_type ?? 'batch']
     feeLineItems.push(
-      { label: localLabels.outbound, amount: localLegFee },
-      { label: localLabels.returnLeg, amount: localLegFee },
+      {
+        label: inPerson ? LOCAL_IN_PERSON_LEG_LABELS.returnLeg : LOCAL_COURIER_LEG_LABELS.returnLeg,
+        amount: pricing.localCourierTotal,
+      },
       { label: internationalLabels.outbound, amount: pricing.internationalLegFee },
       { label: internationalLabels.returnLeg, amount: pricing.internationalLegFee },
       { label: SECURSUS_INSURANCE_LEG_LABELS.outbound, amount: pricing.secursusInsuranceLegFee },

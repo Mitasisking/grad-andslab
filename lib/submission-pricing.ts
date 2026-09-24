@@ -58,9 +58,9 @@ export interface SubmissionPricing {
   totalDeclaredValueZAR: number
   secursusInsuranceLegFee: number
   secursusInsuranceTotal: number
-  /** Everything except the domestic courier legs -- stored as submissions.service_fee. */
+  /** Everything except the domestic return courier leg -- stored as submissions.service_fee. */
   serviceFee: number
-  /** What the customer pays: serviceFee + the domestic courier legs. */
+  /** What the customer pays: serviceFee + the domestic return courier leg. */
   total: number
 }
 
@@ -104,9 +104,11 @@ export function computeSubmissionPricing(input: SubmissionPricingInput): Submiss
   // Slab Guard: a flat fee per submission, always ZAR (no USD/GBP price exists).
   const slabGuardSubtotal = input.requiresSlabGuard ? SLAB_GUARD_FEE_ZAR : 0
 
-  // Domestic leg (customer <-> HQ): two legs, waived for in-person drop-off.
+  // Domestic courier: customers arrange and pay for their own shipping to
+  // HQ, so only the single return leg (HQ -> customer) is charged. Waived
+  // for in-person drop-off, where the cards are collected in person too.
   const domesticLegFee = domesticCourierLegFeeForRegion(input.region)
-  const localCourierTotal = input.intakeChannel === 'in_person_event' ? 0 : domesticLegFee * 2
+  const localCourierTotal = input.intakeChannel === 'in_person_event' ? 0 : domesticLegFee
 
   // International leg (SA <-> the grader's UK facility): always two legs.
   const internationalLegFee = internationalCourierLegFeeForRegion(input.submissionType, input.region)

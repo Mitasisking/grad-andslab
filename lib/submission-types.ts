@@ -321,10 +321,10 @@ export const INTERNATIONAL_COURIER_LEG_LABELS: Record<SubmissionType, { outbound
 }
 
 /**
- * Domestic leg of the journey -- customer to CuppasCards HQ, and HQ back to
- * customer -- via The Courier Guy's Pudo Locker-to-Locker service, billed as
- * two separate legs at this same per-leg rate (components/submit/
- * step-review-pay.tsx's "Ship from" section). Replaces the old COURIERS
+ * Domestic return leg -- CuppasCards HQ back to the customer -- via The
+ * Courier Guy's Pudo Locker-to-Locker service, billed once at this rate
+ * (lib/submission-pricing.ts). Customers arrange and pay for their own
+ * shipping TO HQ, so that inbound leg is never charged. Replaces the old COURIERS
  * array of placeholder US carrier tiers (UPS Ground/2nd Day Air, FedEx
  * Priority Overnight) that step-review-pay.tsx used to let the customer
  * choose between -- there is no longer a choice of domestic carrier, just
@@ -346,7 +346,7 @@ export function domesticCourierLegFeeForRegion(region: ProductRegion): number {
 
 /** Order Summary line-item labels for the two domestic courier legs, shown when "Courier Delivery" is selected in Step 3's "Ship from" section. */
 export const LOCAL_COURIER_LEG_LABELS = {
-  outbound: 'Local Courier: Drop-off to HQ (Pudo Locker)',
+  outbound: 'Local Courier: Drop-off to HQ (arranged by customer)',
   returnLeg: 'Local Courier: Return from HQ (Pudo Locker)',
 }
 

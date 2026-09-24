@@ -218,7 +218,8 @@ export function StepReviewPay({
               </span>
             </span>
             <p className="text-[13px] mt-2.5" style={{ color: 'var(--ink)' }}>
-              Ship your cards to us via {DOMESTIC_COURIER_LABEL}.
+              Ship your cards to us with a tracked courier of your choice (you arrange and pay for this leg). We
+              return them via {DOMESTIC_COURIER_LABEL}.
             </p>
           </button>
 
@@ -303,14 +304,14 @@ export function StepReviewPay({
       {!inPersonMode && (
         <div>
           <h2 className="text-[22px]" style={{ fontFamily: 'var(--font-display)', color: 'var(--ink)' }}>
-            Courier
+            Return courier
           </h2>
           <div className="flex items-center justify-between py-3 mt-3 border-t border-b" style={{ borderColor: 'var(--line)' }}>
             <span className="text-[14px]" style={{ color: 'var(--ink)' }}>
               {DOMESTIC_COURIER_LABEL}
             </span>
             <span className="text-[13px]" style={{ fontVariantNumeric: 'tabular-nums', color: 'var(--ink-muted)' }}>
-              {formatZAR(domesticLegFee)} each way
+              {formatZAR(domesticLegFee)}
             </span>
           </div>
         </div>
@@ -353,13 +354,13 @@ export function StepReviewPay({
             </div>
           )}
 
-          {/* 4-6. Courier legs and insurance, each shown as one round-trip
-              line. Presentation only: the per-leg amounts still come from
-              computeSubmissionPricing() and the per-leg labels in
-              lib/submission-types.ts are what the confirmation email
-              itemises for invoicing. */}
+          {/* 4-6. Local return courier (the only domestic leg charged --
+              customers ship to HQ themselves), then the international legs
+              and insurance each shown as one round-trip line. Presentation
+              only: the amounts come from computeSubmissionPricing(), and the
+              confirmation email itemises the individual legs for invoicing. */}
           <div className="flex justify-between gap-4">
-            <span>{inPersonMode ? 'Local Courier (Round Trip) · In-person' : 'Local Courier (Round Trip)'}</span>
+            <span>{inPersonMode ? 'Local Courier (Return) · In-person collection' : 'Local Courier (Return)'}</span>
             <span style={{ fontVariantNumeric: 'tabular-nums' }}>{formatZAR(localCourierTotal)}</span>
           </div>
           <div className="flex justify-between gap-4">

@@ -70,7 +70,8 @@ export default function TermsPage() {
             <li>
               <strong className="text-slate-100">Domestic Legs:</strong> Clients are responsible for getting their cards
               to our intake facility and for the final return leg from our facility to their address. The standard
-              courier fee for these individual domestic legs is calculated at R 110,00 each way.
+              courier fee for the return leg from our facility to your address is R 110,00. Clients arrange and pay
+              for their own shipping to our intake facility.
             </li>
             <li>
               <strong className="text-slate-100">International Freight:</strong> Outbound and return international
