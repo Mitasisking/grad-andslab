@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button'
 import { CardShipmentRow } from '@/components/submit/card-shipment-row'
 import { formatGBP, formatZAR } from '@/lib/currency'
 import { TIER_OPTIONS_BY_COMPANY } from '@/lib/submission-types'
-import type { CardEntry, GradingCompany, SubmissionTier } from '@/lib/submission-types'
+import type { CardEntry, CardPatch, GradingCompany, SubmissionTier } from '@/lib/submission-types'
 
 interface Props {
   /** Fixed to 'ACE' by app/submit/wizard.tsx for the launch rollout -- still a real prop (rather than hardcoded in this component) so the tier lookup below stays company-driven instead of ACE-specific. */
@@ -13,7 +13,7 @@ interface Props {
   tier: SubmissionTier | null
   cards: CardEntry[]
   onSelectTier: (tier: SubmissionTier) => void
-  onUpdateCard: (id: string, patch: Partial<CardEntry>) => void
+  onUpdateCard: (id: string, patch: CardPatch) => void
   onAddCard: () => void
   onRemoveCard: (id: string) => void
   onNext: () => void

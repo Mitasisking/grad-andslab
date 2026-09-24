@@ -13,6 +13,7 @@ import { fetchAddresses } from '@/lib/addresses-client'
 import { TIER_OPTIONS_BY_COMPANY } from '@/lib/submission-types'
 import type {
   CardEntry,
+  CardPatch,
   EventSettingsRow,
   GradingCompany,
   PoolRow,
@@ -167,8 +168,10 @@ export function SubmissionWizard({ activePools, showBatchTracker }: Props) {
     setAddressId(address.id)
   }, [])
 
-  const updateCard = useCallback((id: string, patch: Partial<CardEntry>) => {
-    setCards((prev) => prev.map((c) => (c.id === id ? { ...c, ...patch } : c)))
+  const updateCard = useCallback((id: string, patch: CardPatch) => {
+    setCards((prev) =>
+      prev.map((c) => (c.id === id ? { ...c, ...(typeof patch === 'function' ? patch(c) : patch) } : c)),
+    )
   }, [])
 
   const addCard = useCallback(() => setCards((prev) => [...prev, createEmptyCard()]), [])

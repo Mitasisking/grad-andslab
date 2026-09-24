@@ -11,7 +11,7 @@ import {
   SLAB_GUARD_LABEL,
   SUBMISSION_TYPE_OPTIONS,
 } from '@/lib/submission-types'
-import type { CardEntry, GradingCompany, SubmissionType } from '@/lib/submission-types'
+import type { CardEntry, CardPatch, GradingCompany, SubmissionType } from '@/lib/submission-types'
 
 /** "Free" / "+ R 25,00" -- label fees read as an upgrade on the included Standard label. */
 function labelPriceText(feeZAR: number): string {
@@ -176,7 +176,7 @@ interface Props {
   /** Label options are ACE-only -- see ACE_LABEL_OPTIONS. */
   company: GradingCompany
   cards: CardEntry[]
-  onUpdateCard: (id: string, patch: Partial<CardEntry>) => void
+  onUpdateCard: (id: string, patch: CardPatch) => void
   submissionType: SubmissionType
   onSelectSubmissionType: (value: SubmissionType) => void
   onNext: () => void

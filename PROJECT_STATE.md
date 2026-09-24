@@ -1402,6 +1402,35 @@ field that drives routing/matching logic, never the name.
 
 ## Uncommitted work in the tree right now
 
+**Uncommitted (2026-09-24) — Fix: typed declared value overwritten by the market-value lookup**. Not
+committed, not deployed.
+- `lib/submission-types.ts`: new `CardPatch = Partial<CardEntry> | ((current: CardEntry) => Partial<CardEntry>)`.
+- `app/submit/wizard.tsx`: `updateCard` accepts a `CardPatch`, applying a function patch to the card's
+  current state inside `setCards`. `onUpdateCard` prop types in `step-grader-tier.tsx`,
+  `step-addons.tsx` and `card-shipment-row.tsx` widened to `CardPatch`.
+- `components/submit/card-shipment-row.tsx`: `selectPokemonCard` and `lookupValue` now finish with a
+  function patch — `declaredValue: current.declaredValue || estimate || 0` — so the estimate only
+  fills a field that is still empty when the lookup resolves.
+- `tsc`/eslint clean. **Verified locally** (visible tab): picked "Pikachu on the Ball", set R1 000
+  50 ms later while the lookup was in flight → lookup finished ("Market estimate: R 8,38") and the
+  value stayed 1000; a second card left untouched still auto-filled 0 → 129.06.
+
+**Production click-test (2026-09-24) of the Add-ons step on `dpl_DczyVBJPPk8najztGAoGRZnuikBM`** — passed.
+Step 1 has no Label options section; Add-ons shows Submission Method → Card add-ons → Label options
+legend → Cleaning Services legend → cards, each card ordered Label → Cleaning → Slab Guard, all ZAR.
+2 cards (ACE Basic): card 1 Ace Label + Full clean + Slab Guard Yes, card 2 Colour Match + Half Clean +
+No → Order Summary grading R850, "Labels (Colour Match × 1, Ace Label × 1)" R100, "Cleaning (Half × 1,
+Full × 1)" R700, "Slab Guard × 1" R110, return courier R110, international R220, insurance R41,23
+(30% of the R137,44 declared) = **R 2 131,23**, correct for those inputs. Choices persist on Back.
+Pay not clicked. (The browser tab had to be foregrounded by the user; a hidden tab can't take
+keyboard focus or finish the step transitions.)
+- **Found a pre-existing bug — FIXED (uncommitted, see below):** `components/submit/card-shipment-row.tsx` —
+  `selectPokemonCard` (line ~177) and `lookupValue` (line ~193) write
+  `declaredValue: card.declaredValue || estimate` after two awaits, using the `card` captured when
+  the lookup started (declared value 0). A declared value typed while the market-value lookup is
+  still in flight is silently overwritten by the estimate. Hit in the test: R1 000 / R2 000 were
+  replaced by R8,38 / R129,06, which changes the Secursus insurance (and total) the customer pays.
+
 **Committed `9b3506f`, pushed, deployed as `dpl_DczyVBJPPk8najztGAoGRZnuikBM` (2026-09-24) — "Cleaning
 Services" legend in the Add-ons step**. Post-deploy: `/` and `/submit` 200; the new copy could not be
 confirmed in the live JS (the Add-ons step is a lazily loaded chunk not referenced from `/submit`'s HTML).

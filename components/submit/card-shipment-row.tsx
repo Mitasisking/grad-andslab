@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { formatZAR } from '@/lib/currency'
 import { fetchMarketValue } from '@/lib/pricing-client'
-import type { CardEntry } from '@/lib/submission-types'
+import type { CardEntry, CardPatch } from '@/lib/submission-types'
 import { searchTcgdexCards, fetchTcgdexSetName, TCGDEX_UNSPECIFIED_SET, type TcgdexCard } from '@/lib/tcgdex'
 
 /**
@@ -110,7 +110,7 @@ interface Props {
   card: CardEntry
   index: number
   canRemove: boolean
-  onUpdateCard: (id: string, patch: Partial<CardEntry>) => void
+  onUpdateCard: (id: string, patch: CardPatch) => void
   onRemoveCard: (id: string) => void
 }
 
@@ -170,12 +170,15 @@ export function CardShipmentRow({ card, index, canRemove, onUpdateCard, onRemove
     const setName = await fetchPokemonSetName(result.id)
     onUpdateCard(card.id, { setName })
     const marketResult = await fetchMarketValue(result.name, setName)
-    onUpdateCard(card.id, {
+    // Read the declared value as it is NOW, not from the `card` captured
+    // when this lookup started -- the estimate only fills an empty field and
+    // never overwrites a value the customer typed while it was in flight.
+    onUpdateCard(card.id, (current) => ({
       isFetchingValue: false,
       marketValueEstimate: marketResult?.estimate ?? null,
       marketValueSource: marketResult?.source ?? null,
-      declaredValue: card.declaredValue || marketResult?.estimate || 0,
-    })
+      declaredValue: current.declaredValue || marketResult?.estimate || 0,
+    }))
   }
 
   // Backstop for a card that's blurred without ever matching/selecting a
@@ -186,12 +189,13 @@ export function CardShipmentRow({ card, index, canRemove, onUpdateCard, onRemove
     const setName = card.setName.trim() || UNSPECIFIED_SET
     onUpdateCard(card.id, { isFetchingValue: true, ...(card.setName.trim() ? {} : { setName }) })
     const result = await fetchMarketValue(card.cardName, setName)
-    onUpdateCard(card.id, {
+    // Same as selectPokemonCard: fill only if still empty at resolution time.
+    onUpdateCard(card.id, (current) => ({
       isFetchingValue: false,
       marketValueEstimate: result?.estimate ?? null,
       marketValueSource: result?.source ?? null,
-      declaredValue: card.declaredValue || result?.estimate || 0,
-    })
+      declaredValue: current.declaredValue || result?.estimate || 0,
+    }))
   }
 
   const showPokemonDropdown = focused && pokemonQueryLongEnough && (isSearchingPokemon || pokemonResults.length > 0)

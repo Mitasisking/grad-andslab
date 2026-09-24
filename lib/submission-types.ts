@@ -71,6 +71,14 @@ export interface CardEntry {
   labelOption: AceLabelOption
 }
 
+/**
+ * A change to one CardEntry: either fields to merge, or a function of the
+ * card's *current* state for updates that land after an await (e.g. a
+ * market-value lookup) and must not overwrite what the customer typed in
+ * the meantime -- see components/submit/card-shipment-row.tsx.
+ */
+export type CardPatch = Partial<CardEntry> | ((current: CardEntry) => Partial<CardEntry>)
+
 export interface ShippingAddress {
   id: string
   label: string
