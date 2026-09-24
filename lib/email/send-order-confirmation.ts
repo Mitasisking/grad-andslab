@@ -7,7 +7,6 @@ import {
   CLEANING_TIER_OPTIONS,
   INTERNATIONAL_COURIER_LEG_LABELS,
   LOCAL_COURIER_LEG_LABELS,
-  LOCAL_IN_PERSON_LEG_LABELS,
   SECURSUS_INSURANCE_LEG_LABELS,
   SLAB_GUARD_LABEL,
   TIER_OPTIONS_BY_COMPANY,
@@ -150,12 +149,12 @@ export async function sendSubmissionConfirmationEmail(submissionId: string, rece
       addOnLineItems.push({ label: `${SLAB_GUARD_LABEL} (whole submission)`, amount: pricing.legacySlabGuardSubtotal })
     }
 
-    // Only the return leg is charged -- customers ship to HQ themselves.
-    const inPerson = pricingRow.intake_channel === 'in_person_event'
+    // Only the return leg is charged -- customers get their cards to HQ
+    // themselves (courier or in person), and every submission is couriered back.
     const internationalLabels = INTERNATIONAL_COURIER_LEG_LABELS[pricingRow.submission_type ?? 'batch']
     feeLineItems.push(
       {
-        label: inPerson ? LOCAL_IN_PERSON_LEG_LABELS.returnLeg : LOCAL_COURIER_LEG_LABELS.returnLeg,
+        label: LOCAL_COURIER_LEG_LABELS.returnLeg,
         amount: pricing.localCourierTotal,
       },
       { label: internationalLabels.outbound, amount: pricing.internationalLegFee },

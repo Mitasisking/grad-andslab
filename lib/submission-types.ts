@@ -341,9 +341,9 @@ export const INTERNATIONAL_COURIER_LEG_LABELS: Record<SubmissionType, { outbound
  * array of placeholder US carrier tiers (UPS Ground/2nd Day Air, FedEx
  * Priority Overnight) that step-review-pay.tsx used to let the customer
  * choose between -- there is no longer a choice of domestic carrier, just
- * this one real South African provider. Zero-rated entirely when the
- * customer instead chooses in-person drop-off (see LOCAL_IN_PERSON_LEG_LABELS
- * below) -- same "replace once known" ballpark-figure caveat as every other
+ * this one real South African provider. Charged for every submission,
+ * including in-person drop-offs (their cards are couriered back the same
+ * way) -- same "replace once known" ballpark-figure caveat as every other
  * approximate-conversion figure in this file.
  */
 export const DOMESTIC_COURIER_LABEL = 'The Courier Guy — Pudo Locker to Locker'
@@ -357,16 +357,10 @@ export function domesticCourierLegFeeForRegion(region: ProductRegion): number {
   return DOMESTIC_COURIER_LEG_FEE_ZAR
 }
 
-/** Order Summary line-item labels for the two domestic courier legs, shown when "Courier Delivery" is selected in Step 3's "Ship from" section. */
+/** Confirmation-email line-item labels for the domestic courier legs -- the same for Courier Delivery and In-Person Drop-Off, since both are returned via DOMESTIC_COURIER_LABEL. */
 export const LOCAL_COURIER_LEG_LABELS = {
   outbound: 'Local Courier: Drop-off to HQ (arranged by customer)',
   returnLeg: 'Local Courier: Return from HQ (Pudo Locker)',
-}
-
-/** Order Summary line-item labels for the two (zero-cost) domestic legs, shown when "In-Person Drop-Off" is selected in Step 3's "Ship from" section instead of Courier Delivery. */
-export const LOCAL_IN_PERSON_LEG_LABELS = {
-  outbound: 'Local Intake: In-Person Drop-off',
-  returnLeg: 'Local Return: In-Person Collection',
 }
 
 /**

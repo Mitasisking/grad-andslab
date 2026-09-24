@@ -36,6 +36,7 @@ import { SHOP_SHIPPING_FLAT_RATE_ZAR } from '@/lib/shop/shipping'
 import {
   ACE_LABEL_OPTIONS,
   CLEANING_TIER_OPTIONS,
+  DOMESTIC_COURIER_LEG_FEE_ZAR,
   SECURSUS_INSURANCE_RATE,
   SLAB_GUARD_FEE_ZAR,
   TIER_OPTIONS_BY_COMPANY,
@@ -274,8 +275,8 @@ for (const sub of submissions) {
     `${sub.id}: total != service fee + domestic courier`,
   )
   check(
-    sub.intakeChannel === 'online_shipment' || p.localCourierTotal === 0,
-    `${sub.id}: in-person drop-off was charged domestic courier`,
+    toCents(p.localCourierTotal) === toCents(DOMESTIC_COURIER_LEG_FEE_ZAR),
+    `${sub.id}: domestic return courier ${rand(toCents(p.localCourierTotal))} != R110 (charged for online and in-person alike)`,
   )
 }
 
@@ -694,7 +695,7 @@ line('    Label options', rand(grand.labels))
 line('    Cleaning (per card)', rand(grand.services))
 line('    Slab Guard (R110 per card)', rand(grand.slabGuard))
 line('    International courier (2 legs)', rand(grand.intlCourier))
-line('    Domestic return courier (online only)', rand(grand.domesticCourier))
+line('    Domestic return courier (every submission)', rand(grand.domesticCourier))
 line('    Secursus insurance (2 x 15%)', rand(grand.insurance))
 rule()
 line('    Submission cash collected', rand(grand.submissionCash))

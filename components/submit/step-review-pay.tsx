@@ -246,7 +246,7 @@ export function StepReviewPay({
               </span>
             </span>
             <p className="text-[13px] mt-2.5" style={{ color: 'var(--ink)' }}>
-              Bring your cards to us directly — no domestic courier fees.
+              {`Bring your cards to us directly. We return them via ${DOMESTIC_COURIER_LABEL} (${formatZAR(domesticLegFee)}).`}
             </p>
           </button>
         </div>
@@ -302,21 +302,21 @@ export function StepReviewPay({
         )}
       </div>
 
-      {!inPersonMode && (
-        <div>
-          <h2 className="text-[22px]" style={{ fontFamily: 'var(--font-display)', color: 'var(--ink)' }}>
-            Return courier
-          </h2>
-          <div className="flex items-center justify-between py-3 mt-3 border-t border-b" style={{ borderColor: 'var(--line)' }}>
-            <span className="text-[14px]" style={{ color: 'var(--ink)' }}>
-              {DOMESTIC_COURIER_LABEL}
-            </span>
-            <span className="text-[13px]" style={{ fontVariantNumeric: 'tabular-nums', color: 'var(--ink-muted)' }}>
-              {formatZAR(domesticLegFee)}
-            </span>
-          </div>
+      {/* Shown for both Courier Delivery and In-Person Drop-Off -- every
+          submission is returned by courier to the selected address. */}
+      <div>
+        <h2 className="text-[22px]" style={{ fontFamily: 'var(--font-display)', color: 'var(--ink)' }}>
+          Return courier
+        </h2>
+        <div className="flex items-center justify-between py-3 mt-3 border-t border-b" style={{ borderColor: 'var(--line)' }}>
+          <span className="text-[14px]" style={{ color: 'var(--ink)' }}>
+            {DOMESTIC_COURIER_LABEL}
+          </span>
+          <span className="text-[13px]" style={{ fontVariantNumeric: 'tabular-nums', color: 'var(--ink-muted)' }}>
+            {formatZAR(domesticLegFee)}
+          </span>
         </div>
-      )}
+      </div>
 
       <div>
         <h2 className="text-[22px]" style={{ fontFamily: 'var(--font-display)', color: 'var(--ink)' }}>
@@ -361,7 +361,7 @@ export function StepReviewPay({
               only: the amounts come from computeSubmissionPricing(), and the
               confirmation email itemises the individual legs for invoicing. */}
           <div className="flex justify-between gap-4">
-            <span>{inPersonMode ? 'Local Courier (Return) · In-person collection' : 'Local Courier (Return)'}</span>
+            <span>Local Courier (Return)</span>
             <span style={{ fontVariantNumeric: 'tabular-nums' }}>{formatZAR(localCourierTotal)}</span>
           </div>
           <div className="flex justify-between gap-4">

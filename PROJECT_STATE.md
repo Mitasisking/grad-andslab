@@ -1402,6 +1402,26 @@ field that drives routing/matching logic, never the name.
 
 ## Uncommitted work in the tree right now
 
+**Uncommitted (2026-09-24) — In-Person Drop-Off now pays the R110 domestic return leg**. Not committed,
+not deployed.
+- `lib/submission-pricing.ts`: `localCourierTotal` = the domestic return leg (R110) for every submission;
+  previously R0 for `intake_channel = 'in_person_event'`. The inbound leg to HQ is still never charged.
+- `components/submit/step-review-pay.tsx`: In-Person Drop-Off copy → "Bring your cards to us directly. We
+  return them via The Courier Guy — Pudo Locker to Locker (R 110,00)." (label and price from
+  `DOMESTIC_COURIER_LABEL` / `formatZAR(domesticLegFee)`); Order Summary label is always "Local Courier
+  (Return)"; the "Return courier" section now shows for both options (was hidden for in-person).
+- `lib/submission-types.ts`: `LOCAL_IN_PERSON_LEG_LABELS` removed (its "Local Return: In-Person
+  Collection" line no longer applies); `lib/email/send-order-confirmation.ts` always uses
+  `LOCAL_COURIER_LEG_LABELS.returnLeg`.
+- `scripts/simulate-platform.ts`: invariant flipped to "every submission is charged R110 return";
+  1323/1323 pass. `tsc`/eslint clean. **Not click-tested.**
+- **Repricing caveat:** pricing is recomputed from stored rows, so any *existing* in-person submission
+  now re-prices R110 higher — an unpaid one checks out at the new total; one mid-checkout at deploy
+  time would hit an amount mismatch in the webhook; `npm run audit:submissions` would flag paid
+  historical in-person submissions as R110 short.
+- Not changed: `app/vendor/page.tsx:98` event pitch "submit cards for grading in person — no shipping,
+  no customs, no waiting."
+
 **Committed `bbce59c`, pushed, deployed as `dpl_AHwKRzKTfSqiX6HmjfTT8zECWwS8` (2026-09-24) — Fix: typed
 declared value overwritten by the market-value lookup**. Post-deploy: `/` and `/submit` 200.
 - `lib/submission-types.ts`: new `CardPatch = Partial<CardEntry> | ((current: CardEntry) => Partial<CardEntry>)`.

@@ -137,11 +137,12 @@ export function computeSubmissionPricing(input: SubmissionPricingInput): Submiss
   const legacyCleanAndPolishSubtotal = input.legacyCleanAndPolish ? legacyCleanAndPolishFeeForRegion(input.region) : 0
   const legacySlabGuardSubtotal = input.legacySlabGuard ? LEGACY_SLAB_GUARD_FEE_ZAR : 0
 
-  // Domestic courier: customers arrange and pay for their own shipping to
-  // HQ, so only the single return leg (HQ -> customer) is charged. Waived
-  // for in-person drop-off, where the cards are collected in person too.
+  // Domestic courier: customers get their cards to HQ themselves (their own
+  // courier, or in-person drop-off), so that inbound leg is never charged.
+  // The single return leg (HQ -> customer, The Courier Guy Pudo Locker to
+  // Locker) is charged on every submission, whichever way the cards arrived.
   const domesticLegFee = domesticCourierLegFeeForRegion(input.region)
-  const localCourierTotal = input.intakeChannel === 'in_person_event' ? 0 : domesticLegFee
+  const localCourierTotal = domesticLegFee
 
   // International leg (SA <-> the grader's UK facility): always two legs.
   const internationalLegFee = internationalCourierLegFeeForRegion(input.submissionType, input.region)
