@@ -1408,7 +1408,9 @@ field that drives routing/matching logic, never the name.
 grid: "Do" (brand-green top border, `text-brand-green-light` check icons on `bg-brand-green/15`)
 and "Don't" (`--danger` soft-red top border and cross icons); both on `bg-slate-950/60` with the
 `--card-border` faint-gold outline, body copy `text-slate-300` with a bold `text-slate-100` lead.
-Copy is the user's exact 4 Do / 4 Don't items. Hidden on `/prepare` (already renders the longer
+Copy is the user's 4 Do / 4 Don't items, with every "or toploaders" removed per the user's standing
+rule that packing guidance only ever recommends semi-rigid card savers (toploaders may appear only
+as a "don't", as `/prepare` already does). Hidden on `/prepare` (already renders the longer
 `components/PackagingGuidelines.tsx`, with different copy) and `/admin/**`, and `print:hidden`
 like the footer so it never prints onto packing slips. `npx tsc --noEmit` clean, eslint clean on
 both files, `npx next build` clean. Verified on local `next start`: renders directly above

@@ -8,7 +8,7 @@ const DO_ITEMS: Practice[] = [
   { lead: 'Include your order number:', detail: 'Always place a note with your order number inside your parcel.' },
   {
     lead: 'Use fresh protection:',
-    detail: 'Place cards into clear, loose-fit penny sleeves and clean semi-rigid card savers or toploaders.',
+    detail: 'Place cards into clear, loose-fit penny sleeves and clean semi-rigid card savers.',
   },
   {
     lead: 'Maintain your sequence:',
@@ -21,7 +21,7 @@ const DO_ITEMS: Practice[] = [
 ]
 
 const DONT_ITEMS: Practice[] = [
-  { lead: 'Use Sellotape:', detail: 'Never use sticky tape to seal the tops of card savers or toploaders.' },
+  { lead: 'Use Sellotape:', detail: 'Never use sticky tape to seal the tops of semi-rigid card savers.' },
   {
     lead: 'Use untracked shipping:',
     detail: 'Avoid the standard post office. Always use secure, tracked local options like Pudo or The Courier Guy.',
