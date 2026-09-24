@@ -9,10 +9,8 @@ import { CategoryTabs, POKEMON_CENTER_CATEGORY } from '@/components/shop/categor
 import { SportsCardFilters } from '@/components/shop/sports-card-filters'
 import { ShopBrowser } from '@/components/shop/shop-browser'
 import { ProductGrid } from '@/components/shop/product-grid'
-import { REGION_OPTIONS, type ProductType, type ProductRegion } from '@/lib/shop/product-type'
+import type { ProductType, ProductRegion } from '@/lib/shop/product-type'
 import type { ShopUrlParams } from '@/lib/shop/shop-url'
-
-const VALID_REGIONS = new Set(REGION_OPTIONS.map((r) => r.value))
 
 const PRODUCT_COLUMNS =
   'id, title, description, category, price, stock, images, set_name, release_date, card_type, sport, brand, card_variant, player_name, region, lore, grading_company'
@@ -32,13 +30,16 @@ interface ShopSearchParams {
 }
 
 export default async function ShopPage({ searchParams }: { searchParams: Promise<ShopSearchParams> }) {
-  const { category, sport, brand, cardVariant, player, region } = await searchParams
+  const { category, sport, brand, cardVariant, player } = await searchParams
   // Launch rollout: Pokémon is the sole active game category -- ?productType=
   // is ignored rather than removed from ShopSearchParams/ShopUrlParams, so
   // re-enabling the toggle later (components/shop/product-type-toggle.tsx,
   // currently unmounted below) needs no query-parsing changes here.
   const activeType = 'pokemon' as ProductType
-  const activeRegion: ProductRegion = region && VALID_REGIONS.has(region as ProductRegion) ? (region as ProductRegion) : 'sa'
+  // The shop sells in ZAR only: create_order() (0066_server_side_shop_shipping.sql)
+  // rejects any non-'sa' product, so ?region= is ignored rather than
+  // listing USD/GBP items that could never be checked out.
+  const activeRegion: ProductRegion = 'sa'
 
   const sports = splitParam(sport)
   const brands = splitParam(brand)
@@ -169,10 +170,10 @@ export default async function ShopPage({ searchParams }: { searchParams: Promise
   return (
     <div>
       {/* RegionToggle intentionally not rendered: this storefront is
-          SA-only for now (see app/page.tsx's hero copy) -- USA/UK are still
-          real, working region values (0031_add_product_region.sql) and
-          ?region= still works directly, this just stops surfacing the
-          switcher UI itself. REGION_OPTIONS itself is untouched since
+          ZAR-only: activeRegion above is fixed to 'sa' and create_order()
+          refuses non-'sa' products (0066_server_side_shop_shipping.sql).
+          USA/UK remain valid region values in the schema
+          (0031_add_product_region.sql); REGION_OPTIONS itself is untouched since
           app/admin/shop/product-form-modal.tsx still needs all three
           regions to categorize a new product. */}
       <div className="flex flex-col items-center w-full gap-5 pb-8 mb-8 border-b" style={{ borderColor: 'var(--line)' }}>

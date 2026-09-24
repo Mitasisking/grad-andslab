@@ -3,12 +3,11 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useCart } from '@/lib/cart/cart-context'
-import { formatByRegion } from '@/lib/currency'
+import { formatZAR } from '@/lib/currency'
+import { SHOP_SHIPPING_FLAT_RATE_ZAR } from '@/lib/shop/shipping'
 import { fetchAddresses } from '@/lib/addresses-client'
 import { AddAddressForm } from '@/components/submit/add-address-form'
 import type { ShippingAddress } from '@/lib/submission-types'
-
-const SHIPPING_FLAT_RATE = 6.5
 
 export default function ShopCheckoutPage() {
   const { items, subtotal } = useCart()
@@ -25,9 +24,9 @@ export default function ShopCheckoutPage() {
     })
   }, [])
 
-  const total = subtotal + (items.length > 0 ? SHIPPING_FLAT_RATE : 0)
-  // Every item shares one region (cart-context.tsx's addItem enforces it).
-  const region = items[0]?.region ?? 'sa'
+  // The shop sells in ZAR only, with one flat shipping charge per order.
+  // create_order() adds the same R110 server-side -- this is display only.
+  const total = subtotal + (items.length > 0 ? SHOP_SHIPPING_FLAT_RATE_ZAR : 0)
 
   async function beginCheckout() {
     if (!addressId || items.length === 0) return
@@ -43,7 +42,6 @@ export default function ShopCheckoutPage() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         addressId,
-        shippingCost: SHIPPING_FLAT_RATE,
         items: items.map((item) => ({ productId: item.productId, quantity: item.quantity })),
       }),
     })
@@ -106,19 +104,19 @@ export default function ShopCheckoutPage() {
                 {item.title} × {item.quantity}
               </span>
               <span style={{ fontVariantNumeric: 'tabular-nums', color: 'var(--ink)' }}>
-                {formatByRegion(item.price * item.quantity, item.region)}
+                {formatZAR(item.price * item.quantity)}
               </span>
             </div>
           ))}
           <div className="flex justify-between py-2.5 text-[14px]">
             <span style={{ color: 'var(--ink-muted)' }}>Shipping</span>
             <span style={{ fontVariantNumeric: 'tabular-nums', color: 'var(--ink-muted)' }}>
-              {formatByRegion(SHIPPING_FLAT_RATE, region)}
+              {formatZAR(SHOP_SHIPPING_FLAT_RATE_ZAR)}
             </span>
           </div>
           <div className="flex justify-between py-2.5 border-t text-[15px]" style={{ borderColor: 'var(--line)' }}>
             <span style={{ color: 'var(--ink)' }}>Total</span>
-            <span style={{ fontVariantNumeric: 'tabular-nums', color: 'var(--ink)' }}>{formatByRegion(total, region)}</span>
+            <span style={{ fontVariantNumeric: 'tabular-nums', color: 'var(--ink)' }}>{formatZAR(total)}</span>
           </div>
         </div>
       </div>
@@ -184,7 +182,7 @@ export default function ShopCheckoutPage() {
         disabled={!addressId || creatingOrder}
         className="mt-8 w-full px-4 py-3 text-[14px] rounded-[3px] bg-brand-gold text-[color:var(--vault-ink)] font-semibold hover:bg-brand-gold-hover transition-colors duration-200 ease-fluid"
       >
-        {creatingOrder ? 'Redirecting to Payfast…' : `Pay ${formatByRegion(total, region)}`}
+        {creatingOrder ? 'Redirecting to Payfast…' : `Pay ${formatZAR(total)}`}
       </button>
     </main>
   )

@@ -14,7 +14,7 @@
  *   - Tier prices/turnarounds, label fees, courier and insurance rates, and
  *     VAT rates are imported from lib/, so this breaks loudly if they change.
  *   - Shop checkout mirrors create_order() (supabase/migrations/
- *     0056_raw_card_price_floor.sql) rule for rule: stock is checked and
+ *     0066_server_side_shop_shipping.sql) rule for rule: stock is checked and
  *     decremented per line, an out-of-stock line rejects the whole order,
  *     Raw Cards under R100 are refused, and tax_collected is bookkeeping
  *     (15% of total) rather than an extra charge. The products are a
@@ -32,6 +32,7 @@
  */
 import { computeSubmissionPricing, toCents } from '@/lib/submission-pricing'
 import { REGION_TAX_RATE } from '@/lib/shop/product-type'
+import { SHOP_SHIPPING_FLAT_RATE_ZAR } from '@/lib/shop/shipping'
 import { ACE_LABEL_OPTIONS, SECURSUS_INSURANCE_RATE, TIER_OPTIONS_BY_COMPANY } from '@/lib/submission-types'
 import type { SubmissionPricing } from '@/lib/submission-pricing'
 import type { AceLabelOption, IntakeChannel, SubmissionTier, SubmissionType } from '@/lib/submission-types'
@@ -54,9 +55,9 @@ const DAY_MS = 24 * 60 * 60 * 1000
 const NOW = new Date(Date.UTC(2026, 8, 24, 12))
 const WINDOW_START = new Date(NOW.getTime() - WINDOW_DAYS * DAY_MS)
 
-// Mirrors app/shop/checkout/page.tsx's SHIPPING_FLAT_RATE, which is what the
-// shop actually passes to create_order() as p_shipping_cost today.
-const SHOP_SHIPPING_FLAT_RATE = 6.5
+// Flat per-order shop shipping -- the same constant create_order() fixes
+// server-side (0066_server_side_shop_shipping.sql).
+const SHOP_SHIPPING_FLAT_RATE = SHOP_SHIPPING_FLAT_RATE_ZAR
 const SHOP_TAX_RATE = REGION_TAX_RATE.sa
 const SUBMISSION_TAX_RATE = REGION_TAX_RATE.sa
 const PAYMENT_FAILURE_RATE = 0.04
