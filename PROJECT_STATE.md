@@ -1402,6 +1402,17 @@ field that drives routing/matching logic, never the name.
 
 ## Uncommitted work in the tree right now
 
+**Uncommitted (2026-09-24) — Terms §3 brought in line with the ACE-only service and §5.3**.
+`app/terms/page.tsx` §3 "Grading Submission Services": "third-party grading companies (e.g., PCG)"
+→ "a third-party grading company (currently ACE Grading in the UK)"; the liability bullet keeps
+"not liable for loss or damage … in the custody of international couriers or the grading
+company" but replaces "though we will facilitate insurance claims where applicable" with
+"Compensation for loss or damage in transit is limited to the Secursus insurance payout described
+in section 5.3, and we will facilitate that claim on your behalf." The other two bullets are
+unchanged. eslint/`tsc` clean, build clean, prerendered `/terms` has the new wording and no
+"(e.g., PCG)". Not yet committed, pushed, or deployed. Noticed, not changed: `app/layout.tsx`'s
+site-wide `<title>` is still "CuppasCards | PCG Middleman Service".
+
 **Committed `829853b` + `5efb2bf`, pushed, deployed as `dpl_2AqjAF3tXALQWDVzfmJF5tkhkY4j` (2026-09-24) —
 Old policy pages redirect into the Terms**. (Split oddly: a failed `git add` let the staged page
 deletions land in the docs commit `829853b`; the redirects followed in `5efb2bf`. Nothing was
