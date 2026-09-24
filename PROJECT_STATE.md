@@ -1402,7 +1402,8 @@ field that drives routing/matching logic, never the name.
 
 ## Uncommitted work in the tree right now
 
-**Uncommitted (2026-09-24) — Mobile horizontal scroll fixed (site-wide, via the footer)**. The
+**Committed `29bcaea`, pushed, deployed as `dpl_G4MDSdKfmeQToqbnhaKQiZ3vK4uV` (2026-09-24) — Mobile
+horizontal scroll fixed (site-wide, via the footer)**. The
 `/services` sideways scroll reported earlier was not specific to `/services`: measured at 390px on
 production, `/`, `/services` and `/contact` all had `scrollWidth` 405, caused solely by the footer's
 "Follow Us" row (label + four labelled social links ≈ 435px in one non-wrapping row, spanning
@@ -1412,8 +1413,9 @@ wrong). Fix in `components/Footer.tsx` only: the row is `flex-col sm:flex-row` a
 `flex-wrap sm:flex-nowrap` (a plain `flex-wrap` also wrapped WhatsApp onto a second line at desktop
 widths, so wrapping is limited to below `sm`). Verified on a local production build: no overflow at
 320/390/640/768/1024/1280px on `/services`, and none at 390px on `/` and `/shop`; links wrap to two
-lines only below 640px. eslint clean, `npx next build` clean. Not yet committed, pushed, or
-deployed.
+lines only below 640px. eslint clean, `npx next build` clean. Re-verified on production after the
+deploy: no overflow on `/services` at 320/390/1280px or on `/` and `/contact` at 390px, and the
+new footer classes are in the served HTML.
 
 **Committed `028ad04` + `f056780`, pushed, deployed as `dpl_9rxG8bQTEZnuLEByT1z7TbKrTxgW` (2026-09-24)
 — Order Summary consolidated + confirmation emails itemised correctly**.
