@@ -24,15 +24,16 @@ export default function TermsPage() {
 
       <Section number="3" title="Grading Submission Services">
         <P>
-          When utilizing our middleman grading services to third-party grading companies (e.g., PCG), CuppasCards
-          SA acts only as a facilitator for shipping and logistics.
+          When utilizing our middleman grading services to a third-party grading company (currently ACE Grading in
+          the UK), CuppasCards SA acts only as a facilitator for shipping and logistics.
         </P>
         <Bullets>
           <li>We do not guarantee specific grades.</li>
           <li>Turnaround times are estimates based on international shipping and the grading company&apos;s current volume.</li>
           <li>
             CuppasCards SA is not liable for loss or damage of items while in the custody of international
-            couriers or the grading company, though we will facilitate insurance claims where applicable.
+            couriers or the grading company. Compensation for loss or damage in transit is limited to the Secursus
+            insurance payout described in section 5.3, and we will facilitate that claim on your behalf.
           </li>
         </Bullets>
       </Section>
