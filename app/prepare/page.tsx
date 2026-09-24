@@ -20,7 +20,7 @@ const STEPS: Step[] = [
     items: [
       {
         label: 'Penny Sleeves',
-        body: 'Place each card upside down into a brand new, clean penny sleeve. This protects the surface from scratching.',
+        body: 'Place each card upside down into a brand new, clear, loose-fit penny sleeve. This protects the surface from scratching. Never use tight-fit inner sleeves, ETB sleeves, or sleeves with coloured backs.',
       },
       {
         label: 'Semi-Rigid Holders',
@@ -37,8 +37,12 @@ const STEPS: Step[] = [
     title: 'Organize Your Submission',
     items: [
       {
-        label: 'Match the Packing Slip',
-        body: `Stack your cards in the exact order they appear on your ${siteConfig.name} digital packing slip.`,
+        label: 'Maintain Your Sequence',
+        body: `Stack your cards in the exact order they appear on your ${siteConfig.name} digital submission queue.`,
+      },
+      {
+        label: 'Include Your Order Number',
+        body: 'Always place a note with your order number inside your parcel so we can match it to your submission.',
       },
       {
         label: 'Labeling',
@@ -56,7 +60,7 @@ const STEPS: Step[] = [
       },
       {
         label: 'Secure',
-        body: "Bind the cardboard together using rubber bands (ensure they are not too tight to avoid bending the cards) or painter's tape. Never use packing tape or scotch tape anywhere near the cards.",
+        body: "Hold the cardboard together with painter's tape or a loose rubber band. Never wrap the stack tightly in elastic bands, which can permanently dent card edges, and never use Sellotape or any sticky tape to seal the tops of your semi-rigid card savers.",
       },
     ],
   },
@@ -71,6 +75,14 @@ const STEPS: Step[] = [
       {
         label: 'Box it Up',
         body: 'Place the bundle inside a sturdy cardboard shipping box. Fill any void space with packing paper or extra bubble wrap. If you shake the box, you should not feel the cards shifting inside.',
+      },
+      {
+        label: 'Ship Tracked',
+        body: 'Avoid the standard post office. Always use a secure, tracked local option like Pudo or The Courier Guy.',
+      },
+      {
+        label: 'Check Your Details',
+        body: 'Before you ship, make sure your return shipping address is up to date on your account dashboard.',
       },
     ],
   },

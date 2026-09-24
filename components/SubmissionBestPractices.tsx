@@ -1,43 +1,12 @@
 'use client'
 
 import { usePathname } from 'next/navigation'
+import { DONT_ITEMS, DO_ITEMS } from '@/lib/packing-best-practices'
+import type { Practice } from '@/lib/packing-best-practices'
 
-type Practice = { lead: string; detail: string }
-
-const DO_ITEMS: Practice[] = [
-  { lead: 'Include your order number:', detail: 'Always place a note with your order number inside your parcel.' },
-  {
-    lead: 'Use fresh protection:',
-    detail: 'Place cards into clear, loose-fit penny sleeves and clean semi-rigid card savers.',
-  },
-  {
-    lead: 'Maintain your sequence:',
-    detail: 'Pack your cards in the exact order they appear on your digital submission queue.',
-  },
-  {
-    lead: 'Check your details:',
-    detail: 'Ensure your return shipping address is perfectly up to date on your account dashboard.',
-  },
-]
-
-const DONT_ITEMS: Practice[] = [
-  { lead: 'Use Sellotape:', detail: 'Never use sticky tape to seal the tops of semi-rigid card savers.' },
-  {
-    lead: 'Use untracked shipping:',
-    detail: 'Avoid the standard post office. Always use secure, tracked local options like Pudo or The Courier Guy.',
-  },
-  {
-    lead: 'Use tight or coloured sleeves:',
-    detail: 'Do not use tight-fit inner sleeves, ETB sleeves, or sleeves with coloured backs. Clear is required.',
-  },
-  {
-    lead: 'Use rubber bands:',
-    detail: 'Do not wrap your submission tightly in elastic bands, as this can permanently dent card edges.',
-  },
-]
-
-// /prepare already renders the longer PackagingGuidelines Do's/Don'ts, so a
-// second list there would just repeat it; /admin is internal-only.
+// /prepare renders the same Do's/Don'ts in its own guide (PackagingGuidelines,
+// from the same lib/packing-best-practices.ts copy), so showing this section
+// there too would repeat it; /admin is internal-only.
 const HIDDEN_PREFIXES = ['/prepare', '/admin']
 
 function CheckIcon({ className }: { className?: string }) {

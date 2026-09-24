@@ -1,20 +1,4 @@
-const DO_ITEMS = [
-  'Include packing slip',
-  'Use clear loose penny sleeves',
-  'Use clean semi-rigids',
-  'Pack in packing slip order',
-  'Check declared values (especially for PSA)',
-  'Use tracked courier',
-]
-
-const DONT_ITEMS = [
-  'Use Sellotape/packing tape',
-  'Send in hard toploaders',
-  'Use colored/ETB or perfect-fit sleeves',
-  'Use tight rubber bands',
-  'Use standard paper envelopes',
-  'Send untracked mail',
-]
+import { DONT_ITEMS, DO_ITEMS } from '@/lib/packing-best-practices'
 
 function CheckIcon({ className }: { className?: string }) {
   return (
@@ -32,7 +16,7 @@ function XIcon({ className }: { className?: string }) {
   )
 }
 
-/** Premium "Do / Don't" packaging guide for the /prepare page, below the numbered step-by-step instructions. */
+/** Premium "Do / Don't" packaging guide for the /prepare page, below the numbered step-by-step instructions. Copy is shared with the site-wide Submission Best Practices section (lib/packing-best-practices.ts). */
 export function PackagingGuidelines() {
   return (
     <section className="py-16 md:py-20">
@@ -58,11 +42,13 @@ export function PackagingGuidelines() {
             </h3>
             <ul className="space-y-3.5">
               {DO_ITEMS.map((item) => (
-                <li key={item} className="flex items-start gap-3">
+                <li key={item.lead} className="flex items-start gap-3">
                   <span className="shrink-0 w-5 h-5 rounded-full bg-brand-gold/10 text-brand-gold flex items-center justify-center mt-0.5">
                     <CheckIcon className="w-3 h-3" />
                   </span>
-                  <span className="text-slate-200 leading-relaxed">{item}</span>
+                  <span className="text-slate-300 leading-relaxed">
+                    <span className="font-semibold text-slate-100">{item.lead}</span> {item.detail}
+                  </span>
                 </li>
               ))}
             </ul>
@@ -75,11 +61,13 @@ export function PackagingGuidelines() {
             </h3>
             <ul className="space-y-3.5">
               {DONT_ITEMS.map((item) => (
-                <li key={item} className="flex items-start gap-3">
+                <li key={item.lead} className="flex items-start gap-3">
                   <span className="shrink-0 w-5 h-5 rounded-full bg-red-500/10 text-red-500 flex items-center justify-center mt-0.5">
                     <XIcon className="w-3 h-3" />
                   </span>
-                  <span className="text-slate-200 leading-relaxed">{item}</span>
+                  <span className="text-slate-300 leading-relaxed">
+                    <span className="font-semibold text-slate-100">{item.lead}</span> {item.detail}
+                  </span>
                 </li>
               ))}
             </ul>
