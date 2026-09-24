@@ -1402,7 +1402,8 @@ field that drives routing/matching logic, never the name.
 
 ## Uncommitted work in the tree right now
 
-**Uncommitted (2026-09-24) — In-memory platform simulation (`npm run simulate`)**: new
+**Committed `fffc2e9`, pushed, deployed (2026-09-24) — In-memory platform simulation (`npm run
+simulate`)**: new
 `scripts/simulate-platform.ts` + `scripts/lib/register-ts-paths.mjs` + a `simulate` script in
 `package.json`. The user chose in-memory over writing to production (the only database). Node 24
 strips TypeScript natively; the ~30-line resolve hook adds the `@/` alias and extensionless
@@ -1428,7 +1429,8 @@ Findings from the numbers, flagged to the user:
   `order_items.quantity > 0` constraints that block negative values, but production's schema is
   known to drift from the migration files, so that's unverified.
 
-**Uncommitted (2026-09-24) — SECURITY: grading submission price is now server-authoritative**.
+**Committed `f1cc463`, pushed, deployed as `dpl_HWdKiWh8K1sTeiRor9UcHQZrHf8a` (2026-09-24) —
+SECURITY: grading submission price is now server-authoritative**.
 Found while scoping the 100-client simulation request. Before this fix, a grading submission's price
 was computed only in the browser (`components/submit/step-review-pay.tsx`): `/api/submissions`
 stored the client-sent `serviceFee` as `submissions.service_fee` and posted it to the ledger as-is,
@@ -1455,11 +1457,16 @@ DB-sourced and unaffected. Fix:
   cent, except one half-cent float-rounding edge (R 8 282,465), which is moot now that client and
   server share the function; Secursus = exactly 30% of declared value in every case.
 - `npx tsc --noEmit` clean, `npm run lint` at the 48-problem baseline, `npx next build` clean.
-  **Not click-tested** through a real Payfast sandbox payment. Not yet committed, pushed, or
-  deployed. Historical `captured` submissions were priced by the browser; they can be audited by
+  Live-probed after deploy: an unauthenticated R0,01 POST to `/api/submissions/checkout` now
+  returns `401 Not authenticated` (the old build rejected it earlier with "Invalid amount"),
+  confirming the new route is serving. **Not yet tested with a real Payfast payment** — next step is
+  one small real submission: confirm the redirect total matches the Order Summary and the
+  submission flips to `captured`; a stuck `pending` plus the "amount mismatch" log means the
+  webhook comparison needs a look. Historical `captured` submissions were priced by the browser; they can be audited by
   recomputing each with `pricingInputFromRows()` and comparing to Payfast's records.
 
-**Uncommitted (2026-09-24) — Site-wide "Submission Best Practices" section above the footer**: new
+**Committed `4c705a8` + `f40761e`, pushed, deployed as `dpl_4bKctGdkeZEZmTmRkWWhNmJnFGCy` (2026-09-24)
+— Site-wide "Submission Best Practices" section above the footer**: new
 `components/SubmissionBestPractices.tsx` (client component, `usePathname`), mounted in
 `app/layout.tsx` between `</main>` and `<Footer />`. Two cards in a `grid-cols-1 md:grid-cols-2`
 grid: "Do" (brand-green top border, `text-brand-green-light` check icons on `bg-brand-green/15`)
@@ -1473,8 +1480,8 @@ like the footer so it never prints onto packing slips. `npx tsc --noEmit` clean,
 both files, `npx next build` clean. Verified on local `next start`: renders directly above
 `<footer>` on `/services` with 8 items, absent on `/prepare`, single column at 390px wide.
 Pre-existing (not from this change): at 390px `/services` scrolls horizontally, caused by its
-hero's decorative absolute element and the footer's "Follow Us" social row (13px too wide). Not
-yet committed, pushed, or deployed.
+hero's decorative absolute element and the footer's "Follow Us" social row (13px too wide). Confirmed
+live on production via curl (section present, no "toploaders").
 
 **Nothing from the 2026-09-24 shop/footer/color work is uncommitted.** The four commits below
 (`15362a6`, `754dbf9`, `0df58fd`, `7cd8a8f`) are pushed to `origin/main` (`4b7ba33..7cd8a8f`) and
