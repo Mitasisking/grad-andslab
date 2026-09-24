@@ -1108,6 +1108,16 @@ up today — not a to-do list.
   empty space, and it gained `mb-8` so the category pills no longer butt directly against its
   bottom border. The admin product form's "Shows in 'The … Vault' shop page carousel" helper text
   (`app/admin/shop/product-form-modal.tsx`) still uses the Vault name as an internal label.
+  **Carousel removed from `/shop` entirely (2026-09-24, uncommitted)** — the heading-removal
+  change above was committed as `4b7ba33` and deployed (`dpl_73WkFp7rToSQzJ19LQUhgTEeXkd6`); after
+  that, the user asked for the whole carousel off the page. `app/shop/page.tsx` no longer imports
+  `FeaturedCarousel`/`getFeaturedProducts` or calls `getFeaturedProducts` (one fewer Supabase
+  query per shop render), so the page now goes straight from the layout's "Shop" header (`mb-10`)
+  to the `CategoryTabs` block. Hide-not-delete: `components/FeaturedCarousel.tsx`,
+  `lib/shop/featured-products.ts`, and the admin "Vault grail" flag are all untouched and now
+  unrendered — re-adding the two imports, the `getFeaturedProducts` call, and
+  `<FeaturedCarousel products={featuredProducts} />` as the first child of the returned `<div>`
+  restores it.
 - `components/shop/*` (browser, grid, filters, sports-card-filters, category-tabs,
   subcategory-pills, region-toggle, product-type-toggle, cart-button, add-to-cart-button) —
   **launch rollout, "hide not delete"**: `category-tabs.tsx`'s `CATEGORIES` array has "Pokémon
@@ -1399,10 +1409,53 @@ field that drives routing/matching logic, never the name.
 
 ## Uncommitted work in the tree right now
 
-**Uncommitted (2026-09-24) — Shop carousel heading removed**: `components/FeaturedCarousel.tsx`
-(and this file). See the `app/shop/page.tsx` Shop bullet in the Active File Manifest above.
-`npx tsc --noEmit` and `npx eslint components/FeaturedCarousel.tsx` pass clean. Not yet
-click-tested live, committed, pushed, or deployed.
+**Uncommitted (2026-09-24) — Global brand color system**: `app/globals.css` plus ~25 call sites.
+- Tokens: kept the brand-guide Pantone values `--brand-gold #fdc82f` / `--brand-green #007a33`
+  (logo PNG samples to ~#fcc134 / ~#107438 — compression drift, guide stays authoritative). New:
+  `--brand-dark #0a0908` (formalizes the existing `--background`), `--brand-gold-hover #fed65e`,
+  `--brand-green-hover #008438` (capped so white text stays ≥4.5:1), `--brand-green-light
+  #3fae6a` (green *text* on dark; base green is only 3.6:1), `--card-border` (--line with an 18%
+  gold cast). All exposed as Tailwind utilities (`bg-brand-gold-hover`, `text-brand-green-light`...).
+- **Bug fixed**: the shadcn semantic tokens (`primary`, `ring`, `input`, `accent`, `secondary`,
+  `destructive`, `muted-foreground`, `border`) were never defined, so `components/ui/button.tsx`'s
+  default variant had no background of its own and Button/Input focus rings rendered nothing
+  (both also set `outline-none` → invisible keyboard focus). Now mapped to gold primary, green
+  secondary, gold ring. `emerald-400/500` remapped to the brand green (same technique as amber).
+- `@layer base`: `accent-color` gold (native checkboxes/radios were browser blue), gold
+  `:focus-visible` outline site-wide, gold border on focused text fields (`!important`, scoped to
+  `:focus-visible`, because many inputs set an inline `borderColor`), gold `::selection`.
+- Primary CTAs: every gold button now brightens on hover to `--brand-gold-hover` (several
+  previously darkened via `hover:bg-amber-600`/`#d9a000`). 9 `<Button>`s lost a redundant inline
+  `style={{ background: 'var(--vault)' ... }}` that was blocking hover; 8 plain customer-facing
+  action buttons/links (checkout, add-to-cart, cart, quick-add, 2× bid, auction draft, dashboard)
+  converted from inline style to classes for the same reason. Admin-only inline gold buttons
+  (grading/intake/pools/bulk imports, etc.) are still inline-styled — gold, just no hover.
+- Navbar main links: brand-green underline on hover and on the active page. Success checkmarks
+  (`#4ade80`) → `--brand-green-light`. Faint `--card-border` on shop product cards (plus gold
+  hover border) and boxed submission-step panels; dividers and selectable tiles unchanged.
+- Not changed: page backgrounds. The homepage/navbar/footer/shop carousel are Tailwind slate
+  (navy), the ledger surfaces (shop, submit, dashboard) are warm near-black `--paper` — unifying
+  them is a visible redesign and was left for the user to decide.
+- `npx tsc --noEmit` clean, `npm run lint` at the 48-problem baseline, `npx next build` clean.
+  Verified on `next start` locally: shop buttons/checkboxes/card borders/nav underline resolve to
+  brand colors; focused button and text field both show the gold outline/border.
+
+**Uncommitted (2026-09-24) — Footer Refund/Shipping Policy links removed**:
+`components/Footer.tsx` now lists only Vendor Inquiries, Terms & Conditions, Privacy Policy, and
+Contact Us. The link row is a `flex flex-wrap justify-center gap-x-6 gap-y-2` container, so the
+remaining four reflow with no gaps and no class changes were needed. `app/refund-policy/` and
+`app/shipping-policy/` still exist and still build, but the footer was their only inbound link, so
+they're now reachable by direct URL only. The Terms page has no dedicated refund/returns section,
+so the storefront currently surfaces no refund policy anywhere (payment gateways and SA's ECTA s43
+generally expect one to be accessible from the site — flagged to the user, their call).
+`npx tsc --noEmit` and `npx eslint components/Footer.tsx` pass clean. Not yet committed, pushed, or
+deployed.
+
+**Uncommitted (2026-09-24) — Shop carousel removed from `/shop`**: `app/shop/page.tsx` (and this
+file). See the Shop bullet in the Active File Manifest above. `npx tsc --noEmit` and `npx eslint
+app/shop/page.tsx` pass clean. Not yet click-tested live, committed, pushed, or deployed. (The
+earlier heading-only removal is committed as `4b7ba33`, pushed, and deployed to production as
+`dpl_73WkFp7rToSQzJ19LQUhgTEeXkd6`.)
 
 **Earlier work, all committed:** Everything through commit `5e0d906` ("Gate all /admin routes
 behind a centralized admin-role check": `app/admin/layout.tsx`, `app/login/page.tsx` + new
