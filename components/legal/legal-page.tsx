@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 
-/** Shared shell for the four legal/policy pages (terms, privacy, refund-policy, shipping-policy) -- same dark/amber styling as the rest of the marketing site (app/page.tsx, app/prepare/page.tsx), just laid out for long-form reading: a narrow measure, generous line-height, and numbered sections. */
+/** Shared shell for the legal pages (terms, privacy; the old refund-policy/shipping-policy pages now redirect into terms' sections 5 and 6 via next.config.js) -- same dark/amber styling as the rest of the marketing site (app/page.tsx, app/prepare/page.tsx), just laid out for long-form reading: a narrow measure, generous line-height, and numbered sections. */
 export function LegalPageLayout({
   title,
   lastUpdated,
