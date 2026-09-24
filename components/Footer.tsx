@@ -27,9 +27,12 @@ export function Footer() {
             <Link href="/privacy" className="hover:text-amber-400 transition">Privacy Policy</Link>
             <Link href="/contact" className="hover:text-amber-400 transition">Contact Us</Link>
           </div>
-          <div className="flex items-center gap-4">
+          {/* Stacks and wraps below sm: the label plus four labelled links
+              is ~435px wide in one row, which pushed every page into
+              horizontal scroll on phones. */}
+          <div className="flex flex-col sm:flex-row items-center gap-3 sm:gap-4">
             <span className="text-xs font-semibold uppercase tracking-wide text-slate-600">Follow Us</span>
-            <div className="flex items-center gap-4">
+            <div className="flex flex-wrap sm:flex-nowrap justify-center items-center gap-x-4 gap-y-2">
               <a
                 href={SOCIAL_LINKS.facebook}
                 target="_blank"
