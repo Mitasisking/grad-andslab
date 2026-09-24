@@ -1402,8 +1402,8 @@ field that drives routing/matching logic, never the name.
 
 ## Uncommitted work in the tree right now
 
-**Uncommitted (2026-09-24) — Fix: typed declared value overwritten by the market-value lookup**. Not
-committed, not deployed.
+**Committed `bbce59c`, pushed, deployed as `dpl_AHwKRzKTfSqiX6HmjfTT8zECWwS8` (2026-09-24) — Fix: typed
+declared value overwritten by the market-value lookup**. Post-deploy: `/` and `/submit` 200.
 - `lib/submission-types.ts`: new `CardPatch = Partial<CardEntry> | ((current: CardEntry) => Partial<CardEntry>)`.
 - `app/submit/wizard.tsx`: `updateCard` accepts a `CardPatch`, applying a function patch to the card's
   current state inside `setCards`. `onUpdateCard` prop types in `step-grader-tier.tsx`,
@@ -1424,7 +1424,7 @@ Full × 1)" R700, "Slab Guard × 1" R110, return courier R110, international R22
 (30% of the R137,44 declared) = **R 2 131,23**, correct for those inputs. Choices persist on Back.
 Pay not clicked. (The browser tab had to be foregrounded by the user; a hidden tab can't take
 keyboard focus or finish the step transitions.)
-- **Found a pre-existing bug — FIXED (uncommitted, see below):** `components/submit/card-shipment-row.tsx` —
+- **Found a pre-existing bug — FIXED in `bbce59c` (see above):** `components/submit/card-shipment-row.tsx` —
   `selectPokemonCard` (line ~177) and `lookupValue` (line ~193) write
   `declaredValue: card.declaredValue || estimate` after two awaits, using the `card` captured when
   the lookup started (declared value 0). A declared value typed while the market-value lookup is
