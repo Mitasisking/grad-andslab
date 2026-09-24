@@ -1402,6 +1402,19 @@ field that drives routing/matching logic, never the name.
 
 ## Uncommitted work in the tree right now
 
+**Uncommitted (2026-09-24) — Old policy pages redirect into the Terms**. `next.config.js`
+`redirects()` gains `/shipping-policy` → `/terms#shipping-policy` and `/refund-policy` →
+`/terms#refund-policy`, both `permanent: true` (308, per the Next 16.3 docs in
+`node_modules/next/dist/docs/.../redirects.md`, which also note redirects run before the
+filesystem). The retired `app/shipping-policy/page.tsx` and `app/refund-policy/page.tsx` are
+deleted (in git history if ever needed), so their now-contradictory copy ("shipping calculated at
+checkout based on your location…") is gone; `legal-page.tsx`'s doc comment updated. Build now
+generates 77 pages (was 79). Local builds needed `.next/types` and `.next/dev/types` cleared
+once (stale generated validators still referenced the deleted pages; Vercel builds fresh).
+Verified on local `next start`: both return `308 Permanent Redirect` with `location:
+/terms#…`, following it lands on `/terms#refund-policy` with 200, and the existing `/batches`
+redirect still works. `tsc`/eslint clean. Not yet committed, pushed, or deployed.
+
 **Committed `e14f85c`, pushed, deployed as `dpl_4Y2YKNSK1GQ6n5rQAYtqtvgsFaem` (2026-09-24) — Inbound
 local courier leg no longer charged (customers ship to HQ themselves)**. `lib/submission-pricing.ts`: `localCourierTotal` is now the single return leg
 (`domesticLegFee`, R110) instead of `domesticLegFee * 2`; still R0 for in-person drop-off. Since
