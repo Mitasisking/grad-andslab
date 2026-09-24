@@ -33,7 +33,7 @@ deploys all show as CLI/Production, no git-triggered auto-deploy bot), not an au
 trigger — pushing to `origin/main` alone does not put changes on production here. Migrations
 0059-0065 all live.
 
-9. **Official brand identity rollout (2026-09-22, uncommitted)** — the user supplied a real brand
+9. **Official brand identity rollout (2026-09-22, committed `4f5a344`)** — the user supplied a real brand
    guide (`Stock photos/Cuppascards Logo and Colour Guide.pdf`) with exact hex/Pantone colors, a
    named display typeface, and exported logo lockups, and asked for the whole site to be aligned to
    it. Full detail lives in the Active File Manifest, Shared Contracts, and "Uncommitted work"
@@ -83,7 +83,7 @@ trigger — pushing to `origin/main` alone does not put changes on production he
      touched). **Committed (`4f5a344`), pushed to `origin/main`, and deployed to production**
      (`dpl_HtrWwrESJzh7snQLYcgANXEnF3EK`, `vercel --prod`).
 
-10. **Hero section made visual-first (2026-09-22, uncommitted)** — `app/page.tsx`'s hero no longer
+10. **Hero section made visual-first (2026-09-22, committed `8bb25d6`)** — `app/page.tsx`'s hero no longer
     has any text elements: the pill badge ("South Africa's Premier Grading Service."), the
     `{siteConfig.name}` heading, and the "Making Grading Easy" subheadline are all removed. In their
     place, `/images/brand/logo-portrait-black.png` (one of the six brand lockups extracted during
@@ -99,9 +99,9 @@ trigger — pushing to `origin/main` alone does not put changes on production he
     (solid black background swatch vs. this section's not-quite-identical `bg-slate-900`) — visible
     on click-test, not fixed here. `npx tsc --noEmit` clean. Click-tested live in the dev server:
     logo renders centered, both buttons render directly beneath it, layout and spacing match the
-    request. **Not yet committed, pushed, or deployed.**
+    request. **Committed (`8bb25d6`), pushed, and deployed.**
 
-11. **Site-wide logo switched to a real transparent-background PNG (2026-09-22, uncommitted)** —
+11. **Site-wide logo switched to a real transparent-background PNG (2026-09-22, committed `725c85f`)** —
     the previously-documented "logo card" seam limitation (item 9/10 above) is now resolved for
     real, not just worked around. Full detail:
     - **Asset**: the user's requested source file
@@ -151,11 +151,10 @@ trigger — pushing to `origin/main` alone does not put changes on production he
       real bug): Navbar, Hero, and Footer all render the real logo with no checkerboard, no solid
       background box, and gold/green colors intact. Email templates were not live-sent as part of
       this verification (would require triggering `/admin/test-emails` again) — the markup change
-      itself is a straightforward `<img>` swap with no logic touched. **Not yet committed, pushed, or
-      deployed.**
+      itself is a straightforward `<img>` swap with no logic touched. **Committed (`725c85f`), pushed, and deployed.**
 
 12. **Logo asset replaced again with a properly pre-cleaned transparent file (2026-09-22,
-    uncommitted)** — supersedes the `sharp` chroma-key workaround in item 11. The user supplied a
+    committed `2953c04`)** — supersedes the `sharp` chroma-key workaround in item 11. The user supplied a
     new source file, `Stock photos/Cuppalogo background removed.png`, already processed through a
     real background-removal tool. **Independently verified before overwriting anything** (same
     diligence as item 11, since the previous "real transparent PNG" claim turned out to be false):
@@ -175,10 +174,10 @@ trigger — pushing to `origin/main` alone does not put changes on production he
     `srcset` cache that needed manual JS workarounds to see past) — Navbar, Hero, and Footer all
     render correctly with no checkerboard, no solid-background seam, gold/green intact, on the first
     load with no cache-busting tricks needed. `npx tsc --noEmit` clean (no code changed, only the
-    binary asset). **Not yet committed, pushed, or deployed.**
+    binary asset). **Committed (`2953c04`), pushed, and deployed.**
 
 13. **Hero rebuilt as a layered large-background-logo design, with hero copy restored (2026-09-22,
-    uncommitted)** — `app/page.tsx`'s hero `<section>` is now `relative min-h-[80vh] flex
+    committed `2953c04`)** — `app/page.tsx`'s hero `<section>` is now `relative min-h-[80vh] flex
     items-center overflow-hidden` with two stacked layers instead of the single centered-logo
     layout from item 10:
     - **Background layer** (`z-0`): `/images/cuppascards-logo.png` rendered via `next/image`'s
@@ -201,11 +200,10 @@ trigger — pushing to `origin/main` alone does not put changes on production he
     - The pre-existing ambient blur glow (`-z-10`) is unchanged and still sits behind both layers.
     - `npx tsc --noEmit` clean; `npm run lint` at the same pre-existing 46-error baseline. Click-tested
       live: watermark renders large and faint behind the copy/buttons exactly as specified, text and
-      buttons fully legible, "Start a Submission" click-navigates correctly. **Not yet committed,
-      pushed, or deployed.**
+      buttons fully legible, "Start a Submission" click-navigates correctly. **Committed (`2953c04`), pushed, and deployed.**
 
 14. **Hero visual refinement — pill badge removed, background logo made bold (2026-09-22,
-    uncommitted)** — two adjustments to item 13's layout, on explicit visual-review feedback that
+    committed `f7140f9`)** — two adjustments to item 13's layout, on explicit visual-review feedback that
     the opacity-10 watermark read as "too dull":
     - The pill badge ("South Africa's Premier Grading Service.") is removed entirely — the section
       now reads as just the logo and the two CTAs, with the "Making Grading Easy" subheadline as the
@@ -220,11 +218,10 @@ trigger — pushing to `origin/main` alone does not put changes on production he
       Submission"** (not just inspecting z-index) that it still navigates to `/dashboard` at the new
       opacity — confirms the click-through guarantee from item 13 still holds.
     - `npx tsc --noEmit` clean; `npm run lint` at the same pre-existing 46-error baseline. Click-tested
-      live at the higher opacity via a zoomed screenshot to inspect legibility up close. **Not yet
-      committed, pushed, or deployed.**
+      live at the higher opacity via a zoomed screenshot to inspect legibility up close. **Committed (`f7140f9`), pushed, and deployed.**
 
 15. **Hero finalized — all floating text removed, CTAs reframe the logo left/right (2026-09-24,
-    uncommitted)** — completes the hero's evolution into a pure logo-plus-CTAs layout:
+    committed `f7140f9`)** — completes the hero's evolution into a pure logo-plus-CTAs layout:
     - The "Making Grading Easy" subheadline (the last remaining text over the logo, after item 14
       removed the pill badge) is deleted outright — the hero now carries zero text content, only the
       logo and the two buttons.
@@ -245,10 +242,9 @@ trigger — pushing to `origin/main` alone does not put changes on production he
       effect (`window.innerWidth` stayed at the desktop size afterward) — but it reuses the exact
       same `flex-col sm:flex-row` responsive pattern already live-verified elsewhere in this hero
       and codebase, so this is a reasoned-but-not-screenshotted confidence, not a blind assumption.
-    - `npx tsc --noEmit` clean; `npm run lint` at the same pre-existing 46-error baseline. **Not yet
-      committed, pushed, or deployed.**
+    - `npx tsc --noEmit` clean; `npm run lint` at the same pre-existing 46-error baseline. **Committed (`f7140f9`), pushed, and deployed.**
 
-16. **"The Easiest Way to Grade" feature-card copy updated (2026-09-24, uncommitted)** —
+16. **"The Easiest Way to Grade" feature-card copy updated (2026-09-24, committed `f7140f9`)** —
     `app/page.tsx`'s three step cards below the hero got pure text updates, exact strings as
     requested, no layout/icon/heading/number-badge changes:
     - Card 1 (Submit Online): pricing changed from the stale `"$19.95 per card"` to
@@ -261,17 +257,17 @@ trigger — pushing to `origin/main` alone does not put changes on production he
       customs and deliver the pristine slabs right back to you."`
     - `npx tsc --noEmit` clean; `npm run lint` at the same pre-existing 46-error baseline.
       Click-tested live: all three cards render the new copy with unchanged layout/icons/badges.
-      **Not yet committed, pushed, or deployed.**
+      **Committed (`f7140f9`), pushed, and deployed.**
 
-17. **Card 1 copy streamlined further, dropping the price line (2026-09-24, uncommitted)** —
+17. **Card 1 copy streamlined further, dropping the price line (2026-09-24, committed `f7140f9`)** —
     supersedes item 16's Card 1 text: `"Choose your turnaround tier starting from just R425 per
     card"` is dropped entirely, leaving just `"Use our integrated TCGdex database to quickly search
     and add your cards to your digital queue."` Cards 2 and 3 (from item 16) and all layout/badge/grid
     structure are untouched. `npx tsc --noEmit` clean; `npm run lint` at the same pre-existing
-    baseline. Click-tested live. **Not yet committed, pushed, or deployed.**
+    baseline. Click-tested live. **Committed (`f7140f9`), pushed, and deployed.**
 
 18. **Global UX/UI polish — pilot pass on homepage + shared `ui/` primitives (2026-09-24,
-    uncommitted)** — the user asked for a broad "make the whole app feel premium and fluid" pass
+    committed `f7140f9`)** — the user asked for a broad "make the whole app feel premium and fluid" pass
     (fluid scrolling/easing, scroll-triggered entrance animations, micro-interactions, spatial
     rhythm/depth). Before touching anything, three scoping questions were put to the user via
     `AskUserQuestion` rather than guessing, because the literal request had real risk/ambiguity:
@@ -352,7 +348,7 @@ trigger — pushing to `origin/main` alone does not put changes on production he
       `Button` component change with no visual regression. **Committed (`f7140f9`), pushed to
       `origin/main`, and deployed to production** (`dpl_FZBi4NNnKssSmdHTWGxs2b1gW3vD`).
 
-19. **Navbar logo sized up for more brand presence (2026-09-24, uncommitted)** —
+19. **Navbar logo sized up for more brand presence (2026-09-24, committed `734a208`)** —
     `components/Navbar.tsx`'s logo grew from `h-8 sm:h-10` (32px/40px) to `h-14 sm:h-20` (56px/80px)
     on explicit feedback that it read as "too small." The literal request suggested "3-4x" as an
     example (its own illustration used `h-6` → `h-20`), which taken completely literally against
@@ -374,7 +370,7 @@ trigger — pushing to `origin/main` alone does not put changes on production he
     deployed as of this writing — check `git log` / the last deploy's commit hash to confirm).
 
 20. **Label options step gets visual previews + crossfade; currency formatting audited
-    (2026-09-25, uncommitted)** — `components/submit/step-grader-tier.tsx`'s "Label options" section
+    (2026-09-25, committed `74d65be`)** — `components/submit/step-grader-tier.tsx`'s "Label options" section
     (ACE-only, Step 1 of `/submit`):
     - **Preview panel**: a new panel sits beside the three label buttons on desktop (`md:flex-row`)
       and stacks below them on mobile (`flex-col`, the default) — `w-full md:w-40 aspect-[3/4]
@@ -431,7 +427,7 @@ trigger — pushing to `origin/main` alone does not put changes on production he
       in the code.
 
 21. **Label previews switched to the real ACE slab photos; tier descriptions added
-    (2026-09-25, uncommitted)** — supersedes item 20's placeholder-path system now that real assets
+    (2026-09-25, committed `74d65be`)** — supersedes item 20's placeholder-path system now that real assets
     exist. Full detail:
     - **Assets**: the three files from `Stock photos/ACE slab examples/` (`ACE standard.PNG`,
       `ACE colour match.PNG`, `ACE Label.PNG`) were copied to `public/images/labels/` as
@@ -471,11 +467,11 @@ trigger — pushing to `origin/main` alone does not put changes on production he
       confirmed correctness throughout, not just the delayed screenshots.
     - `npx tsc --noEmit` clean; `npm run lint` at the same pre-existing 46-error/2-warning baseline
       (the raw-`<img>` lint-disable from item 20 is gone along with the code it was guarding).
-      **Committed (`74d65be`), pushed to `origin/main`** (not yet deployed as of this writing — check
-      `git log` / the last deploy's commit hash to confirm).
+      **Committed (`74d65be`), pushed to `origin/main`, and deployed** (production has since been
+      redeployed from later commits that include it).
 
 22. **Hero CTAs moved from framing the logo to sitting directly beneath it (2026-09-25,
-    uncommitted)** — `app/page.tsx`'s hero, on explicit visual-review feedback that the buttons
+    committed `b26c728`)** — `app/page.tsx`'s hero, on explicit visual-review feedback that the buttons
     should anchor under the "CUPPASCARDS" wordmark instead of flanking the logo left/right:
     - **The logo left normal-flow entirely and came back to it.** Since item 13's redesign, the
       logo had been a full-bleed `fill` background (`absolute inset-0`) spanning the whole
@@ -501,10 +497,9 @@ trigger — pushing to `origin/main` alone does not put changes on production he
       logo renders sharp and prominent, both buttons sit centered directly beneath the wordmark with
       clear spacing, and "Browse the Shop" click-navigates to `/shop` correctly. This section has no
       framer-motion animation, so none of the rAF-throttling caveats noted in items 20/21 applied
-      here — rendered correctly on the very first screenshot with no extra wait needed. **Not yet
-      committed, pushed, or deployed.**
+      here — rendered correctly on the very first screenshot with no extra wait needed. **Committed (`b26c728`), pushed, and deployed.**
 
-23. **Hero logo scaled up ~5x (2026-09-25, uncommitted)** — `app/page.tsx`'s logo width classes
+23. **Hero logo scaled up ~5x (2026-09-25, committed `b26c728`)** — `app/page.tsx`'s logo width classes
     changed from `w-[280px] sm:w-[360px] md:w-[440px]` to `w-[300px] sm:w-[500px] md:w-[800px]
     lg:w-[1000px]` (the exact breakpoint values given in the request), `h-auto object-contain`
     unchanged. The wrapping container was widened from `max-w-4xl` to `max-w-6xl` — without that,
@@ -519,10 +514,9 @@ trigger — pushing to `origin/main` alone does not put changes on production he
     125px reading too. Re-checked correctly by inspecting all three "CuppasCards"-alt images on the
     page and identifying the actual Hero one by its DOM position: confirmed rendering at exactly
     `1000px` wide at a ≥1024px (`lg`) viewport, matching the requested value precisely. `npx tsc
-    --noEmit` clean; `npm run lint` at the same pre-existing baseline. **Not yet committed, pushed,
-    or deployed.**
+    --noEmit` clean; `npm run lint` at the same pre-existing baseline. **Committed (`b26c728`), pushed, and deployed.**
 
-24. **Mandatory Secursus fine-art insurance added to checkout (2026-09-23, uncommitted)** — two new
+24. **Mandatory Secursus fine-art insurance added to checkout (2026-09-23, committed `b26c728`)** — two new
     Order Summary line items in `components/submit/step-review-pay.tsx`, charged as 15% of the
     submission's total declared card value per leg of the international journey (30% in total).
     - **No new "Total Declared Value" input was added** — the request asked for one "if it doesn't
@@ -575,7 +569,7 @@ trigger — pushing to `origin/main` alone does not put changes on production he
       version, not item 23's.**
 
 25. **Hero logo scaled up extremely, viewport-driven, to eliminate remaining negative space
-    (2026-09-23, uncommitted)** — `app/page.tsx`'s hero logo (`Image` at line ~31) moved from a
+    (2026-09-23, committed `8c25594`)** — `app/page.tsx`'s hero logo (`Image` at line ~31) moved from a
     fixed-pixel-breakpoint scale (`w-[300px] sm:w-[500px] md:w-[800px] lg:w-[1000px] h-auto`, from
     item 23) to viewport-unit-driven sizing: `w-full max-w-[1200px] sm:w-[90vw] h-[45vh]
     sm:h-[55vh] md:h-[65vh] lg:h-[75vh] object-contain`. Height is now the primary driver (up to
@@ -600,11 +594,10 @@ trigger — pushing to `origin/main` alone does not put changes on production he
       elsewhere in this file made a full visual re-verification impractical to force through
       scripting; the change is a straightforward Tailwind class swap on an already-working `<Image>`
       (no new logic, no new state, no new failure modes introduced), so risk is limited to visual
-      proportions, which are worth a real manual look before this ships. **Not yet committed,
-      pushed, or deployed.**
+      proportions, which are worth a real manual look before this ships. **Committed (`8c25594`), pushed, and deployed.**
 
 26. **Hero logo asset confirmed already current; sizing switched from height-driven to
-    width-driven, "true sense of scale" pass (2026-09-23, uncommitted)** — the request asked to
+    width-driven, "true sense of scale" pass (2026-09-23, committed `8c25594`)** — the request asked to
     overwrite `public/images/cuppascards-logo.png` with `Stock photos/Cuppalogo background
     removed.png`. Checked via MD5 checksum before copying anything: **the two files are already
     byte-identical** (`8491f5deb06cb8a742cd6077260491f9`) — this exact source was copied in during
@@ -633,10 +626,10 @@ trigger — pushing to `origin/main` alone does not put changes on production he
       without a live visual check, **a real manual look at the rendered hero (across mobile/tablet/
       desktop breakpoints) is recommended before committing further hero changes**, to confirm the
       cumulative effect actually reads as intended rather than compounding into an oversized result.
-      **Not yet committed, pushed, or deployed.**
+      **Committed (`8c25594`), pushed, and deployed.**
 
 27. **Hero logo switched to `next/image`'s `fill` layout to force extreme scaling
-    (2026-09-23, uncommitted)** — user reported the logo "still visually restricted," reasoning
+    (2026-09-23, committed `8c25594`)** — user reported the logo "still visually restricted," reasoning
     that a non-`fill` `<Image>`'s intrinsic `width`/`height` props (`356`/`225`, unchanged since the
     asset was first wired up) were fighting the Tailwind sizing classes rather than the classes
     cleanly winning. `app/page.tsx`'s hero `Image` (line ~57) had its `width={356}`/`height={225}`
@@ -1533,7 +1526,7 @@ further.
   back off after testing and independently re-verified (`is_live: false`) so production customers
   aren't defaulted into a fake test event.
 
-**Uncommitted — homepage hero copy update**:
+**Committed (`df3fe4b`), deployed — homepage hero copy update**:
 - `app/page.tsx` — hero pill badge text changed to "Everything should be made as simple as
   possible, but not simpler." (was "Official PCG and ACE Middleman"); hero subheading changed to
   "South Africa's premier grading service. Making it easy to grade your cards." (was "...premier
@@ -1547,7 +1540,7 @@ further.
 - `tsc`/`eslint`/`npm run build` all clean (same pre-existing baseline, no new issues). Click-tested
   live: the pill renders on a single line at desktop width with no visual cramping.
 
-**Uncommitted — outbound email switched to Google SMTP/Nodemailer**: full detail in the Current
+**Committed (`6372a6c`), deployed — outbound email switched to Google SMTP/Nodemailer**: full detail in the Current
 Milestone and Active File Manifest ("Misc integrations") sections above. In short: `resend`
 uninstalled, `nodemailer` + `@types/nodemailer` installed; `lib/email/resend-client.ts` deleted,
 replaced by `lib/email/transporter.ts` (pooled transporter + `verifyConnection()`) and
@@ -1563,13 +1556,13 @@ own "Application-specific password required" error, proving the code path itself
 real sends need the real credentials swapped in first (see Current Milestone for detail).
 `tsc`/`eslint`/`npm run build` all clean (same pre-existing baseline).
 
-**Uncommitted — WhatsApp community link**: `lib/social-links.ts`'s `SOCIAL_LINKS.whatsapp` is now
+**Committed (`709257a`), deployed — WhatsApp community link**: `lib/social-links.ts`'s `SOCIAL_LINKS.whatsapp` is now
 `https://chat.whatsapp.com/LRxadKeTEFV5DCRWArxHAe?s=cl&p=a&mlu=4&ilr=4` (was a placeholder);
 `lib/site-config.ts`'s `siteConfig.links` gained `whatsappCommunity`, re-exporting the same value
 rather than duplicating the URL. Confirmed live: both existing usages (`app/page.tsx`'s "Join the
 WhatsApp Group" CTA, `components/Footer.tsx`'s "Follow Us" icon) now resolve to the real link.
 
-**Uncommitted — Step 1 (`Grader & tier`) simplified to ACE-only for launch**:
+**Committed (`cd5cc9f`), deployed — Step 1 (`Grader & tier`) simplified to ACE-only for launch**:
 `components/submit/step-grader-tier.tsx` fully rewritten (Country of origin + Grading company
 selectors removed, `region`/`onSelectRegion`/`onSelectCompany` props dropped); `app/submit/
 wizard.tsx`'s `region`/`company` changed from `useState` to plain `'sa'`/`'ACE'` constants,
@@ -1578,13 +1571,13 @@ today since `LiveBatchTracker` is hidden). `tsc`/`eslint`/`npm run build` all cl
 pre-existing baseline). Click-tested live end-to-end through Steps 1→2 with a real TCGdex
 search-and-select of a Pikachu card.
 
-**Uncommitted — card category locked to Pokémon for launch**: `components/submit/
+**Committed (`cd5cc9f`), deployed — card category locked to Pokémon for launch**: `components/submit/
 card-shipment-row.tsx` fully rewritten — the Pokémon/Sports Cards toggle, Sport dropdown, and
 `SportsCardSearch` usage removed entirely; `card.cardType` stays `'pokemon'` always.
 `sports-card-search.tsx` and the `'sports_card'` `CardType` value are untouched/unreferenced for a
 future re-enablement. `tsc`/`eslint` clean (same baseline).
 
-**Uncommitted — shop filter pills simplified for launch**: `app/shop/page.tsx`'s `activeType`
+**Committed (`cd5cc9f`), deployed — shop filter pills simplified for launch**: `app/shop/page.tsx`'s `activeType`
 hardcoded to `'pokemon' as ProductType`; `ProductTypeToggle` unmounted; `Graded` category query
 gained `.eq('grading_company', 'ACE')`. `components/shop/category-tabs.tsx` hides Pokémon
 Center/Sealed pills; `subcategory-pills.tsx` hides the Graded grader sub-filter row;
@@ -1597,7 +1590,7 @@ shows no game-selector toggle and only `All`/`Graded`/`Raw Cards`/`Accessories`;
 `/shop?category=graded` returned 8 products, all ACE-graded (no PSA/PCG), with no sub-pills or
 sidebar Grader checkboxes rendered.
 
-**Uncommitted — Step 2 (`Add-ons`) simplified and refined**: `components/submit/step-addons.tsx`
+**Committed (`cd5cc9f` + `f0236b1`), deployed — Step 2 (`Add-ons`) simplified and refined**: `components/submit/step-addons.tsx`
 — Semi-Rigids and Consignment toggle cards removed entirely; `app/submit/wizard.tsx`'s
 `needsSemiRigids`/`interestedInConsignment` changed from `useState` to hardcoded `false`
 constants (still forwarded unchanged to `step-review-pay.tsx` and the checkout payload, since
@@ -1612,7 +1605,7 @@ advanced to Step 2, confirmed no Semi-Rigids/Consignment cards, confirmed the OR
 and confirmed toggling batch-level Clean & Polish to "Yes" collapses the per-card toggle into the
 badge.
 
-**Uncommitted — brand name harmonized to "CuppasCards" across legal pages, email templates, and
+**Committed (`65ca7ef`), deployed — brand name harmonized to "CuppasCards" across legal pages, email templates, and
 payment descriptors**: on the user's explicit, detailed instruction (previously this was a
 deliberately deferred area — see the `siteConfig` Shared Contract entry above), every remaining
 `"Cuppa's Cards"` literal in `app/{terms,privacy,refund-policy,shipping-policy}/page.tsx` (body
@@ -1625,7 +1618,7 @@ it's unreferenced code. Internal code comments (not user-facing) and the SQL mig
 were deliberately left alone — see the Shared Contract entry for exactly which files and why.
 `tsc`/`eslint`/`npm run build` all clean (same baseline).
 
-**Uncommitted — full 8-stage grading email lifecycle now has real templates + a manual test
+**Committed (`7725a7b`), deployed — full 8-stage grading email lifecycle now has real templates + a manual test
 harness**: `lib/email/templates/{collection-booked,dispatched-to-grader,received-by-grader,
 dispatched-to-sa,landed-at-hq,dispatched-to-customer}.ts` are new real renderers for the 6 stages
 that previously threw "not implemented"; `lib/email/send-grading-update.ts`'s switch now handles
@@ -1645,7 +1638,7 @@ reached Gmail's real SMTP server via the admin test-runner UI, each failing with
 "Application-specific password required" error against the still-placeholder `.env.local`
 credentials — the same proof-of-correctness pattern as the original `/api/test-email` verification.
 
-**Uncommitted — vendor page "Where We've Been" hidden until real event content exists**:
+**Committed (`cf845e5`), deployed — vendor page "Where We've Been" hidden until real event content exists**:
 `app/vendor/page.tsx` gained a `SHOW_PAST_EVENTS = false` module-level flag; `NAV_SECTIONS` only
 includes the "Where We've Been" hero button when it's `true`, and the whole event-gallery
 `<section id="history">` is wrapped in `{SHOW_PAST_EVENTS && (...)}`. `PAST_EVENTS` data and the
@@ -1654,7 +1647,7 @@ exist is the only change needed to restore it. `tsc`/`eslint`/`npm run build` al
 baseline). Click-tested live: `/vendor`'s hero CTA row now shows only "In-Person Submissions" and
 "Book Us", and the history section itself no longer renders.
 
-**Uncommitted — Contact page's stale direct-email block removed**: `app/contact/page.tsx`'s
+**Committed (`ffdea36`), deployed — Contact page's stale direct-email block removed**: `app/contact/page.tsx`'s
 sidebar `EMAIL` block (`support@gradeandslab.com`, a leftover from before the CuppasCards rebrand
 — note the old `gradeandslab` domain, not even `cuppascards`/`cuppacards`) is removed entirely;
 `LOCATION`/`BUSINESS HOURS` and the Vendor Page link are unchanged. The form itself needed no
@@ -1666,7 +1659,7 @@ was never confirmed and turned out not to have gone through. The one real test r
 Test 2" / "qa-test2@example.com") has since been deleted directly from `contact_inquiries` at the
 user's request, confirmed via a follow-up `count(*)` query returning `0`.
 
-**Uncommitted — "Submission Method" selector added to Step 1**: `lib/submission-types.ts` gained
+**Committed (`3144080`), deployed — "Submission Method" selector added to Step 1**: `lib/submission-types.ts` gained
 `SubmissionType`, `SUBMISSION_TYPE_OPTIONS`, `internationalShippingFeeForRegion`, and
 `SUBMISSION_TYPE_LINE_ITEM_LABEL`; `SubmissionRow` gained `submission_type`.
 `components/submit/step-grader-tier.tsx` renders a new "Submission Method" section above
@@ -1683,7 +1676,7 @@ real checkout with payment was not attempted): selected "Individual Direct Dispa
 through Steps 1→3, and confirmed the Order Summary showed "International Shipping: Dedicated
 Direct Dispatch — R1 020,00" with a correct total (R1 780,00).
 
-**Uncommitted — every outgoing email now CCs the admin inbox**: `lib/email/send-email.ts`'s
+**Committed (`db61e29`), deployed — every outgoing email now CCs the admin inbox**: `lib/email/send-email.ts`'s
 `SendEmailOptions` gained an optional `cc?: string | string[]`; a new `ADMIN_CC_EMAIL` constant is
 unconditionally appended to the final `cc` list on every send (never overwriting a
 caller-supplied `cc`), so the business gets a copy of every transactional email without a
@@ -1698,19 +1691,19 @@ follow-up instruction (2026-09-20) — the current, live value is `updates@cuppa
 immediate retry succeeded). Final inbox delivery to the CC address itself wasn't independently
 checked, since that mailbox isn't accessible from this session.
 
-**Uncommitted — landing page section reorder**: `app/page.tsx`'s "The Easiest Way to Grade"
+**Committed (`970ebb4`), deployed — landing page section reorder**: `app/page.tsx`'s "The Easiest Way to Grade"
 3-step section now renders directly below the hero, with `<FeaturedCarousel>` ("The CuppasCards
 Vault") moved below it instead of above — swapped by moving one `<section>` block, no inner
 content/styling changes. `tsc`/`eslint` clean (same 49-problem baseline). Click-tested live: the
 homepage now renders Hero → "The Easiest Way to Grade" → "The CuppasCards Vault" (all 7 products
 intact) → WhatsApp CTA.
 
-**Uncommitted — landing page hero copy update**: `app/page.tsx`'s pill badge is now "South
+**Committed (`970ebb4`), deployed — landing page hero copy update**: `app/page.tsx`'s pill badge is now "South
 Africa's Premier Grading Service." and the subheading is now "Making Grading Easy" — text-only,
 no styling change. `tsc`/`eslint` clean (48 problems, one fewer than the 49-problem baseline,
 since the old subheading's own unescaped-apostrophe warning no longer exists). Click-tested live.
 
-**Uncommitted — Vault carousel relocated from homepage to `/shop`**: `<FeaturedCarousel>` ("The
+**Committed (`970ebb4`), deployed — Vault carousel relocated from homepage to `/shop`**: `<FeaturedCarousel>` ("The
 CuppasCards Vault") removed from `app/page.tsx` entirely (not just reordered this time) and added
 to the top of `app/shop/page.tsx`, above `CategoryTabs`/filters/the product grid, per the user's
 explicit instruction to keep the homepage "ultra-clean and conversion-focused." `app/page.tsx`
@@ -1732,7 +1725,7 @@ above the category pills, with no visual clash against `app/shop/layout.tsx`'s w
 layout is already on the same dark theme as the rest of the app despite its `--paper`/`--ink`
 CSS-variable naming, not a literal light background.
 
-**Uncommitted — Google/Apple OAuth added via Supabase Auth**: new `app/auth/callback/route.ts`
+**Committed (`970ebb4`), deployed — Google/Apple OAuth added via Supabase Auth**: new `app/auth/callback/route.ts`
 exchanges the OAuth `?code=` for a session via the existing `getSupabaseRouteClient()`; new
 `GoogleIcon`/`AppleIcon` in `components/SocialIcons.tsx`; `app/login/page.tsx` and
 `app/signup/page.tsx` both gained "Continue with Google"/"Continue with Apple" buttons calling
@@ -1782,8 +1775,7 @@ switched to a transparent PNG, take one**: the sharp chroma-keyed file became th
 everywhere (Navbar, Footer, Hero, all 10 email templates). Full detail in the Current Milestone
 (item 11) above.
 
-**Committed to `main` (`2953c04`, not yet pushed/deployed as of this writing — check `git status`/
-`git log origin/main..main` to confirm current push state) — site-wide logo finalized + hero
+**Committed (`2953c04`), pushed, and deployed — site-wide logo finalized + hero
 rebuilt as a layered large-background-logo design**: `public/images/cuppascards-logo.png`
 overwritten in place with the user's properly pre-cleaned source
 (`Stock photos/Cuppalogo background removed.png` — see Current Milestone item 12), and
@@ -1792,36 +1784,35 @@ overwritten in place with the user's properly pre-cleaned source
 pill badge and subheadline item 10 had removed, plus the unchanged CTA buttons (see Current
 Milestone item 13).
 
-**Uncommitted — hero visual refinement: pill badge removed, background logo opacity raised**:
+**Committed (`f7140f9`), deployed — hero visual refinement: pill badge removed, background logo opacity raised**:
 `app/page.tsx`'s hero pill badge ("South Africa's Premier Grading Service.") is removed entirely;
 the background logo's opacity is raised from `opacity-10` to `opacity-80` (same `fill`,
 `object-contain`, `pointer-events-none`, `z-0` positioning — only the opacity class changed). Full
 detail in the Current Milestone (item 14) above. `npx tsc --noEmit` clean; `npm run lint` at the
 same pre-existing baseline. Click-tested live at the new opacity, including re-confirming
-"Start a Submission" still click-navigates to `/dashboard`. **Not yet committed, pushed, or
-deployed.**
+"Start a Submission" still click-navigates to `/dashboard`. **Committed (`f7140f9`), pushed, and deployed.**
 
-**Uncommitted — hero finalized: all floating text removed, CTAs reframe the logo left/right**:
+**Committed (`f7140f9`), deployed — hero finalized: all floating text removed, CTAs reframe the logo left/right**:
 `app/page.tsx`'s "Making Grading Easy" subheadline is deleted (the hero now has zero text content);
 the CTA container is now `w-full max-w-7xl mx-auto px-4 md:px-12` with `flex-col sm:flex-row
 items-center justify-center sm:justify-between`, pushing the two buttons to opposite edges on `sm`+
 screens to frame the centered logo, falling back to a centered stack below `sm`. Full detail in the
 Current Milestone (item 15) above. `npx tsc --noEmit` clean; `npm run lint` at the same
 pre-existing baseline. Click-tested live: "Browse the Shop" click-navigates to `/shop` correctly
-with the new container. **Not yet committed, pushed, or deployed.**
+with the new container. **Committed (`f7140f9`), pushed, and deployed.**
 
-**Uncommitted — "The Easiest Way to Grade" feature-card copy updated**: `app/page.tsx`'s three step
+**Committed (`f7140f9`), deployed — "The Easiest Way to Grade" feature-card copy updated**: `app/page.tsx`'s three step
 cards' descriptions changed to the exact requested strings (Card 1's stale `$19.95` USD placeholder
 → `R425 per card`; Card 2 drops the DHL/insurance clause; Card 3 drops "Once graded," and changes
 "your address" → "you") — text-only, no layout/icon/heading changes. Full detail in the Current
 Milestone (item 16) above. `npx tsc --noEmit` clean; `npm run lint` at the same pre-existing
-baseline. Click-tested live. **Not yet committed, pushed, or deployed.**
+baseline. Click-tested live. **Committed (`f7140f9`), pushed, and deployed.**
 
-**Uncommitted — Card 1 copy streamlined further**: `app/page.tsx`'s Card 1 (Submit Online) drops
+**Committed (`f7140f9`), deployed — Card 1 copy streamlined further**: `app/page.tsx`'s Card 1 (Submit Online) drops
 the `"Choose your turnaround tier starting from just R425 per card"` clause entirely, leaving just
 the TCGdex-search sentence. Supersedes item 16's Card 1 text; Cards 2/3 and all layout untouched.
 Full detail in the Current Milestone (item 17) above. `npx tsc --noEmit` clean; `npm run lint` at
-the same pre-existing baseline. Click-tested live. **Not yet committed, pushed, or deployed.**
+the same pre-existing baseline. Click-tested live. **Committed (`f7140f9`), pushed, and deployed.**
 
 **Committed (`f7140f9`), pushed to `origin/main`, and deployed to production
 (`dpl_FZBi4NNnKssSmdHTWGxs2b1gW3vD`) — global UX/UI polish pilot (homepage + shared `ui/`
@@ -1843,7 +1834,7 @@ discovered side effect of the smooth-scroll CSS (it also affects unspecified-beh
 request's literal "3-4x" example, which against this navbar's real starting height would have made
 the logo taller than the whole bar); the logo/nav-links gap widened (`gap-8`→`gap-10`) and the row's
 vertical padding trimmed slightly (`py-4`→`py-3`) to keep the header proportionate. Full detail in
-the Current Milestone (item 19) above. **Not yet deployed** as of this writing.
+the Current Milestone (item 19) above. **Deployed** (included in every production deploy since `734a208`).
 
 **Superseded, never separately committed — Label options step gets a crossfading preview panel with
 placeholder assets**: item 20's placeholder-path + fallback-detection system (`failedPreviews`
@@ -1853,7 +1844,7 @@ the Current Milestone (item 20) for the historical root-cause detail on the fall
 that was found and fixed along the way, in case a similar next/image-`onError`/`AnimatePresence`
 timing issue comes up again elsewhere.
 
-**Uncommitted — Label previews switched to the real ACE slab photos; tier descriptions added**:
+**Committed (`74d65be`), deployed — Label previews switched to the real ACE slab photos; tier descriptions added**:
 `public/images/labels/{standard,colour-match,ace-label}.png` (copied from `Stock photos/ACE slab
 examples/`, each visually verified as the correct real photo for its tier before copying) replace
 the placeholder paths; `components/submit/step-grader-tier.tsx`'s preview panel now uses plain
