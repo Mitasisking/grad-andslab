@@ -1402,6 +1402,34 @@ field that drives routing/matching logic, never the name.
 
 ## Uncommitted work in the tree right now
 
+**Open (2026-09-24) — Live test of the grading checkout, stopped at PayFast; PayFast is in SANDBOX
+mode in production.** Findings and state for the next session:
+- **Production uses PayFast sandbox.** `lib/payments/payfast.ts` only uses live PayFast when
+  `PAYFAST_MODE=live`; Vercel production has only `PAYFAST_MERCHANT_ID`/`_KEY`/`_PASSPHRASE` set,
+  so every checkout goes to `sandbox.payfast.co.za` — real customers cannot pay. Likely why no
+  submission or shop order has ever been `captured`. User chose to test in sandbox for now;
+  switching to live (set `PAYFAST_MODE=live` + live merchant credentials, redeploy) is their call.
+- **Test submission `a847bc9a-23c7-4e89-83e2-e2c7c8b2773b`** (user's account, "Test Buyer" address,
+  ACE Basic, Ace Label, 1 card "Pikachu on the Ball" declared R1 000, Slab Guard Yes, pooled batch,
+  courier delivery). Driven through the live wizard in Chrome after the user logged in themselves.
+  Verified: Add-ons shows the Slab Guard section (R 95,00, Yes/No, matches Clean & Polish styling);
+  Order Summary = grading R425 + Ace Label R75 + prep R0 + Slab Guard R95 + Local Courier (Return)
+  R110 + International Courier (Round Trip) R220 + Insurance R300 = **R 1 225,00**; the PayFast
+  redirect carried `amount=1225.00` (server-computed, signed); DB row stored `service_fee` 1115
+  (= total − R110 return leg), `requires_slab_guard` true, `payment_status` pending.
+- **Not yet verified:** capture by the webhook and the confirmation email. As of the last check
+  the row was still `pending` (unchanged since 09:50 UTC), Vercel logs showed **no request to
+  `/api/webhooks/payfast`** and no return to the `?success=true` URL, and the Chrome tab was still
+  on the PayFast sandbox "Engine" page (the extension can't read PayFast pages). So PayFast either
+  shows a payment screen the user hasn't completed, or an error (e.g. signature/merchant mismatch)
+  — ask the user what that page says. If it's an error, check the sandbox merchant id/key/
+  passphrase in Vercel against the sandbox dashboard.
+- Next steps: finish the sandbox payment (user completes it), then check `payment_status` →
+  `captured` and the logs for "amount mismatch"/email errors, and have the user check the email
+  itemisation (return R110, Slab Guard R95, per-leg international + insurance, total R1 225,00).
+  Delete the test submission afterwards (or keep as a sandbox record — user's call). A small shop
+  order test (R110 shipping) is also still outstanding.
+
 **Committed `6348ec4`, pushed, deployed as `dpl_Rt2fNSXvDcmRqGf6vfYu3nkXCokr` (2026-09-24) — Terms §3
 brought in line with the ACE-only service and §5.3**.
 `app/terms/page.tsx` §3 "Grading Submission Services": "third-party grading companies (e.g., PCG)"
