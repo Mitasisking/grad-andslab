@@ -11,6 +11,8 @@ import { renderLandedAtHqEmail } from '@/lib/email/templates/landed-at-hq'
 import { renderDispatchedToCustomerEmail } from '@/lib/email/templates/dispatched-to-customer'
 import type { GradingCompany, ProductRegion, SubmissionTier } from '@/lib/submission-types'
 import type { GradingEmailPayload } from '@/types/notifications'
+import { computeSubmissionPricing, pricingInputFromRows, SUBMISSION_PRICING_COLUMNS } from '@/lib/submission-pricing'
+import type { SubmissionItemPricingRow, SubmissionPricingRow } from '@/lib/submission-pricing'
 
 /**
  * Dispatches a GradingEmailPayload (types/notifications.ts) to its stage's
@@ -71,6 +73,14 @@ export async function sendGradingUpdate(payload: GradingEmailPayload): Promise<{
   return { messageId: result.messageId }
 }
 
+function paidTotal(submission: SubmissionPricingRow, items: SubmissionItemPricingRow[], fallback: number): number {
+  try {
+    return computeSubmissionPricing(pricingInputFromRows(submission, items)).total
+  } catch {
+    return fallback
+  }
+}
+
 /**
  * Fetches everything ORDER_CONFIRMED needs and sends it for a just-paid
  * grading submission -- called from app/api/webhooks/payfast/route.ts once
@@ -98,7 +108,7 @@ export async function sendOrderConfirmedEmail(submissionId: string): Promise<voi
 
   const { data: submission } = await supabase
     .from('submissions')
-    .select('id, user_id, grading_company, tier, region, service_fee, qr_code_token, intake_channel')
+    .select(`id, user_id, service_fee, qr_code_token, ${SUBMISSION_PRICING_COLUMNS}`)
     .eq('id', submissionId)
     .single()
 
@@ -111,7 +121,7 @@ export async function sendOrderConfirmedEmail(submissionId: string): Promise<voi
 
   const { data: items } = await supabase
     .from('submission_items')
-    .select('card_name, set_name, card_number, declared_value')
+    .select('card_name, set_name, card_number, declared_value, pre_check_opt_in')
     .eq('submission_id', submissionId)
 
   const { fullName, email } = await getContact(supabase, submission.user_id)
@@ -136,7 +146,10 @@ export async function sendOrderConfirmedEmail(submissionId: string): Promise<voi
       cardNumber: item.card_number,
       declaredValue: Number(item.declared_value ?? 0),
     })),
-    totalPaid: Number(submission.service_fee ?? 0),
+    // What the customer actually paid (service fee + domestic courier legs),
+    // recomputed with the same function checkout and the webhook use --
+    // service_fee alone leaves out the domestic legs.
+    totalPaid: paidTotal(submission as unknown as SubmissionPricingRow, items ?? [], Number(submission.service_fee ?? 0)),
     // components/submit/packing-slip.tsx is still not wired to any route
     // (see types/notifications.ts's OrderConfirmedPayload doc comment) --
     // links to the existing submission detail page instead, which is real

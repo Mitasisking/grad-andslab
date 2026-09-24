@@ -27,6 +27,8 @@ export interface OrderConfirmationEmailProps {
   gradingLineItems?: GradingLineItem[]
   /** e.g. the R500 Clean and Polish add-on, or per-card pre-grading inspection. */
   addOnLineItems?: AddOnLineItem[]
+  /** Grading submissions only: each courier leg and Secursus insurance leg on its own line, kept per-leg for invoicing. */
+  feeLineItems?: AddOnLineItem[]
   shippingCost?: number
   taxCollected?: number
   total: number
@@ -110,6 +112,7 @@ export function renderOrderConfirmationEmail(props: OrderConfirmationEmailProps)
     shopLineItems = [],
     gradingLineItems = [],
     addOnLineItems = [],
+    feeLineItems = [],
     shippingCost = 0,
     taxCollected = 0,
     total,
@@ -125,6 +128,7 @@ export function renderOrderConfirmationEmail(props: OrderConfirmationEmailProps)
     .join('')
 
   const addOnRows = addOnLineItems.map((item) => row(escapeHtml(item.label), money(item.amount, region))).join('')
+  const feeRows = feeLineItems.map((item) => row(escapeHtml(item.label), money(item.amount, region))).join('')
 
   const sectionTitle = (title: string) => `
     <tr>
@@ -137,11 +141,15 @@ export function renderOrderConfirmationEmail(props: OrderConfirmationEmailProps)
     shopLineItems.length ? sectionTitle('Shop items') + shopRows : '',
     gradingLineItems.length ? sectionTitle('Grading submission') + gradingRows : '',
     addOnLineItems.length ? sectionTitle('Add-ons') + addOnRows : '',
+    feeLineItems.length ? sectionTitle('Courier &amp; insurance') + feeRows : '',
   ].join('')
 
   const totalsRows = [
     shippingCost > 0 ? row('Shipping', money(shippingCost, region), { muted: true }) : '',
-    taxCollected > 0 ? row('Tax', money(taxCollected, region), { muted: true }) : '',
+    // tax_collected is bookkeeping on a VAT-inclusive total (create_order(),
+    // app/api/submissions/route.ts), not an extra charge -- labelled so the
+    // line items above still visibly add up to the total.
+    taxCollected > 0 ? row('Includes VAT (15%)', money(taxCollected, region), { muted: true }) : '',
   ].join('')
 
   const receiptButton = receiptUrl

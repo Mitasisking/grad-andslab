@@ -3,15 +3,23 @@ import { sendEmail } from '@/lib/email/send-email'
 import { renderOrderConfirmationEmail, COLORS, EMAIL_LOGO_HTML, escapeHtml } from '@/lib/email/templates/order-confirmation'
 import { formatZAR } from '@/lib/currency'
 import {
-  TIER_OPTIONS_BY_COMPANY,
-  SLAB_GUARD_FEE_ZAR,
+  ACE_LABEL_OPTIONS,
+  INTERNATIONAL_COURIER_LEG_LABELS,
+  LOCAL_COURIER_LEG_LABELS,
+  LOCAL_IN_PERSON_LEG_LABELS,
+  SECURSUS_INSURANCE_LEG_LABELS,
   SLAB_GUARD_LABEL,
-  cleanAndPolishFeeForRegion,
-  inspectionFeeForRegion,
+  TIER_OPTIONS_BY_COMPANY,
   tierPriceForRegion,
 } from '@/lib/submission-types'
+import {
+  SUBMISSION_ITEM_PRICING_COLUMNS,
+  SUBMISSION_PRICING_COLUMNS,
+  computeSubmissionPricing,
+  pricingInputFromRows,
+} from '@/lib/submission-pricing'
+import type { SubmissionItemPricingRow, SubmissionPricing, SubmissionPricingRow } from '@/lib/submission-pricing'
 import type { ProductRegion } from '@/lib/shop/product-type'
-import type { GradingCompany, SubmissionTier } from '@/lib/submission-types'
 
 /**
  * public.profiles has NO foreign key relationship pointing at it anywhere
@@ -67,7 +75,7 @@ export async function sendSubmissionConfirmationEmail(submissionId: string, rece
 
   const { data: submission } = await supabase
     .from('submissions')
-    .select('id, user_id, grading_company, tier, region, service_fee, tax_collected, needs_clean_and_polish, requires_slab_guard')
+    .select(`id, user_id, service_fee, tax_collected, ${SUBMISSION_PRICING_COLUMNS}`)
     .eq('id', submissionId)
     .single()
 
@@ -78,7 +86,7 @@ export async function sendSubmissionConfirmationEmail(submissionId: string, rece
 
   const { data: items } = await supabase
     .from('submission_items')
-    .select('card_name, set_name, pre_check_opt_in')
+    .select(`card_name, set_name, ${SUBMISSION_ITEM_PRICING_COLUMNS}`)
     .eq('submission_id', submissionId)
 
   const { fullName, email } = await getContact(supabase, submission.user_id)
@@ -87,31 +95,59 @@ export async function sendSubmissionConfirmationEmail(submissionId: string, rece
     return
   }
 
-  const region = submission.region as ProductRegion
-  const grading_company = submission.grading_company as GradingCompany
-  const tier = submission.tier as SubmissionTier
-  const tierMeta = TIER_OPTIONS_BY_COMPANY[grading_company].find((t) => t.value === tier)
-  const perCardFee = tierMeta ? tierPriceForRegion(tierMeta, region) : 0
+  const pricingRow = submission as unknown as SubmissionPricingRow
+  const region = pricingRow.region
+  const cardRows = (items ?? []) as unknown as (SubmissionItemPricingRow & { card_name: string; set_name: string })[]
 
-  const gradingLineItems = (items ?? []).map((item) => ({
+  // Every amount comes from the same computeSubmissionPricing() the Review &
+  // Pay step and the Payfast webhook use, so the email always matches what
+  // was charged. Courier and insurance stay itemised per leg here (the
+  // on-screen Order Summary shows each as one round-trip line) because
+  // this email doubles as the customer's invoice.
+  let pricing: SubmissionPricing | null = null
+  try {
+    pricing = computeSubmissionPricing(pricingInputFromRows(pricingRow, cardRows))
+  } catch (err) {
+    console.error('sendSubmissionConfirmationEmail: could not price submission', submissionId, err)
+  }
+
+  const tierMeta = TIER_OPTIONS_BY_COMPANY[pricingRow.grading_company]?.find((t) => t.value === pricingRow.tier)
+  const perCardFee = pricing?.perCardFee ?? (tierMeta ? tierPriceForRegion(tierMeta, region) : 0)
+
+  const gradingLineItems = cardRows.map((item) => ({
     cardName: item.card_name,
     setName: item.set_name,
     fee: perCardFee,
   }))
 
   const addOnLineItems: { label: string; amount: number }[] = []
-  const inspectedCount = (items ?? []).filter((item) => item.pre_check_opt_in).length
-  if (inspectedCount > 0) {
-    addOnLineItems.push({
-      label: `Pre-grading inspection × ${inspectedCount}`,
-      amount: inspectedCount * inspectionFeeForRegion(region),
-    })
-  }
-  if (submission.needs_clean_and_polish) {
-    addOnLineItems.push({ label: 'Clean and Polish', amount: cleanAndPolishFeeForRegion(region) })
-  }
-  if (submission.requires_slab_guard) {
-    addOnLineItems.push({ label: SLAB_GUARD_LABEL, amount: SLAB_GUARD_FEE_ZAR })
+  const feeLineItems: { label: string; amount: number }[] = []
+  if (pricing) {
+    if (pricingRow.grading_company === 'ACE') {
+      const labelMeta = ACE_LABEL_OPTIONS.find((o) => o.value === pricingRow.ace_label_option) ?? ACE_LABEL_OPTIONS[0]
+      addOnLineItems.push({ label: `${labelMeta.label} label × ${cardRows.length}`, amount: pricing.labelOptionSubtotal })
+    }
+    if (pricingRow.needs_clean_and_polish) {
+      addOnLineItems.push({ label: 'Clean and Polish', amount: pricing.cuppasServicesSubtotal })
+    } else if (pricing.cardsWithPrepCount > 0) {
+      addOnLineItems.push({ label: `Pre-grading inspection × ${pricing.cardsWithPrepCount}`, amount: pricing.cuppasServicesSubtotal })
+    }
+    if (pricing.slabGuardSubtotal > 0) {
+      addOnLineItems.push({ label: SLAB_GUARD_LABEL, amount: pricing.slabGuardSubtotal })
+    }
+
+    const inPerson = pricingRow.intake_channel === 'in_person_event'
+    const localLabels = inPerson ? LOCAL_IN_PERSON_LEG_LABELS : LOCAL_COURIER_LEG_LABELS
+    const localLegFee = inPerson ? 0 : pricing.domesticLegFee
+    const internationalLabels = INTERNATIONAL_COURIER_LEG_LABELS[pricingRow.submission_type ?? 'batch']
+    feeLineItems.push(
+      { label: localLabels.outbound, amount: localLegFee },
+      { label: localLabels.returnLeg, amount: localLegFee },
+      { label: internationalLabels.outbound, amount: pricing.internationalLegFee },
+      { label: internationalLabels.returnLeg, amount: pricing.internationalLegFee },
+      { label: SECURSUS_INSURANCE_LEG_LABELS.outbound, amount: pricing.secursusInsuranceLegFee },
+      { label: SECURSUS_INSURANCE_LEG_LABELS.returnLeg, amount: pricing.secursusInsuranceLegFee },
+    )
   }
 
   const { subject, html } = renderOrderConfirmationEmail({
@@ -120,8 +156,9 @@ export async function sendSubmissionConfirmationEmail(submissionId: string, rece
     orderLabel: `Grading Submission #${submissionId.slice(0, 8).toUpperCase()}`,
     gradingLineItems,
     addOnLineItems,
+    feeLineItems,
     taxCollected: Number(submission.tax_collected ?? 0),
-    total: Number(submission.service_fee ?? 0),
+    total: pricing?.total ?? Number(submission.service_fee ?? 0),
     receiptUrl,
   })
 
