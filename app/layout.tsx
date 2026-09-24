@@ -3,6 +3,7 @@ import type { Metadata } from 'next'
 import { Fraunces } from 'next/font/google'
 import Navbar from '../components/Navbar'
 import { Footer } from '../components/Footer'
+import { SubmissionBestPractices } from '../components/SubmissionBestPractices'
 import { siteConfig } from '../lib/site-config'
 
 // Brand guide (Stock photos/Cuppascards Logo and Colour Guide.pdf) specifies
@@ -36,6 +37,7 @@ export default function RootLayout({
         <main className="flex-grow">
           {children}
         </main>
+        <SubmissionBestPractices />
         <Footer />
       </body>
     </html>

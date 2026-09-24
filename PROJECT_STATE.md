@@ -1402,6 +1402,21 @@ field that drives routing/matching logic, never the name.
 
 ## Uncommitted work in the tree right now
 
+**Uncommitted (2026-09-24) — Site-wide "Submission Best Practices" section above the footer**: new
+`components/SubmissionBestPractices.tsx` (client component, `usePathname`), mounted in
+`app/layout.tsx` between `</main>` and `<Footer />`. Two cards in a `grid-cols-1 md:grid-cols-2`
+grid: "Do" (brand-green top border, `text-brand-green-light` check icons on `bg-brand-green/15`)
+and "Don't" (`--danger` soft-red top border and cross icons); both on `bg-slate-950/60` with the
+`--card-border` faint-gold outline, body copy `text-slate-300` with a bold `text-slate-100` lead.
+Copy is the user's exact 4 Do / 4 Don't items. Hidden on `/prepare` (already renders the longer
+`components/PackagingGuidelines.tsx`, with different copy) and `/admin/**`, and `print:hidden`
+like the footer so it never prints onto packing slips. `npx tsc --noEmit` clean, eslint clean on
+both files, `npx next build` clean. Verified on local `next start`: renders directly above
+`<footer>` on `/services` with 8 items, absent on `/prepare`, single column at 390px wide.
+Pre-existing (not from this change): at 390px `/services` scrolls horizontally, caused by its
+hero's decorative absolute element and the footer's "Follow Us" social row (13px too wide). Not
+yet committed, pushed, or deployed.
+
 **Nothing from the 2026-09-24 shop/footer/color work is uncommitted.** The four commits below
 (`15362a6`, `754dbf9`, `0df58fd`, `7cd8a8f`) are pushed to `origin/main` (`4b7ba33..7cd8a8f`) and
 deployed to Vercel production as `dpl_4WVSmJwNbX6ki3eWe8Nee2uoDFR2` (built from `7cd8a8f`, aliased to
