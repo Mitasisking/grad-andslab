@@ -1402,7 +1402,8 @@ field that drives routing/matching logic, never the name.
 
 ## Uncommitted work in the tree right now
 
-**Uncommitted (2026-09-24) — Shop shipping fixed at R110 per order, server-side, ZAR only**. User set
+**Committed `686f66a`, pushed, deployed as `dpl_FoDafs5EhvahYrdqU7vqr3hcGY74` (2026-09-24) — Shop
+shipping fixed at R110 per order, server-side, ZAR only**. User set
 the rate (R110/order) and asked for the `create_order()` bypass to be closed. Changes:
 - New `lib/shop/shipping.ts`: `SHOP_SHIPPING_FLAT_RATE_ZAR = 110`, the one app-side constant.
 - `app/shop/checkout/page.tsx`: shows R110 shipping from that constant, formats everything with
@@ -1422,13 +1423,16 @@ the rate (R110/order) and asked for the `create_order()` bypass to be closed. Ch
   definition verbatim. This session has no DB connection string or `psql`, so it cannot run DDL —
   the user ran it in the Supabase SQL Editor. Since the live `create_order()` now ignores
   `p_shipping_cost`, production shop orders are already charged R110 even before this app code
-  deploys — but the still-deployed checkout page displays R6,50 shipping until it does. Caveat: it replaces whatever
+  deployed; the brief window where the old checkout page showed R6,50 closed with that deploy.
+  Caveat: it replaces whatever
   `create_order()` production currently has; if production had drifted from 0056, that drift is
   overwritten. `supabase/apply-all.sql` was not updated.
 - `scripts/simulate-platform.ts` now imports the constant (default run: shop shipping R 7 920,00
   across 72 paid orders; 1,382/1,382 invariants pass).
 - `npx tsc --noEmit` clean, `npm run lint` at the 48-problem baseline, `npx next build` clean.
-  Not click-tested. Not yet committed, pushed, or deployed.
+  Verified live via curl: `/shop` and `/shop?region=usa` return the identical product list, and
+  `/shop/checkout` serves 200. **No real shop order placed yet** — next step is one small order to
+  confirm the checkout page and Payfast both show R110 shipping.
 
 **Committed `fffc2e9`, pushed, deployed (2026-09-24) — In-memory platform simulation (`npm run
 simulate`)**: new
