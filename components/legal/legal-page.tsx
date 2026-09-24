@@ -26,14 +26,37 @@ export function LegalPageLayout({
   )
 }
 
-export function Section({ number, title, children }: { number: string; title: string; children: ReactNode }) {
+export function Section({
+  number,
+  title,
+  id,
+  children,
+}: {
+  number: string
+  title: string
+  /** Optional anchor so the section can be linked directly, e.g. /terms#refund-policy. */
+  id?: string
+  children: ReactNode
+}) {
   return (
-    <section>
+    <section id={id} className={id ? 'scroll-mt-24' : undefined}>
       <h2 className="text-2xl md:text-3xl font-bold text-white mb-4">
         <span className="text-amber-400">{number}.</span> {title}
       </h2>
       <div className="space-y-4">{children}</div>
     </section>
+  )
+}
+
+/** Numbered sub-heading inside a Section, e.g. "5.1 Domestic Shop Orders". */
+export function SubSection({ number, title, children }: { number: string; title: string; children: ReactNode }) {
+  return (
+    <div className="space-y-3 pt-2">
+      <h3 className="text-lg md:text-xl font-semibold text-slate-100">
+        <span className="text-amber-400">{number}</span> {title}
+      </h3>
+      {children}
+    </div>
   )
 }
 
