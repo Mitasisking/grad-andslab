@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "simulate": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --import ./scripts/lib/register-ts-paths.mjs scripts/simulate-platform.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.125.0",
