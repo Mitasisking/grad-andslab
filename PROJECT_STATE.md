@@ -1402,6 +1402,63 @@ field that drives routing/matching logic, never the name.
 
 ## Uncommitted work in the tree right now
 
+**Uncommitted (2026-09-24) — In-memory platform simulation (`npm run simulate`)**: new
+`scripts/simulate-platform.ts` + `scripts/lib/register-ts-paths.mjs` + a `simulate` script in
+`package.json`. The user chose in-memory over writing to production (the only database). Node 24
+strips TypeScript natively; the ~30-line resolve hook adds the `@/` alias and extensionless
+imports, so the script imports the real `lib/` code with no new dependency. Models N clients
+(default 100) over N days (default 90), seeded/reproducible (`--seed=`, `--clients=`, `--days=`):
+ACE submissions priced by the real `computeSubmissionPricing()` and independently re-derived in
+integer cents (both 15% Secursus legs, components, domestic legs waived in-person); weekly Monday
+UK consolidation batches plus individual dispatches, with Logged→Prepped→Shipped→Grading→Returned→
+Dispatched timelines (grading time from each tier's real turnaround) mapped to
+`shipment_batch_status`; a synthetic shop catalogue run through a rule-for-rule mirror of
+`create_order()` (all-or-nothing, stock check/decrement, R100 Raw Card floor, failed payments
+release stock); and a financial report (submission lines, shop, VAT booked, Secursus/courier
+pass-through liabilities, live in-transit exposure, by-month table). Default run: 228
+submissions / 1,848 paid cards, 74 orders with 27 out-of-stock attempts blocked, 1,382/1,382
+invariants passed; seeds 7 and 99×250 clients also pass. Not a test of real DB behaviour (RLS,
+`create_order()` row locks) — that would need the tagged-production option the user declined.
+Findings from the numbers, flagged to the user:
+- Secursus insurance is 40% of all submission cash (R1.03M of R2.57M in the default run), because
+  15% per leg = 30% of declared value. Worth confirming 15% per leg is the intended rate.
+- Shop shipping is `SHIPPING_FLAT_RATE = 6.5` in `app/shop/checkout/page.tsx`, i.e. R6,50 per
+  order in ZAR — looks like a leftover USD figure. The client also sends it to `create_order()`
+  as `p_shipping_cost` (not server-fixed); migration files show `shipping_cost >= 0` and
+  `order_items.quantity > 0` constraints that block negative values, but production's schema is
+  known to drift from the migration files, so that's unverified.
+
+**Uncommitted (2026-09-24) — SECURITY: grading submission price is now server-authoritative**.
+Found while scoping the 100-client simulation request. Before this fix, a grading submission's price
+was computed only in the browser (`components/submit/step-review-pay.tsx`): `/api/submissions`
+stored the client-sent `serviceFee` as `submissions.service_fee` and posted it to the ledger as-is,
+`/api/submissions/checkout` sent Payfast whatever `amountCents` the client posted (only checked
+`>= 100`), and the Payfast ITN webhook marked the submission `captured` without comparing
+`amount_gross` to anything — so any signed-in customer could pay e.g. R1 for any submission by
+editing the request. Shop orders (`orders.total`) and auction payments (winning bid) were already
+DB-sourced and unaffected. Fix:
+- New `lib/submission-pricing.ts`: `computeSubmissionPricing()` is the single pricing function
+  (grading + ACE label + Clean & Polish/per-card prep + 2 international legs + 2× 15% Secursus
+  legs = `serviceFee`; + 2 domestic legs unless in-person = `total`). It throws
+  `SubmissionPricingError` for an unknown company/tier, zero cards, or a negative/non-numeric
+  declared value. `pricingInputFromRows()` rebuilds its input from stored `submissions` +
+  `submission_items` rows — every pricing input was already stored, so no migration was needed.
+- `step-review-pay.tsx` renders the Order Summary from that function and no longer sends
+  `serviceFee`. `/api/submissions` computes `service_fee`/`tax_collected`/ledger amounts itself
+  (400 on a pricing error). `/api/submissions/checkout` recomputes the total from the DB, refuses a
+  non-`pending` submission, returns 409 if the client's `amountCents` differs (stale price shown),
+  and passes the server total into the signed Payfast redirect. The webhook's `grading_submission`
+  branch only captures when `amount_gross` equals the recomputed total; a mismatch stays `pending`
+  and logs `Payfast ITN: grading submission amount mismatch -- left pending`.
+- Parity check (scratch script via jiti, not committed): 1,440 random orders across every
+  company/tier/type/label/in-person/Clean & Polish combination match the old inline formula to the
+  cent, except one half-cent float-rounding edge (R 8 282,465), which is moot now that client and
+  server share the function; Secursus = exactly 30% of declared value in every case.
+- `npx tsc --noEmit` clean, `npm run lint` at the 48-problem baseline, `npx next build` clean.
+  **Not click-tested** through a real Payfast sandbox payment. Not yet committed, pushed, or
+  deployed. Historical `captured` submissions were priced by the browser; they can be audited by
+  recomputing each with `pricingInputFromRows()` and comparing to Payfast's records.
+
 **Uncommitted (2026-09-24) — Site-wide "Submission Best Practices" section above the footer**: new
 `components/SubmissionBestPractices.tsx` (client component, `usePathname`), mounted in
 `app/layout.tsx` between `</main>` and `<Footer />`. Two cards in a `grid-cols-1 md:grid-cols-2`
