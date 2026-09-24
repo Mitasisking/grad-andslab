@@ -1,17 +1,20 @@
 import {
   ACE_LABEL_OPTIONS,
+  LEGACY_SLAB_GUARD_FEE_ZAR,
   SLAB_GUARD_FEE_ZAR,
   TIER_OPTIONS_BY_COMPANY,
-  cleanAndPolishFeeForRegion,
+  cleaningTierFeeZAR,
   domesticCourierLegFeeForRegion,
-  inspectionFeeForRegion,
   internationalCourierLegFeeForRegion,
+  isCleaningTier,
+  legacyCleanAndPolishFeeForRegion,
   labelOptionFeeForRegion,
   secursusInsuranceLegFeeZAR,
   tierPriceForRegion,
 } from '@/lib/submission-types'
 import type {
   AceLabelOption,
+  CleaningTier,
   GradingCompany,
   IntakeChannel,
   ProductRegion,
@@ -30,6 +33,12 @@ import type {
  * the server recompute the total from the database alone
  * (pricingInputFromRows below).
  */
+export interface SubmissionPricingCard {
+  declaredValue: number
+  cleaningTier: CleaningTier
+  requiresSlabGuard: boolean
+}
+
 export interface SubmissionPricingInput {
   gradingCompany: GradingCompany
   tier: SubmissionTier
@@ -38,19 +47,31 @@ export interface SubmissionPricingInput {
   /** Only meaningful for ACE; ignored (priced as free) for every other company. */
   aceLabelOption: AceLabelOption | null
   intakeChannel: IntakeChannel
-  needsCleanAndPolish: boolean
-  /** Optional flat R95 Slab Guard add-on. */
-  requiresSlabGuard: boolean
-  cards: { declaredValue: number; preCheckOptIn: boolean }[]
+  /**
+   * Retired submission-level add-ons (submissions.needs_clean_and_polish /
+   * requires_slab_guard). Only ever true for a submission placed before the
+   * per-card rework, so its stored rows still re-price to what was charged;
+   * new submissions always pass false.
+   */
+  legacyCleanAndPolish: boolean
+  legacySlabGuard: boolean
+  cards: SubmissionPricingCard[]
 }
 
 export interface SubmissionPricing {
   perCardFee: number
   gradingSubtotal: number
   labelOptionSubtotal: number
-  cardsWithPrepCount: number
-  cuppasServicesSubtotal: number
+  halfCleanCount: number
+  fullCleanCount: number
+  /** Sum of every card's own cleaning choice. */
+  cleaningSubtotal: number
+  slabGuardCount: number
+  /** SLAB_GUARD_FEE_ZAR per card that opted in. */
   slabGuardSubtotal: number
+  /** Retired flat add-ons -- see SubmissionPricingInput.legacyCleanAndPolish. Zero for every new submission. */
+  legacyCleanAndPolishSubtotal: number
+  legacySlabGuardSubtotal: number
   domesticLegFee: number
   localCourierTotal: number
   internationalLegFee: number
@@ -81,6 +102,9 @@ export function computeSubmissionPricing(input: SubmissionPricingInput): Submiss
   if (!input.cards.every((c) => Number.isFinite(c.declaredValue) && c.declaredValue >= 0)) {
     throw new SubmissionPricingError('Every declared value must be a number of zero or more')
   }
+  if (!input.cards.every((c) => isCleaningTier(c.cleaningTier) && typeof c.requiresSlabGuard === 'boolean')) {
+    throw new SubmissionPricingError('Every card needs a valid cleaning option and Slab Guard choice')
+  }
 
   const cardCount = input.cards.length
   const perCardFee = tierPriceForRegion(tierMeta, input.region)
@@ -94,15 +118,17 @@ export function computeSubmissionPricing(input: SubmissionPricingInput): Submiss
       : ACE_LABEL_OPTIONS[0]
   const labelOptionSubtotal = labelOptionFeeForRegion(labelOptionMeta, input.region) * cardCount
 
-  // Full Clean & Polish and per-card pre-grading prep are mutually
-  // exclusive (components/submit/step-addons.tsx) -- Clean & Polish wins.
-  const cardsWithPrepCount = input.cards.filter((c) => c.preCheckOptIn).length
-  const cuppasServicesSubtotal = input.needsCleanAndPolish
-    ? cleanAndPolishFeeForRegion(input.region)
-    : cardsWithPrepCount * inspectionFeeForRegion(input.region)
+  // Per-card add-ons (components/submit/step-addons.tsx): each card's own
+  // cleaning choice and Slab Guard, summed across the submission. Always
+  // ZAR -- neither has a USD/GBP price.
+  const halfCleanCount = input.cards.filter((c) => c.cleaningTier === 'half').length
+  const fullCleanCount = input.cards.filter((c) => c.cleaningTier === 'full').length
+  const cleaningSubtotal = input.cards.reduce((sum, c) => sum + cleaningTierFeeZAR(c.cleaningTier), 0)
+  const slabGuardCount = input.cards.filter((c) => c.requiresSlabGuard).length
+  const slabGuardSubtotal = slabGuardCount * SLAB_GUARD_FEE_ZAR
 
-  // Slab Guard: a flat fee per submission, always ZAR (no USD/GBP price exists).
-  const slabGuardSubtotal = input.requiresSlabGuard ? SLAB_GUARD_FEE_ZAR : 0
+  const legacyCleanAndPolishSubtotal = input.legacyCleanAndPolish ? legacyCleanAndPolishFeeForRegion(input.region) : 0
+  const legacySlabGuardSubtotal = input.legacySlabGuard ? LEGACY_SLAB_GUARD_FEE_ZAR : 0
 
   // Domestic courier: customers arrange and pay for their own shipping to
   // HQ, so only the single return leg (HQ -> customer) is charged. Waived
@@ -123,8 +149,10 @@ export function computeSubmissionPricing(input: SubmissionPricingInput): Submiss
   const serviceFee = roundCents(
     gradingSubtotal +
       labelOptionSubtotal +
-      cuppasServicesSubtotal +
+      cleaningSubtotal +
       slabGuardSubtotal +
+      legacyCleanAndPolishSubtotal +
+      legacySlabGuardSubtotal +
       internationalCourierTotal +
       secursusInsuranceTotal,
   )
@@ -134,9 +162,13 @@ export function computeSubmissionPricing(input: SubmissionPricingInput): Submiss
     perCardFee,
     gradingSubtotal,
     labelOptionSubtotal,
-    cardsWithPrepCount,
-    cuppasServicesSubtotal,
+    halfCleanCount,
+    fullCleanCount,
+    cleaningSubtotal,
+    slabGuardCount,
     slabGuardSubtotal,
+    legacyCleanAndPolishSubtotal,
+    legacySlabGuardSubtotal,
     domesticLegFee,
     localCourierTotal,
     internationalLegFee,
@@ -154,7 +186,7 @@ export const SUBMISSION_PRICING_COLUMNS =
   'grading_company, tier, region, submission_type, ace_label_option, intake_channel, needs_clean_and_polish, requires_slab_guard'
 
 /** Column subset of public.submission_items that pricing depends on. */
-export const SUBMISSION_ITEM_PRICING_COLUMNS = 'declared_value, pre_check_opt_in'
+export const SUBMISSION_ITEM_PRICING_COLUMNS = 'declared_value, cleaning_tier, requires_slab_guard'
 
 export interface SubmissionPricingRow {
   grading_company: GradingCompany
@@ -169,7 +201,8 @@ export interface SubmissionPricingRow {
 
 export interface SubmissionItemPricingRow {
   declared_value: number | string
-  pre_check_opt_in: boolean | null
+  cleaning_tier: CleaningTier | null
+  requires_slab_guard: boolean | null
 }
 
 /** Rebuilds the pricing input from stored rows, so the server can recompute a submission's total from the database alone. */
@@ -184,10 +217,14 @@ export function pricingInputFromRows(
     submissionType: submission.submission_type ?? 'batch',
     aceLabelOption: submission.ace_label_option,
     intakeChannel: submission.intake_channel ?? 'online_shipment',
-    needsCleanAndPolish: Boolean(submission.needs_clean_and_polish),
-    requiresSlabGuard: Boolean(submission.requires_slab_guard),
-    // numeric columns come back from PostgREST as strings.
-    cards: items.map((item) => ({ declaredValue: Number(item.declared_value), preCheckOptIn: Boolean(item.pre_check_opt_in) })),
+    legacyCleanAndPolish: Boolean(submission.needs_clean_and_polish),
+    legacySlabGuard: Boolean(submission.requires_slab_guard),
+    cards: items.map((item) => ({
+      // numeric columns come back from PostgREST as strings.
+      declaredValue: Number(item.declared_value),
+      cleaningTier: item.cleaning_tier ?? 'none',
+      requiresSlabGuard: Boolean(item.requires_slab_guard),
+    })),
   }
 }
 

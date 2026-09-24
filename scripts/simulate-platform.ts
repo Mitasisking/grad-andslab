@@ -33,9 +33,15 @@
 import { computeSubmissionPricing, toCents } from '@/lib/submission-pricing'
 import { REGION_TAX_RATE } from '@/lib/shop/product-type'
 import { SHOP_SHIPPING_FLAT_RATE_ZAR } from '@/lib/shop/shipping'
-import { ACE_LABEL_OPTIONS, SECURSUS_INSURANCE_RATE, SLAB_GUARD_FEE_ZAR, TIER_OPTIONS_BY_COMPANY } from '@/lib/submission-types'
-import type { SubmissionPricing } from '@/lib/submission-pricing'
-import type { AceLabelOption, IntakeChannel, SubmissionTier, SubmissionType } from '@/lib/submission-types'
+import {
+  ACE_LABEL_OPTIONS,
+  CLEANING_TIER_OPTIONS,
+  SECURSUS_INSURANCE_RATE,
+  SLAB_GUARD_FEE_ZAR,
+  TIER_OPTIONS_BY_COMPANY,
+} from '@/lib/submission-types'
+import type { SubmissionPricing, SubmissionPricingCard } from '@/lib/submission-pricing'
+import type { AceLabelOption, CleaningTier, IntakeChannel, SubmissionTier, SubmissionType } from '@/lib/submission-types'
 
 // ---------------------------------------------------------------------------
 // Config
@@ -169,9 +175,7 @@ interface SimSubmission {
   submissionType: SubmissionType
   labelOption: AceLabelOption
   intakeChannel: IntakeChannel
-  needsCleanAndPolish: boolean
-  requiresSlabGuard: boolean
-  cards: { declaredValue: number; preCheckOptIn: boolean }[]
+  cards: SubmissionPricingCard[]
   pricing: SubmissionPricing
   payment: PaymentOutcome
   batchId: string | null
@@ -198,11 +202,14 @@ for (const client of clients) {
       [randInt(11, 25), 20],
       [randInt(26, 50), 5],
     ])
-    const needsCleanAndPolish = chance(0.15)
     const cards = Array.from({ length: cardCount }, () => ({
       declaredValue: declaredValueZAR(),
-      // Clean & Polish and per-card prep are mutually exclusive in the wizard.
-      preCheckOptIn: !needsCleanAndPolish && chance(0.2),
+      cleaningTier: weighted<CleaningTier>([
+        ['none', 70],
+        ['half', 20],
+        ['full', 10],
+      ]),
+      requiresSlabGuard: chance(0.2),
     }))
     const input = {
       gradingCompany: 'ACE' as const,
@@ -218,8 +225,8 @@ for (const client of clients) {
         ['ace_label', 15],
       ]),
       intakeChannel: (client.prefersInPerson && chance(0.7) ? 'in_person_event' : 'online_shipment') as IntakeChannel,
-      needsCleanAndPolish,
-      requiresSlabGuard: chance(0.2),
+      legacyCleanAndPolish: false,
+      legacySlabGuard: false,
       cards,
     }
     submissions.push({
@@ -230,8 +237,6 @@ for (const client of clients) {
       submissionType: input.submissionType,
       labelOption: input.aceLabelOption,
       intakeChannel: input.intakeChannel,
-      needsCleanAndPolish,
-      requiresSlabGuard: input.requiresSlabGuard,
       cards,
       pricing: computeSubmissionPricing(input),
       payment: chance(PAYMENT_FAILURE_RATE) ? 'failed' : 'captured',
@@ -257,8 +262,13 @@ for (const sub of submissions) {
   const components =
     toCents(tierMeta.basePriceZAR) * sub.cards.length +
     toCents(labelMeta.feeZAR) * sub.cards.length +
-    toCents(p.cuppasServicesSubtotal) +
-    (sub.requiresSlabGuard ? toCents(SLAB_GUARD_FEE_ZAR) : 0) +
+    sub.cards.reduce(
+      (sum, c) =>
+        sum +
+        toCents(CLEANING_TIER_OPTIONS.find((o) => o.value === c.cleaningTier)!.feeZAR) +
+        (c.requiresSlabGuard ? toCents(SLAB_GUARD_FEE_ZAR) : 0),
+      0,
+    ) +
     toCents(p.internationalCourierTotal) +
     expectedInsuranceCents
   check(toCents(p.serviceFee) === components, `${sub.id}: service fee ${rand(toCents(p.serviceFee))} != components ${rand(components)}`)
@@ -585,7 +595,7 @@ function addSubmission(t: Totals, s: SimSubmission) {
   t.declared += toCents(p.totalDeclaredValueZAR)
   t.grading += toCents(p.gradingSubtotal)
   t.labels += toCents(p.labelOptionSubtotal)
-  t.services += toCents(p.cuppasServicesSubtotal)
+  t.services += toCents(p.cleaningSubtotal)
   t.slabGuard += toCents(p.slabGuardSubtotal)
   t.intlCourier += toCents(p.internationalCourierTotal)
   t.domesticCourier += toCents(p.localCourierTotal)
@@ -651,7 +661,11 @@ line('Clients', String(clients.length))
 line('Submissions created', String(submissions.length))
 line('  paid / payment failed', `${paidSubmissions.length} / ${submissions.length - paidSubmissions.length}`)
 line('  cards submitted (paid)', String(grand.cards))
-line('  with Slab Guard (paid)', String(paidSubmissions.filter((s) => s.requiresSlabGuard).length))
+line('  cards with Slab Guard (paid)', String(paidSubmissions.reduce((n, s) => n + s.pricing.slabGuardCount, 0)))
+line(
+  '  cards cleaned half / full (paid)',
+  `${paidSubmissions.reduce((n, s) => n + s.pricing.halfCleanCount, 0)} / ${paidSubmissions.reduce((n, s) => n + s.pricing.fullCleanCount, 0)}`,
+)
 line('  in-person drop-offs (paid)', String(paidSubmissions.filter((s) => s.intakeChannel === 'in_person_event').length))
 const labelCounts = ACE_LABEL_OPTIONS.map((o) => `${o.label} ${paidSubmissions.filter((s) => s.labelOption === o.value).length}`)
 line('  label tiers', labelCounts.join(', '))
@@ -680,8 +694,8 @@ console.log('\nFINANCIALS (ZAR, paid only)')
 console.log('  Submissions')
 line('    Grading fees', rand(grand.grading))
 line('    Label options', rand(grand.labels))
-line('    Prep / Clean & Polish services', rand(grand.services))
-line('    Slab Guard (R95 flat)', rand(grand.slabGuard))
+line('    Cleaning (per card)', rand(grand.services))
+line('    Slab Guard (R110 per card)', rand(grand.slabGuard))
 line('    International courier (2 legs)', rand(grand.intlCourier))
 line('    Domestic return courier (online only)', rand(grand.domesticCourier))
 line('    Secursus insurance (2 x 15%)', rand(grand.insurance))

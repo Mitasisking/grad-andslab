@@ -47,7 +47,8 @@ function createEmptyCard(): CardEntry {
     marketValueEstimate: null,
     marketValueSource: null,
     isFetchingValue: false,
-    preCheckOptIn: false,
+    cleaningTier: 'none',
+    requiresSlabGuard: false,
   }
 }
 
@@ -121,8 +122,6 @@ export function SubmissionWizard({ activePools, showBatchTracker }: Props) {
   const [addresses, setAddresses] = useState<ShippingAddress[]>([])
   const [addressesLoaded, setAddressesLoaded] = useState(false)
   const [addressId, setAddressId] = useState<string | null>(null)
-  const [needsCleanAndPolish, setNeedsCleanAndPolish] = useState(false)
-  const [requiresSlabGuard, setRequiresSlabGuard] = useState(false)
   // Launch rollout: Step 2 no longer offers a Semi-Rigids or Consignment
   // toggle (components/submit/step-addons.tsx) -- semi-rigids are now
   // standard on every card (see that file's Pre-grading preparation copy),
@@ -254,11 +253,6 @@ export function SubmissionWizard({ activePools, showBatchTracker }: Props) {
                   onUpdateCard={updateCard}
                   submissionType={submissionType}
                   onSelectSubmissionType={setSubmissionType}
-                  needsCleanAndPolish={needsCleanAndPolish}
-                  onToggleCleanAndPolish={setNeedsCleanAndPolish}
-                  requiresSlabGuard={requiresSlabGuard}
-                  onToggleSlabGuard={setRequiresSlabGuard}
-                  region={region}
                   onNext={goNext}
                   onBack={goBack}
                 />
@@ -277,8 +271,6 @@ export function SubmissionWizard({ activePools, showBatchTracker }: Props) {
                   addresses={addresses}
                   addressesLoaded={addressesLoaded}
                   addressId={addressId}
-                  needsCleanAndPolish={needsCleanAndPolish}
-                  requiresSlabGuard={requiresSlabGuard}
                   needsSemiRigids={needsSemiRigids}
                   interestedInConsignment={interestedInConsignment}
                   onSelectAddress={setAddressId}

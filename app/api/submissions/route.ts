@@ -2,9 +2,11 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseRouteClient } from '@/lib/supabase-route-client'
 import { REGION_EXCHANGE_RATE_TO_ZAR, REGION_OPTIONS, REGION_TAX_RATE } from '@/lib/shop/product-type'
 import { SubmissionPricingError, computeSubmissionPricing } from '@/lib/submission-pricing'
+import { isCleaningTier } from '@/lib/submission-types'
 import type {
   AceLabelOption,
   CardType,
+  CleaningTier,
   GradingCompany,
   IntakeChannel,
   ProductRegion,
@@ -33,7 +35,8 @@ interface SubmissionItemInput {
   declaredValue: number
   marketValueEstimate: number | null
   marketValueSource: string | null
-  preCheckOptIn: boolean
+  cleaningTier: CleaningTier
+  requiresSlabGuard: boolean
 }
 
 const VALID_SPORTS: Sport[] = ['soccer', 'rugby', 'f1', 'nhl', 'nba', 'mlb', 'nfl']
@@ -60,6 +63,9 @@ function isValidItem(item: SubmissionItemInput): boolean {
   if (!item.cardName?.trim() || !item.setName?.trim()) return false
   if (hasControlCharacters(item.cardName) || hasControlCharacters(item.setName)) return false
   if (item.cardNumber && hasControlCharacters(item.cardNumber)) return false
+  // Per-card add-ons are priced (lib/submission-pricing.ts), so a missing or
+  // unknown choice is rejected rather than silently defaulted.
+  if (!isCleaningTier(item.cleaningTier) || typeof item.requiresSlabGuard !== 'boolean') return false
   return true
 }
 
@@ -70,8 +76,6 @@ interface CreateSubmissionBody {
   region: ProductRegion
   addressId: string
   courier: string
-  needsCleanAndPolish: boolean
-  requiresSlabGuard: boolean
   needsSemiRigids: boolean
   interestedInConsignment: boolean
   aceLabelOption: AceLabelOption | null
@@ -171,9 +175,13 @@ export async function POST(request: NextRequest) {
       submissionType,
       aceLabelOption,
       intakeChannel,
-      needsCleanAndPolish: Boolean(body.needsCleanAndPolish),
-      requiresSlabGuard: body.requiresSlabGuard === true,
-      cards: body.items.map((item) => ({ declaredValue: Number(item.declaredValue), preCheckOptIn: Boolean(item.preCheckOptIn) })),
+      legacyCleanAndPolish: false,
+      legacySlabGuard: false,
+      cards: body.items.map((item) => ({
+        declaredValue: Number(item.declaredValue),
+        cleaningTier: item.cleaningTier,
+        requiresSlabGuard: item.requiresSlabGuard,
+      })),
     })
   } catch (err) {
     if (err instanceof SubmissionPricingError) {
@@ -212,8 +220,10 @@ export async function POST(request: NextRequest) {
       tax_rate: taxRate,
       tax_collected: taxCollected,
       exchange_rate_to_zar: exchangeRate,
-      needs_clean_and_polish: Boolean(body.needsCleanAndPolish),
-      requires_slab_guard: body.requiresSlabGuard === true,
+      // Add-ons are per card now (submission_items below); these retired
+      // submission-level flags only exist to price pre-rework submissions.
+      needs_clean_and_polish: false,
+      requires_slab_guard: false,
       needs_semi_rigids: Boolean(body.needsSemiRigids),
       interested_in_consignment: Boolean(body.interestedInConsignment),
       ace_label_option: aceLabelOption,
@@ -243,7 +253,9 @@ export async function POST(request: NextRequest) {
       declared_value: item.declaredValue,
       market_value_estimate: item.marketValueEstimate,
       market_value_source: item.marketValueSource,
-      pre_check_opt_in: item.preCheckOptIn,
+      cleaning_tier: item.cleaningTier,
+      requires_slab_guard: item.requiresSlabGuard,
+      pre_check_opt_in: item.cleaningTier !== 'none',
     })),
   )
 

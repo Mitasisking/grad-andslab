@@ -1402,6 +1402,59 @@ field that drives routing/matching logic, never the name.
 
 ## Uncommitted work in the tree right now
 
+**Uncommitted (2026-09-24) — Add-ons step is now per card (cleaning tier + Slab Guard on every
+card)**. Not committed, not deployed; **migration 0068 APPLIED to production by the user**.
+- **Click-tested locally** (localhost:3000, logged in; rAF duration-0 workaround used, then reverted):
+  2 cards (ACE Basic, Standard label, declared R1 000 + R2 000), card 1 Half Clean + Slab Guard Yes,
+  card 2 Half → Full clean (radios exclusive) + No. Order Summary: grading R850, label R0,
+  "Cleaning (Half × 1, Full × 1)" R700, "Slab Guard × 1" R110, return courier R110, international
+  R220, insurance R900 = **R 2 890,00** (matches hand calculation). Choices persist on Back; no
+  console errors. **Pay was not clicked** (it would create a real submission + PayFast sandbox
+  redirect), so the per-item insert and server-side total are not yet verified live.
+- `components/submit/manifest-rail.tsx`: Add-ons step description "Optional pre-grading inspection" →
+  "Cleaning and Slab Guard per card".
+- `components/submit/step-addons.tsx`: the global "Full Clean & Polish" block, global "Slab Guard"
+  block and "OR" divider are gone. Each card block now has two gold-accented radio groups:
+  **Cleaning** — No clean R 0,00 / Half Clean R 200,00 / Full clean R 500,00 — and below it
+  **Slab Guard** — Yes R 110,00 / No R 0,00. Submission Method section unchanged. `region` prop removed
+  (add-ons are ZAR only).
+- `lib/submission-types.ts`: `CleaningTier = 'none' | 'half' | 'full'`, `CLEANING_TIER_OPTIONS`,
+  `isCleaningTier`, `cleaningTierFeeZAR`; `CardEntry.preCheckOptIn` replaced by `cleaningTier` +
+  `requiresSlabGuard`; `SLAB_GUARD_FEE_ZAR` 95 → **110, now per card**; old `CLEAN_AND_POLISH_FEE_*` /
+  `INSPECTION_FEE_*` removed; `LEGACY_CLEAN_AND_POLISH_FEE_*` and `LEGACY_SLAB_GUARD_FEE_ZAR` (95) kept
+  so pre-rework submissions still price at what was charged. `SubmissionItemRow` gains
+  `cleaning_tier` / `requires_slab_guard`.
+- `lib/submission-pricing.ts`: cards are `{ declaredValue, cleaningTier, requiresSlabGuard }`;
+  outputs `halfCleanCount`, `fullCleanCount`, `cleaningSubtotal`, `slabGuardCount`,
+  `slabGuardSubtotal` (per card), plus `legacyCleanAndPolishSubtotal` / `legacySlabGuardSubtotal`,
+  fed by `legacyCleanAndPolish` / `legacySlabGuard` inputs that `pricingInputFromRows` reads from
+  `submissions.needs_clean_and_polish` / `requires_slab_guard`. New submissions always pass false.
+  `SUBMISSION_ITEM_PRICING_COLUMNS` is now `declared_value, cleaning_tier, requires_slab_guard`.
+- `app/api/submissions/route.ts`: each item must carry a valid `cleaningTier` and boolean
+  `requiresSlabGuard` (else 400); stores both per item, plus `pre_check_opt_in = cleaningTier <> 'none'`
+  for older readers; submission-level `needs_clean_and_polish` / `requires_slab_guard` are always
+  stored false.
+- `app/submit/wizard.tsx` (global add-on state removed), `components/submit/step-review-pay.tsx`
+  (Order Summary: "Cleaning (Half × n, Full × n)" line + "Slab Guard × n" line when any card
+  opted in), `lib/email/send-order-confirmation.ts` (per-tier cleaning lines, "Slab Guard × n",
+  plus "(whole submission)" lines for legacy submissions), `lib/email/send-grading-update.ts`
+  (item select gains the two new columns), `scripts/simulate-platform.ts` (per-card add-ons;
+  1353/1353 invariants).
+- **New migration `supabase/migrations/0068_per_card_add_ons.sql`** adds
+  `submission_items.cleaning_tier text not null default 'none'` (CHECK none/half/full) and
+  `submission_items.requires_slab_guard boolean not null default false`, and backfills
+  `cleaning_tier = 'half'` where `pre_check_opt_in` was true and the parent had no
+  submission-wide Clean & Polish (R200 prep = Half Clean). **Must be applied before deploying** —
+  checkout, the webhook and the submission insert all reference the new columns. Caveat: a legacy
+  non-SA submission's backfilled prep would re-price at R200 instead of its old $11/£8; region has been
+  fixed to `'sa'` since the launch rollout.
+- Pending test submission `a847bc9a` (legacy flat Slab Guard R95) keeps its R 1 225,00 total through
+  the legacy path, so its sandbox webhook still matches.
+- `tsc --noEmit` clean, eslint clean on touched files. **Not click-tested**. The admin intake panel
+  (`components/admin/intake-order-panel.tsx`) and `/admin/pools` still show only the submission-level
+  Clean & Polish badge, so they don't yet show per-card cleaning/Slab Guard to staff (not read or
+  changed in this session).
+
 **Open (2026-09-24) — Live test of the grading checkout, stopped at PayFast; PayFast is in SANDBOX
 mode in production.** Findings and state for the next session:
 - **Production uses PayFast sandbox.** `lib/payments/payfast.ts` only uses live PayFast when

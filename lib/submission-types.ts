@@ -63,7 +63,10 @@ export interface CardEntry {
   marketValueEstimate: number | null
   marketValueSource: string | null
   isFetchingValue: boolean
-  preCheckOptIn: boolean
+  /** Per-card pre-grading clean (components/submit/step-addons.tsx) -- see CLEANING_TIER_OPTIONS. */
+  cleaningTier: CleaningTier
+  /** Per-card Slab Guard bumper (components/submit/step-addons.tsx) -- see SLAB_GUARD_FEE_ZAR. */
+  requiresSlabGuard: boolean
 }
 
 export interface ShippingAddress {
@@ -415,6 +418,13 @@ export interface SubmissionRow {
   qr_code_token: string
   notes: string | null
   region: ProductRegion
+  /**
+   * Legacy submission-level add-ons, superseded by the per-card
+   * submission_items.cleaning_tier / requires_slab_guard columns
+   * (supabase/migrations/0068_per_card_add_ons.sql). New submissions always
+   * store false here; kept so submissions placed before the per-card rework
+   * still price at what they were charged (lib/submission-pricing.ts).
+   */
   needs_clean_and_polish: boolean
   needs_semi_rigids: boolean
   requires_slab_guard: boolean
@@ -451,54 +461,70 @@ export interface PoolRow {
 }
 
 /**
- * Flat "Clean and Polish" pre-grading add-on (components/submit/step-addons.tsx)
- * -- R500 as set by the business; USD/GBP are the same approximate-conversion
- * stand-in as every other cross-currency figure in this file (~18.5 USD/ZAR,
- * ~0.79 USD/GBP). Edit directly if the business sets a real invoiced rate.
+ * Per-card pre-grading clean (components/submit/step-addons.tsx), chosen
+ * independently for every card and stored as submission_items.cleaning_tier
+ * (supabase/migrations/0068_per_card_add_ons.sql). Prices are set by the
+ * business in ZAR only -- like the Secursus insurance legs and Slab Guard,
+ * there is no USD/GBP equivalent. Replaced the old submission-wide "Full
+ * Clean & Polish" (flat R500) and per-card "pre-grading preparation" (R200)
+ * toggles; 'half' carries over the old R200 prep price.
  */
-export const CLEAN_AND_POLISH_FEE_USD = 27
-export const CLEAN_AND_POLISH_FEE_GBP = 21
-export const CLEAN_AND_POLISH_FEE_ZAR = 500
+export type CleaningTier = 'none' | 'half' | 'full'
 
-export function cleanAndPolishFeeForRegion(region: ProductRegion): number {
-  if (region === 'usa') return CLEAN_AND_POLISH_FEE_USD
-  if (region === 'uk') return CLEAN_AND_POLISH_FEE_GBP
-  return CLEAN_AND_POLISH_FEE_ZAR
+export interface CleaningTierOption {
+  value: CleaningTier
+  label: string
+  feeZAR: number
+}
+
+export const CLEANING_TIER_OPTIONS: CleaningTierOption[] = [
+  { value: 'none', label: 'No clean', feeZAR: 0 },
+  { value: 'half', label: 'Half Clean', feeZAR: 200 },
+  { value: 'full', label: 'Full clean', feeZAR: 500 },
+]
+
+export function isCleaningTier(value: unknown): value is CleaningTier {
+  return CLEANING_TIER_OPTIONS.some((o) => o.value === value)
+}
+
+export function cleaningTierFeeZAR(tier: CleaningTier): number {
+  return CLEANING_TIER_OPTIONS.find((o) => o.value === tier)?.feeZAR ?? 0
 }
 
 /**
- * Optional "Slab Guard" add-on (components/submit/step-addons.tsx): a
- * premium protective bumper fitted to the returned graded slab. A flat R95
- * per submission, charged in ZAR only -- like the Secursus insurance legs,
- * it has no USD/GBP equivalent. Stored as submissions.requires_slab_guard
- * (supabase/migrations/0067_add_slab_guard.sql).
+ * Optional per-card "Slab Guard" add-on (components/submit/step-addons.tsx):
+ * a premium protective bumper fitted to that card's returned graded slab.
+ * R110 per card, ZAR only. Stored as submission_items.requires_slab_guard
+ * (supabase/migrations/0068_per_card_add_ons.sql).
  */
-export const SLAB_GUARD_FEE_ZAR = 95
+export const SLAB_GUARD_FEE_ZAR = 110
 export const SLAB_GUARD_LABEL = 'Slab Guard'
 
 /**
- * Flat per-card fee for the optional pre-grading inspection add-on
- * (components/submit/step-addons.tsx's `preCheckOptIn`) -- R200 as set by
- * the business; USD/GBP are the same approximate-conversion stand-in as
- * every other cross-currency figure here (~18.5 USD/ZAR, ~0.79 USD/GBP).
- * Moved here (rather than staying local to step-review-pay.tsx) so
- * lib/email's order-confirmation template can price the same line item
- * server-side without duplicating the numbers.
+ * What the retired submission-level add-ons cost, kept only so submissions
+ * placed before the per-card rework (submissions.needs_clean_and_polish /
+ * requires_slab_guard = true) still recompute to exactly what the customer
+ * was charged -- checkout, the Payfast webhook, the confirmation email, and
+ * scripts/audit-submission-payments.ts all re-price from stored rows. Never
+ * offered to new submissions. Clean & Polish was region-priced (USD/GBP
+ * approximate conversions, same as the rest of this file); Slab Guard was a
+ * flat R95 per submission.
  */
-export const INSPECTION_FEE_USD = 11
-export const INSPECTION_FEE_GBP = 8
-export const INSPECTION_FEE_ZAR = 200
+export const LEGACY_CLEAN_AND_POLISH_FEE_USD = 27
+export const LEGACY_CLEAN_AND_POLISH_FEE_GBP = 21
+export const LEGACY_CLEAN_AND_POLISH_FEE_ZAR = 500
+export const LEGACY_SLAB_GUARD_FEE_ZAR = 95
 
-export function inspectionFeeForRegion(region: ProductRegion): number {
-  if (region === 'usa') return INSPECTION_FEE_USD
-  if (region === 'uk') return INSPECTION_FEE_GBP
-  return INSPECTION_FEE_ZAR
+export function legacyCleanAndPolishFeeForRegion(region: ProductRegion): number {
+  if (region === 'usa') return LEGACY_CLEAN_AND_POLISH_FEE_USD
+  if (region === 'uk') return LEGACY_CLEAN_AND_POLISH_FEE_GBP
+  return LEGACY_CLEAN_AND_POLISH_FEE_ZAR
 }
 
 /**
  * ACE Grading's label options -- a per-submission choice (applies to every
- * card in the batch, same as needs_clean_and_polish/needs_semi_rigids
- * above, not per-card) offered only when GradingCompany is 'ACE'. GBP is
+ * card in the batch, same as needs_semi_rigids above, not per-card)
+ * offered only when GradingCompany is 'ACE'. GBP is
  * the business-set official price; ZAR is ACE's own designated retail
  * price (R25/R75), NOT the ~18.5 USD/ZAR stand-in conversion used
  * elsewhere in this file -- ACE set these ZAR figures directly. USD is
@@ -561,7 +587,10 @@ export interface SubmissionItemRow {
   declared_value: number
   market_value_estimate: number | null
   market_value_source: string | null
+  /** Kept in sync with cleaning_tier (true when cleaning_tier <> 'none') for readers that predate the per-card rework. */
   pre_check_opt_in: boolean
+  cleaning_tier: CleaningTier
+  requires_slab_guard: boolean
   grade_result: number | null
   grade_cert_number: string | null
   hi_res_photo_url: string | null

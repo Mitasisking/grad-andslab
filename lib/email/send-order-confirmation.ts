@@ -4,6 +4,7 @@ import { renderOrderConfirmationEmail, COLORS, EMAIL_LOGO_HTML, escapeHtml } fro
 import { formatZAR } from '@/lib/currency'
 import {
   ACE_LABEL_OPTIONS,
+  CLEANING_TIER_OPTIONS,
   INTERNATIONAL_COURIER_LEG_LABELS,
   LOCAL_COURIER_LEG_LABELS,
   LOCAL_IN_PERSON_LEG_LABELS,
@@ -61,7 +62,7 @@ export async function getContact(
 /**
  * Fired from the Payfast ITN webhook (app/api/webhooks/payfast/route.ts)
  * once a grading submission's payment completes. Re-derives the same
- * per-card grading fee / inspection fee / Clean and Polish add-on pricing
+ * per-card grading fee / cleaning / Slab Guard add-on pricing
  * the submit wizard showed at checkout (components/submit/step-review-pay.tsx)
  * from the now-persisted submission row, rather than trusting a
  * client-supplied total — the DB row is the source of truth by the time
@@ -127,13 +128,23 @@ export async function sendSubmissionConfirmationEmail(submissionId: string, rece
       const labelMeta = ACE_LABEL_OPTIONS.find((o) => o.value === pricingRow.ace_label_option) ?? ACE_LABEL_OPTIONS[0]
       addOnLineItems.push({ label: `${labelMeta.label} label × ${cardRows.length}`, amount: pricing.labelOptionSubtotal })
     }
-    if (pricingRow.needs_clean_and_polish) {
-      addOnLineItems.push({ label: 'Clean and Polish', amount: pricing.cuppasServicesSubtotal })
-    } else if (pricing.cardsWithPrepCount > 0) {
-      addOnLineItems.push({ label: `Pre-grading inspection × ${pricing.cardsWithPrepCount}`, amount: pricing.cuppasServicesSubtotal })
+    // Per-card add-ons, one line per paid option with its card count.
+    for (const [count, tier] of [
+      [pricing.halfCleanCount, 'half'],
+      [pricing.fullCleanCount, 'full'],
+    ] as const) {
+      const option = CLEANING_TIER_OPTIONS.find((o) => o.value === tier)!
+      if (count > 0) addOnLineItems.push({ label: `${option.label} × ${count}`, amount: option.feeZAR * count })
     }
-    if (pricing.slabGuardSubtotal > 0) {
-      addOnLineItems.push({ label: SLAB_GUARD_LABEL, amount: pricing.slabGuardSubtotal })
+    if (pricing.slabGuardCount > 0) {
+      addOnLineItems.push({ label: `${SLAB_GUARD_LABEL} × ${pricing.slabGuardCount}`, amount: pricing.slabGuardSubtotal })
+    }
+    // Retired submission-level add-ons -- only on submissions placed before the per-card rework.
+    if (pricing.legacyCleanAndPolishSubtotal > 0) {
+      addOnLineItems.push({ label: 'Clean and Polish (whole submission)', amount: pricing.legacyCleanAndPolishSubtotal })
+    }
+    if (pricing.legacySlabGuardSubtotal > 0) {
+      addOnLineItems.push({ label: `${SLAB_GUARD_LABEL} (whole submission)`, amount: pricing.legacySlabGuardSubtotal })
     }
 
     // Only the return leg is charged -- customers ship to HQ themselves.

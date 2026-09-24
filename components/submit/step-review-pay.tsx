@@ -34,8 +34,6 @@ interface Props {
   addresses: ShippingAddress[]
   addressesLoaded: boolean
   addressId: string | null
-  needsCleanAndPolish: boolean
-  requiresSlabGuard: boolean
   needsSemiRigids: boolean
   interestedInConsignment: boolean
   onSelectAddress: (id: string) => void
@@ -56,8 +54,6 @@ export function StepReviewPay({
   addresses,
   addressesLoaded,
   addressId,
-  needsCleanAndPolish,
-  requiresSlabGuard,
   needsSemiRigids,
   interestedInConsignment,
   onSelectAddress,
@@ -80,8 +76,10 @@ export function StepReviewPay({
   const {
     gradingSubtotal,
     labelOptionSubtotal,
-    cardsWithPrepCount,
-    cuppasServicesSubtotal,
+    halfCleanCount,
+    fullCleanCount,
+    cleaningSubtotal,
+    slabGuardCount,
     slabGuardSubtotal,
     domesticLegFee,
     localCourierTotal,
@@ -95,9 +93,13 @@ export function StepReviewPay({
     submissionType,
     aceLabelOption: labelOption,
     intakeChannel: inPersonMode ? 'in_person_event' : 'online_shipment',
-    needsCleanAndPolish,
-    requiresSlabGuard,
-    cards: cards.map((c) => ({ declaredValue: c.declaredValue || 0, preCheckOptIn: c.preCheckOptIn })),
+    legacyCleanAndPolish: false,
+    legacySlabGuard: false,
+    cards: cards.map((c) => ({
+      declaredValue: c.declaredValue || 0,
+      cleaningTier: c.cleaningTier,
+      requiresSlabGuard: c.requiresSlabGuard,
+    })),
   })
 
   // Label options only apply to ACE; this line is always shown in the Order
@@ -105,13 +107,13 @@ export function StepReviewPay({
   // can see which label was chosen.
   const labelOptionMeta = ACE_LABEL_OPTIONS.find((o) => o.value === labelOption)!
 
-  // "CuppasCards Services" collapses the two mutually-exclusive pre-grading
-  // add-ons (components/submit/step-addons.tsx) into a single line.
-  const cuppasServicesLabel = needsCleanAndPolish
-    ? 'Full Clean & Polish'
-    : cardsWithPrepCount > 0
-      ? `Pre-grading preparation × ${cardsWithPrepCount}`
-      : 'Pre-grading preparation'
+  // Per-card cleaning choices (components/submit/step-addons.tsx) summed
+  // into one line, with the count of each paid tier in the label.
+  const cleaningBreakdown = [
+    halfCleanCount > 0 ? `Half × ${halfCleanCount}` : null,
+    fullCleanCount > 0 ? `Full × ${fullCleanCount}` : null,
+  ].filter(Boolean)
+  const cleaningLabel = cleaningBreakdown.length > 0 ? `Cleaning (${cleaningBreakdown.join(', ')})` : 'Cleaning'
 
   const canCheckout = Boolean(addressId)
 
@@ -134,8 +136,6 @@ export function StepReviewPay({
         region,
         addressId,
         courier: inPersonMode ? IN_PERSON_DROPOFF_LABEL : DOMESTIC_COURIER_LABEL,
-        needsCleanAndPolish,
-        requiresSlabGuard,
         needsSemiRigids,
         interestedInConsignment,
         aceLabelOption: gradingCompany === 'ACE' ? labelOption : null,
@@ -153,7 +153,8 @@ export function StepReviewPay({
           declaredValue: c.declaredValue,
           marketValueEstimate: c.marketValueEstimate,
           marketValueSource: c.marketValueSource,
-          preCheckOptIn: c.preCheckOptIn,
+          cleaningTier: c.cleaningTier,
+          requiresSlabGuard: c.requiresSlabGuard,
         })),
       }),
     })
@@ -340,16 +341,18 @@ export function StepReviewPay({
             </div>
           )}
 
-          {/* 3. CuppasCards Services */}
+          {/* 3. Per-card cleaning, summed across every card */}
           <div className="flex justify-between gap-4">
-            <span>{cuppasServicesLabel}</span>
-            <span style={{ fontVariantNumeric: 'tabular-nums' }}>{formatZAR(cuppasServicesSubtotal)}</span>
+            <span>{cleaningLabel}</span>
+            <span style={{ fontVariantNumeric: 'tabular-nums' }}>{formatZAR(cleaningSubtotal)}</span>
           </div>
 
-          {/* 3b. Slab Guard -- always ZAR, only shown when chosen */}
-          {requiresSlabGuard && (
+          {/* 3b. Slab Guard -- R110 per card that opted in, only shown when any did */}
+          {slabGuardCount > 0 && (
             <div className="flex justify-between gap-4">
-              <span>{SLAB_GUARD_LABEL}</span>
+              <span>
+                {SLAB_GUARD_LABEL} × {slabGuardCount}
+              </span>
               <span style={{ fontVariantNumeric: 'tabular-nums' }}>{formatZAR(slabGuardSubtotal)}</span>
             </div>
           )}
