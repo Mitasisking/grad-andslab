@@ -138,7 +138,7 @@ export default function PrepareCardsPage() {
           </p>
           <Link
             href="/shop?category=accessories"
-            className="inline-block bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-lg px-8 py-4 rounded-xl transition shadow-[0_0_20px_rgba(245,158,11,0.2)] hover:shadow-[0_0_25px_rgba(245,158,11,0.4)]"
+            className="inline-block bg-brand-gold hover:bg-brand-gold-hover text-slate-950 font-bold text-lg px-8 py-4 rounded-xl transition shadow-[0_0_20px_rgba(253,200,47,0.25)] hover:shadow-[0_0_25px_rgba(253,200,47,0.45)]"
           >
             Shop the Basic Submission Kit
           </Link>

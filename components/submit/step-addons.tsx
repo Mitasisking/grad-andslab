@@ -16,7 +16,7 @@ interface YesNoQuestionProps {
 /** Matches the circular-indicator radio look used throughout the wizard (e.g. step-grader-tier.tsx's country/tier lists). */
 function YesNoQuestion({ question, subtext, priceLabel, value, onChange }: YesNoQuestionProps) {
   return (
-    <div className="border rounded-[3px] p-4" style={{ borderColor: 'var(--line)' }}>
+    <div className="border rounded-[3px] p-4" style={{ borderColor: 'var(--card-border)' }}>
       <div className="flex items-start justify-between gap-4">
         <div>
           <p className="text-[14px]" style={{ color: 'var(--ink)' }}>
@@ -193,7 +193,7 @@ export function StepAddOns({
 
       <div className="space-y-4">
         {cards.map((card, i) => (
-          <div key={card.id} className="border rounded-[3px] p-4" style={{ borderColor: 'var(--line)' }}>
+          <div key={card.id} className="border rounded-[3px] p-4" style={{ borderColor: 'var(--card-border)' }}>
             <div className="flex items-start justify-between gap-4">
               <div>
                 <p className="text-[12px]" style={{ fontVariantNumeric: 'tabular-nums', color: 'var(--ink-muted)' }}>
@@ -273,7 +273,7 @@ export function StepAddOns({
         <Button variant="ghost" onClick={onBack} className="rounded-[3px]">
           Back
         </Button>
-        <Button onClick={onNext} className="rounded-[3px]" style={{ background: 'var(--vault)', color: 'var(--vault-ink)' }}>
+        <Button onClick={onNext} className="rounded-[3px]">
           Continue to review
         </Button>
       </div>

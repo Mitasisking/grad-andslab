@@ -13,12 +13,15 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        default: 'bg-primary text-primary-foreground shadow-xs hover:bg-primary/90 hover:shadow-md',
+        // Brand color system (app/globals.css): primary = brand gold with
+        // dark ink, brightening (not dimming) on hover; secondary = brand
+        // green with white text, lifting to the AA-safe green-hover shade.
+        default: 'bg-primary text-primary-foreground font-semibold shadow-xs hover:bg-brand-gold-hover hover:shadow-md',
         destructive:
           'bg-destructive text-white shadow-xs hover:bg-destructive/90 hover:shadow-md focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40 dark:bg-destructive/60',
         outline:
-          'border bg-background shadow-xs hover:bg-accent hover:text-accent-foreground hover:shadow-md dark:bg-input/30 dark:border-input dark:hover:bg-input/50',
-        secondary: 'bg-secondary text-secondary-foreground shadow-xs hover:bg-secondary/80 hover:shadow-md',
+          'border border-input bg-transparent text-foreground shadow-xs hover:bg-accent hover:border-brand-gold/40 hover:text-accent-foreground hover:shadow-md',
+        secondary: 'bg-secondary text-secondary-foreground font-semibold shadow-xs hover:bg-brand-green-hover hover:shadow-md',
         ghost: 'hover:bg-accent hover:text-accent-foreground dark:hover:bg-accent/50',
         link: 'text-primary underline-offset-4 hover:underline',
       },

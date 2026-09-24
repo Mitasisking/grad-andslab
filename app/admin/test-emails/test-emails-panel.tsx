@@ -129,7 +129,6 @@ export function TestEmailsPanel() {
         disabled={busy || !targetEmail.trim()}
         onClick={runFullSequence}
         className="w-full rounded-[3px]"
-        style={{ background: 'var(--vault)', color: 'var(--vault-ink)' }}
       >
         {runningSequence ? 'Running full sequence…' : `Trigger Full Sequence (${SEQUENCE_DELAY_MS / 1000}s delay between)`}
       </Button>

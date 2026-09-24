@@ -197,7 +197,7 @@ export function CardShipmentRow({ card, index, canRemove, onUpdateCard, onRemove
   const showPokemonDropdown = focused && pokemonQueryLongEnough && (isSearchingPokemon || pokemonResults.length > 0)
 
   return (
-    <div className="border rounded-[3px] p-4" style={{ borderColor: 'var(--line)' }}>
+    <div className="border rounded-[3px] p-4" style={{ borderColor: 'var(--card-border)' }}>
       <div className="flex items-center justify-between mb-3">
         <span className="text-[12px]" style={{ fontVariantNumeric: 'tabular-nums', color: 'var(--ink-muted)' }}>
           {String(index + 1).padStart(2, '0')}
@@ -245,7 +245,7 @@ export function CardShipmentRow({ card, index, canRemove, onUpdateCard, onRemove
           {pokemonNoResults && (
             <Check
               className="absolute right-2.5 top-1/2 -translate-y-1/2 size-4"
-              style={{ color: '#4ade80' }}
+              style={{ color: 'var(--brand-green-light)' }}
               aria-label="Not in our catalog — your typed entry will be used as-is"
             />
           )}

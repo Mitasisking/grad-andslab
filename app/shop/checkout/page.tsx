@@ -182,8 +182,7 @@ export default function ShopCheckoutPage() {
         type="button"
         onClick={beginCheckout}
         disabled={!addressId || creatingOrder}
-        className="mt-8 w-full px-4 py-3 text-[14px] rounded-[3px]"
-        style={{ background: 'var(--vault)', color: 'var(--vault-ink)' }}
+        className="mt-8 w-full px-4 py-3 text-[14px] rounded-[3px] bg-brand-gold text-[color:var(--vault-ink)] font-semibold hover:bg-brand-gold-hover transition-colors duration-200 ease-fluid"
       >
         {creatingOrder ? 'Redirecting to Payfast…' : `Pay ${formatByRegion(total, region)}`}
       </button>

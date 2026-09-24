@@ -153,8 +153,7 @@ export function AuctionDraftForm({ item }: { item: ItemWithSubmission }) {
         type="button"
         onClick={handleSubmit}
         disabled={submitting || !title || !startingPrice}
-        className="mt-8 w-full px-4 py-3 text-[14px] rounded-[3px]"
-        style={{ background: 'var(--vault)', color: 'var(--vault-ink)' }}
+        className="mt-8 w-full px-4 py-3 text-[14px] rounded-[3px] bg-brand-gold text-[color:var(--vault-ink)] font-semibold hover:bg-brand-gold-hover transition-colors duration-200 ease-fluid"
       >
         {submitting ? 'Publishing…' : 'Publish listing'}
       </button>

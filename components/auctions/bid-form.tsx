@@ -72,8 +72,7 @@ export function BidForm({ auction, currentUserId, onPlaced }: Props) {
             type="button"
             onClick={payInvoice}
             disabled={payingInvoice}
-            className="px-4 py-2 text-[13.5px] rounded-[3px]"
-            style={{ background: 'var(--seal)', color: 'var(--seal-ink)' }}
+            className="px-4 py-2 text-[13.5px] rounded-[3px] bg-brand-gold text-[color:var(--vault-ink)] font-semibold hover:bg-brand-gold-hover transition-colors duration-200 ease-fluid"
           >
             {payingInvoice ? 'Redirecting…' : 'Pay now'}
           </button>
@@ -112,8 +111,7 @@ export function BidForm({ auction, currentUserId, onPlaced }: Props) {
           type="button"
           onClick={placeBid}
           disabled={submitting || Number(amount) < floor}
-          className="px-4 py-2 text-[13.5px] rounded-[3px] shrink-0"
-          style={{ background: 'var(--seal)', color: 'var(--seal-ink)' }}
+          className="px-4 py-2 text-[13.5px] rounded-[3px] shrink-0 bg-brand-gold text-[color:var(--vault-ink)] font-semibold hover:bg-brand-gold-hover transition-colors duration-200 ease-fluid"
         >
           {submitting ? 'Placing…' : 'Place bid'}
         </button>

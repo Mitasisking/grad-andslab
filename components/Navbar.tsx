@@ -158,19 +158,19 @@ export default function Navbar() {
           </Link>
 
           <div className="hidden md:flex gap-6 text-sm font-medium text-slate-300">
-            <Link href="/submit" className={`hover:text-amber-400 transition ease-fluid ${pathname === '/submit' ? 'text-amber-400' : ''}`}>
+            <Link href="/submit" className={`underline-offset-[6px] decoration-2 decoration-brand-green hover:text-amber-400 hover:underline transition ease-fluid ${pathname === '/submit' ? 'text-amber-400 underline' : ''}`}>
               Submit
             </Link>
-            <Link href="/dashboard" className={`hover:text-amber-400 transition ease-fluid ${pathname === '/dashboard' ? 'text-amber-400' : ''}`}>
+            <Link href="/dashboard" className={`underline-offset-[6px] decoration-2 decoration-brand-green hover:text-amber-400 hover:underline transition ease-fluid ${pathname === '/dashboard' ? 'text-amber-400 underline' : ''}`}>
               {submissionsLabel}
             </Link>
-            <Link href="/shop" className={`hover:text-amber-400 transition ease-fluid ${pathname === '/shop' ? 'text-amber-400' : ''}`}>
+            <Link href="/shop" className={`underline-offset-[6px] decoration-2 decoration-brand-green hover:text-amber-400 hover:underline transition ease-fluid ${pathname === '/shop' ? 'text-amber-400 underline' : ''}`}>
               Shop
             </Link>
-            <Link href="/vendor" className={`hover:text-amber-400 transition ease-fluid ${pathname === '/vendor' ? 'text-amber-400' : ''}`}>
+            <Link href="/vendor" className={`underline-offset-[6px] decoration-2 decoration-brand-green hover:text-amber-400 hover:underline transition ease-fluid ${pathname === '/vendor' ? 'text-amber-400 underline' : ''}`}>
               Vendor
             </Link>
-            <Link href="/contact" className={`hover:text-amber-400 transition ease-fluid ${pathname === '/contact' ? 'text-amber-400' : ''}`}>
+            <Link href="/contact" className={`underline-offset-[6px] decoration-2 decoration-brand-green hover:text-amber-400 hover:underline transition ease-fluid ${pathname === '/contact' ? 'text-amber-400 underline' : ''}`}>
               Contact
             </Link>
           </div>
@@ -229,7 +229,7 @@ export default function Navbar() {
               <Link href="/login" className="text-sm font-medium text-slate-300 hover:text-white transition ease-fluid">
                 Log In
               </Link>
-              <Link href="/signup" className="text-sm font-medium bg-amber-500 text-slate-950 px-4 py-2 rounded-lg hover:bg-amber-400 transition ease-fluid">
+              <Link href="/signup" className="text-sm font-medium bg-brand-gold text-slate-950 font-semibold px-4 py-2 rounded-lg hover:bg-brand-gold-hover transition ease-fluid">
                 Sign Up
               </Link>
             </div>

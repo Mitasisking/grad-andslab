@@ -37,7 +37,7 @@ export function PackingSlip({ qrToken, gradingCompany, tier, cards, address, cou
 
       <div
         className="border rounded-[3px] p-6"
-        style={{ borderColor: 'var(--line)', background: 'var(--paper-raised)' }}
+        style={{ borderColor: 'var(--card-border)', background: 'var(--paper-raised)' }}
       >
         <div className="flex items-start justify-between gap-6 flex-wrap">
           <div className="space-y-3 text-[13.5px]" style={{ color: 'var(--ink)' }}>

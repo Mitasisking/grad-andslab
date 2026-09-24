@@ -278,7 +278,7 @@ export default function VendorPage() {
             <button
               type="submit"
               disabled={submitting}
-              className="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-base px-6 py-3.5 rounded-xl transition disabled:opacity-50"
+              className="w-full bg-brand-gold hover:bg-brand-gold-hover text-slate-950 font-bold text-base px-6 py-3.5 rounded-xl transition disabled:opacity-50"
             >
               {submitting ? 'Sending…' : 'Send Inquiry'}
             </button>

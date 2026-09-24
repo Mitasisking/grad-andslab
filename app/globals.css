@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
 :root {
-  --background: #0a0908;
+  --background: var(--brand-dark);
   --foreground: #f3efe4;
 
   /* ----------------------------------------------------------------------
@@ -19,6 +19,30 @@
   --brand-forest: #1d3c34; /* Pantone 560 C */
   --brand-black: #000000; /* Pantone Black 6 C */
   --brand-white: #ffffff; /* Pantone White C */
+
+  /* Global color system (2026-09-24). Pixel-sampling the logo PNG
+   * ("Stock photos/Cuppalogo background removed.png") gives ~#fcc134 for
+   * the crown/"CUPPAS" and ~#107438 for "CARDS" -- within a few shades of
+   * the Pantone values above, the gap being PNG compression/anti-aliasing,
+   * so the brand-guide values stay authoritative.
+   *
+   * --brand-dark formalizes the site's existing warm near-black page
+   * background (was only ever --background) as a named brand token.
+   *
+   * Interaction shades, all WCAG-checked against --brand-dark:
+   * - gold-hover: a slight brighten for primary buttons' hover; --vault-ink
+   *   on it is 13.0:1 (11.7:1 on the base gold).
+   * - green-hover: a slight lift for secondary buttons' hover, capped so
+   *   white text stays AA (4.8:1; base green is 5.5:1). Brightening it any
+   *   further drops white text below 4.5:1.
+   * - green-light: the base green is only 3.6:1 on the dark background --
+   *   fine for large type, icons, and borders, but too dim for small text,
+   *   so green *text* (success messages, checkmarks, badge labels) uses this
+   *   7.1:1 tint instead. */
+  --brand-dark: #0a0908;
+  --brand-gold-hover: #fed65e;
+  --brand-green-hover: #008438;
+  --brand-green-light: #3fae6a;
 
   /* ----------------------------------------------------------------------
    * Ledger/manifest palette — the design language used by the Phase 2-4
@@ -47,6 +71,11 @@
   --ink: #f3efe4;
   --ink-muted: #a99f8c;
   --line: #3a3226;
+  /* Border for elevated/boxed cards (shop product cards, submission-step
+   * panels): --line with a faint brand-gold cast, so cards read as part of
+   * the brand without competing with the full-gold selected/active states.
+   * Plain dividers and table rules keep using --line. */
+  --card-border: color-mix(in srgb, var(--brand-gold) 18%, var(--line));
   /* Was the pre-brand-guide stand-in gold #a67c00 -- now the real brand
    * gold. --seal-ink/--vault-ink (near-black text rendered on top of this
    * color, e.g. badge pills) keep working unchanged: dark text on a bright
@@ -87,6 +116,39 @@
   --color-brand-forest: var(--brand-forest);
   --color-brand-black: var(--brand-black);
   --color-brand-white: var(--brand-white);
+  --color-brand-dark: var(--brand-dark);
+  --color-brand-gold-hover: var(--brand-gold-hover);
+  --color-brand-green-hover: var(--brand-green-hover);
+  --color-brand-green-light: var(--brand-green-light);
+
+  /* shadcn semantic tokens used by components/ui/button.tsx and input.tsx
+   * (bg-primary, ring-ring, border-input, hover:bg-accent, ...). These were
+   * never defined before this pass, so those classes silently produced no
+   * color at all -- the default Button variant had no background, and
+   * because both components also set outline-none, their focus-visible ring
+   * rendered nothing, leaving keyboard focus invisible. Mapped onto the
+   * brand/ledger palette: gold primary, green secondary, gold focus ring. */
+  --color-primary: var(--brand-gold);
+  --color-primary-foreground: var(--vault-ink);
+  --color-secondary: var(--brand-green);
+  --color-secondary-foreground: var(--brand-white);
+  --color-accent: var(--paper-raised);
+  --color-accent-foreground: var(--ink);
+  --color-destructive: var(--danger);
+  --color-muted-foreground: var(--ink-muted);
+  --color-input: var(--line);
+  --color-border: var(--line);
+  --color-ring: var(--brand-gold);
+  --color-success: var(--brand-green-light);
+
+  /* Same idea as the amber remap below, for green: the site's success
+   * checkmarks and admin badge use emerald-400/500, so remapping those two
+   * shades moves every existing success state onto the brand green without
+   * touching each call site. emerald-400 (text) gets the readable
+   * green-light tint; emerald-500 (borders, tinted fills) gets the true
+   * brand green. */
+  --color-emerald-400: var(--brand-green-light);
+  --color-emerald-500: var(--brand-green);
 
   /* Remaps Tailwind's built-in `amber` scale to a ramp derived from the
    * brand gold (#fdc82f at amber-400, the shade this codebase's existing
@@ -122,6 +184,41 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+}
+
+/* Brand-colored focus and form controls, site-wide. In @layer base so any
+ * component's own focus-visible:ring-* utilities still take precedence.
+ * - accent-color replaces the browser's default blue on native checkboxes,
+ *   radios, and range sliders (the submission wizard and shop filters use
+ *   plain <input type="checkbox">).
+ * - :focus-visible gives every focusable element (plain <button>, <Link>,
+ *   <select>, raw <input>) a gold keyboard-focus outline in place of the
+ *   browser's default blue one; mouse clicks don't trigger it.
+ * - Text fields additionally get a gold border on focus. Many are styled
+ *   with an inline `borderColor: 'var(--line)'`, which beats any class, so
+ *   !important is needed here -- scoped to :focus-visible only, so their
+ *   resting border is untouched. */
+@layer base {
+  :root {
+    accent-color: var(--brand-gold);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--brand-gold);
+    outline-offset: 2px;
+  }
+
+  input:not([type='checkbox']):not([type='radio']):not([type='range']):focus-visible,
+  select:focus-visible,
+  textarea:focus-visible {
+    outline-offset: 0;
+    border-color: var(--brand-gold) !important;
+  }
+
+  ::selection {
+    background: color-mix(in srgb, var(--brand-gold) 35%, transparent);
+    color: var(--ink);
+  }
 }
 
 @keyframes slide-in-right {

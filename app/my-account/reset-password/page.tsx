@@ -56,7 +56,6 @@ export default function ResetPasswordPage() {
             <Button
               onClick={() => router.push('/my-account')}
               className="w-full rounded-[3px] mt-4"
-              style={{ background: 'var(--vault)', color: 'var(--vault-ink)' }}
             >
               Back to login
             </Button>
@@ -88,7 +87,6 @@ export default function ResetPasswordPage() {
               type="submit"
               disabled={loading}
               className="w-full rounded-[3px]"
-              style={{ background: 'var(--vault)', color: 'var(--vault-ink)' }}
             >
               {loading ? 'Updating…' : 'Update password'}
             </Button>

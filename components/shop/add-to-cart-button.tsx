@@ -42,8 +42,7 @@ export function AddToCartButton({ product, belowPriceFloor = false }: Props) {
         type="button"
         onClick={handleClick}
         disabled={disabled}
-        className="px-6 py-3 text-[14px] rounded-[3px] disabled:opacity-40"
-        style={{ background: 'var(--vault)', color: 'var(--vault-ink)' }}
+        className="px-6 py-3 text-[14px] rounded-[3px] disabled:opacity-40 bg-brand-gold text-[color:var(--vault-ink)] font-semibold hover:bg-brand-gold-hover transition-colors duration-200 ease-fluid"
       >
         {outOfStock ? 'Sold out' : belowPriceFloor ? 'Not sold individually' : added ? 'Added ✓' : 'Add to cart'}
       </button>

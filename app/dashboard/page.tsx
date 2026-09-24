@@ -136,8 +136,7 @@ export default function DashboardPage() {
           </div>
           <Link
             href="/submit"
-            className="px-4 py-2 text-[13.5px] rounded-[3px] shrink-0"
-            style={{ background: 'var(--vault)', color: 'var(--vault-ink)' }}
+            className="px-4 py-2 text-[13.5px] rounded-[3px] shrink-0 bg-brand-gold text-[color:var(--vault-ink)] font-semibold hover:bg-brand-gold-hover transition-colors duration-200 ease-fluid"
           >
             Start a submission
           </Link>
@@ -161,7 +160,7 @@ export default function DashboardPage() {
               <Input value={profile.phone} onChange={(e) => setProfile({ ...profile, phone: e.target.value })} />
             </div>
             <div className="sm:col-span-2 flex items-center gap-3 mt-1">
-              <Button type="submit" disabled={savingProfile} className="rounded-[3px]" style={{ background: 'var(--vault)', color: 'var(--vault-ink)' }}>
+              <Button type="submit" disabled={savingProfile} className="rounded-[3px]">
                 {savingProfile ? 'Saving…' : 'Save'}
               </Button>
               {profileMessage && (

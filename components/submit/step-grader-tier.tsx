@@ -253,7 +253,6 @@ export function StepGraderTier({
           onClick={onNext}
           disabled={!canAdvance}
           className="rounded-[3px]"
-          style={{ background: 'var(--vault)', color: 'var(--vault-ink)' }}
         >
           Continue to add-ons
         </Button>

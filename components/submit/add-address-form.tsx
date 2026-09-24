@@ -48,7 +48,7 @@ export function AddAddressForm({ onCreated, onCancel }: Props) {
   }
 
   return (
-    <div className="border rounded-[3px] p-4 mt-3" style={{ borderColor: 'var(--line)' }}>
+    <div className="border rounded-[3px] p-4 mt-3" style={{ borderColor: 'var(--card-border)' }}>
       <div className="grid sm:grid-cols-2 gap-3">
         <div className="sm:col-span-2">
           <Label className="text-[12.5px]" style={{ color: 'var(--ink-muted)' }}>
@@ -102,7 +102,6 @@ export function AddAddressForm({ onCreated, onCancel }: Props) {
           onClick={handleSave}
           disabled={!canSave || saving}
           className="rounded-[3px]"
-          style={{ background: 'var(--vault)', color: 'var(--vault-ink)' }}
         >
           {saving ? 'Saving…' : 'Save address'}
         </Button>

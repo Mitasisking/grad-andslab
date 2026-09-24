@@ -66,7 +66,7 @@ export default function HomePage() {
           <div className="flex flex-col sm:flex-row justify-center items-center gap-4 mt-10 w-full sm:w-auto">
             <Link
               href="/dashboard"
-              className="w-full sm:w-auto bg-brand-gold hover:bg-[#d9a000] text-black font-bold text-lg px-8 py-4 rounded-xl border-2 border-black transition-all duration-200 ease-fluid active:scale-[0.97] shadow-[0_0_20px_rgba(253,200,47,0.25)] hover:shadow-[0_0_25px_rgba(253,200,47,0.45)]"
+              className="w-full sm:w-auto bg-brand-gold hover:bg-brand-gold-hover text-black font-bold text-lg px-8 py-4 rounded-xl border-2 border-black transition-all duration-200 ease-fluid active:scale-[0.97] shadow-[0_0_20px_rgba(253,200,47,0.25)] hover:shadow-[0_0_25px_rgba(253,200,47,0.45)]"
             >
               Start a Submission
             </Link>

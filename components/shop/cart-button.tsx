@@ -112,8 +112,7 @@ export function CartButton() {
                 <Link
                   href="/shop/checkout"
                   onClick={() => setOpen(false)}
-                  className="mt-4 block text-center px-4 py-2.5 text-[14px] rounded-[3px]"
-                  style={{ background: 'var(--vault)', color: 'var(--vault-ink)' }}
+                  className="mt-4 block text-center px-4 py-2.5 text-[14px] rounded-[3px] bg-brand-gold text-[color:var(--vault-ink)] font-semibold hover:bg-brand-gold-hover transition-colors duration-200 ease-fluid"
                 >
                   Checkout
                 </Link>

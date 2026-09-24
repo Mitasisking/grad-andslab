@@ -128,7 +128,6 @@ function LoginForm() {
         type="submit"
         disabled={loading || !captchaToken}
         className="w-full rounded-[3px]"
-        style={{ background: 'var(--vault)', color: 'var(--vault-ink)' }}
       >
         {loading ? 'Logging in…' : !captchaToken ? 'Verifying…' : 'Log in'}
       </Button>
@@ -227,7 +226,6 @@ function RegisterForm() {
         type="submit"
         disabled={loading || !captchaToken}
         className="w-full rounded-[3px]"
-        style={{ background: 'var(--vault)', color: 'var(--vault-ink)' }}
       >
         {loading ? 'Creating account…' : !captchaToken ? 'Verifying…' : 'Register'}
       </Button>

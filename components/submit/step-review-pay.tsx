@@ -449,7 +449,6 @@ export function StepReviewPay({
           onClick={beginCheckout}
           disabled={!canCheckout || creatingOrder}
           className="rounded-[3px]"
-          style={{ background: 'var(--vault)', color: 'var(--vault-ink)' }}
         >
           {creatingOrder ? 'Redirecting to Payfast…' : `Pay ${formatByRegion(total, region)}`}
         </Button>

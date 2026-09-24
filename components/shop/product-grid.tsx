@@ -77,8 +77,7 @@ export function ProductGrid({ products }: { products: Product[] }) {
           <Link
             key={product.id}
             href={`/shop/${product.id}`}
-            className="border rounded-[3px] overflow-hidden flex flex-col transition-all duration-200 ease-out hover:-translate-y-1 hover:shadow-[0_12px_24px_-8px_rgba(232,184,75,0.35)]"
-            style={{ borderColor: 'var(--line)' }}
+            className="border border-[color:var(--card-border)] rounded-[3px] overflow-hidden flex flex-col transition-all duration-200 ease-out hover:-translate-y-1 hover:border-brand-gold/50 hover:shadow-[0_12px_24px_-8px_rgba(253,200,47,0.35)]"
           >
             <div className="aspect-square flex items-center justify-center" style={{ background: 'var(--paper-raised)' }}>
               {product.images[0] && (
@@ -121,8 +120,7 @@ export function ProductGrid({ products }: { products: Product[] }) {
                   type="button"
                   onClick={(e) => handleAddItem(e, product)}
                   disabled={outOfStock}
-                  className="px-3 py-1.5 text-[13px] rounded-[3px] disabled:opacity-40"
-                  style={{ background: 'var(--vault)', color: 'var(--vault-ink)' }}
+                  className="px-3 py-1.5 text-[13px] rounded-[3px] disabled:opacity-40 bg-brand-gold text-[color:var(--vault-ink)] font-semibold hover:bg-brand-gold-hover transition-colors duration-200 ease-fluid"
                 >
                   {outOfStock ? 'Sold out' : 'Add to cart'}
                 </button>
