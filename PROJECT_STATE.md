@@ -1402,6 +1402,43 @@ field that drives routing/matching logic, never the name.
 
 ## Uncommitted work in the tree right now
 
+**Uncommitted (2026-09-24) — "Slab Guard" add-on (flat R95, ZAR)**. New Yes/No section below Full
+Clean & Polish in `components/submit/step-addons.tsx`, built from the same `YesNoQuestion`
+component (identical border/spacing/gold radios), heading "Slab Guard", copy "Add a premium
+protective bumper to your final graded slab.", price `formatZAR(SLAB_GUARD_FEE_ZAR)` = "R 95,00".
+- `lib/submission-types.ts`: `SLAB_GUARD_FEE_ZAR = 95`, `SLAB_GUARD_LABEL`, and
+  `SubmissionRow.requires_slab_guard`. Deliberately ZAR-only (no USD/GBP twin), like Secursus.
+- `lib/submission-pricing.ts`: `requiresSlabGuard` input → `slabGuardSubtotal` (flat R95 per
+  submission, not per card) inside `serviceFee`; `requires_slab_guard` added to
+  `SUBMISSION_PRICING_COLUMNS` / `pricingInputFromRows`, so checkout and the Payfast webhook
+  price it from the DB like every other option.
+- `app/submit/wizard.tsx` holds `requiresSlabGuard` state → `StepAddOns` and `StepReviewPay`;
+  the Order Summary shows a "Slab Guard R 95,00" line only when chosen; `/api/submissions`
+  stores `requires_slab_guard` (only a literal `true` counts); the submission confirmation email
+  (`lib/email/send-order-confirmation.ts`) lists it as an add-on line.
+- **New migration `supabase/migrations/0067_add_slab_guard.sql` — APPLIED to production by the user
+  (SQL Editor, 2026-09-24); verified via a service-role read that `requires_slab_guard` exists and is
+  `false` on all 4 existing submissions. It had to precede the code deploy** (`add column if not exists requires_slab_guard boolean not null
+  default false`): the checkout route, webhook, and submission insert all reference the column, so
+  deploying first would break every grading checkout.
+- Simulation: ~20% of submissions opt in; independent re-derivation includes the R95; report gains
+  a Slab Guard line (default run 48 × R95 = R 4 560,00, 1,383/1,383 invariants).
+- `tsc`/eslint clean on all touched files, `npx next build` clean. Not click-tested in the wizard.
+- Pre-existing, not changed here: the submission confirmation email itemises grading + add-ons but
+  not label fees, courier legs, or Secursus, and its "total" is `service_fee` (excludes the domestic
+  courier legs the customer also paid).
+
+**Done (2026-09-24) — 8 empty submissions deleted from production**. `npm run audit:submissions
+-- --all` (committed `54062e8`) showed production has 12 submissions, **none ever `captured`**
+(and no captured shop orders), so no historical underpayment was possible. 8 of the 12 were
+empty shells (0 submission_items, `service_fee` 0, `pending`, PCG standard, one user
+`ac4ae57d…`, created 2026-09-02…04, no ledger_entries/status_log/pool/batch). On the user's
+instruction they were deleted by exact id with a guard (`payment_status = 'pending'` and
+`service_fee = 0` re-checked in the DELETE); 4 submissions remain. The other 3 flagged
+"under current price" are explained by later price changes (two are exactly R220 = the two R110
+international legs added ~2026-09-20) and were never paid. Open question for the user: whether
+Payfast received any money for those 12 checkouts that the webhook failed to record.
+
 **Committed `686f66a`, pushed, deployed as `dpl_FoDafs5EhvahYrdqU7vqr3hcGY74` (2026-09-24) — Shop
 shipping fixed at R110 per order, server-side, ZAR only**. User set
 the rate (R110/order) and asked for the `create_order()` bypass to be closed. Changes:
