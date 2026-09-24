@@ -1402,6 +1402,22 @@ field that drives routing/matching logic, never the name.
 
 ## Uncommitted work in the tree right now
 
+**Uncommitted (2026-09-24) — "Cleaning Services" legend in the Add-ons step**. Not committed, not deployed.
+- `lib/submission-types.ts`: `CleaningTierOption.description`, with the user-supplied copy for No clean /
+  Half Clean / Full clean. Prices unchanged (R 0,00 / R 200,00 / R 500,00).
+- `components/submit/step-addons.tsx`: new `CleaningLegend` — a bordered "Cleaning Services" block below
+  the Label options legend (shown for every company, unlike labels), three tiers side by side on
+  `sm:` (stacked on mobile) with name, gold ZAR price and description. Per-card Cleaning radios stay a
+  compact three-across row with no descriptions; their subtext is now "How our team prepares this card
+  before grading — see Cleaning Services above." (An intermediate version that put the descriptions
+  inside each per-card tile, stacked vertically, was replaced by this at the user's request.)
+- Per-card block order is now **Label → Cleaning → Slab Guard** (was Cleaning → Slab Guard → Label),
+  one divider between each; for non-ACE (no Label group) the block starts at Cleaning. Label subtext now
+  says "see Label options above" (Cleaning Services sits between the two legends and the cards).
+- `tsc`/eslint clean. **Not visually checked**: the local browser session couldn't focus the card
+  search input (clicks, keyboard and script-set values all failed to register), so the wizard couldn't
+  be advanced to Add-ons. The duration-0 workaround was reverted.
+
 **Committed `5b6ae78`, pushed, deployed as `dpl_9XjP4wEAbHcQAXcUhWAY1r55kxNk` (2026-09-24) — ACE label
 option moved from Step 1 to a per-card choice in Add-ons**. Migration 0069 APPLIED to production by
 the user before the deploy. Post-deploy smoke check: `/` and `/submit` 200, `/api/submissions`

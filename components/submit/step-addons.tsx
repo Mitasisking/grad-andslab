@@ -70,6 +70,42 @@ function LabelLegend() {
   )
 }
 
+/**
+ * One guide to the three cleaning tiers, shown once above the per-card
+ * blocks (below the Label options key) so every card's Cleaning radio
+ * group below can stay a compact one-line row: name, ZAR price and the
+ * full description of what each tier includes.
+ */
+function CleaningLegend() {
+  return (
+    <div className="border rounded-[3px] p-4 sm:p-5" style={{ borderColor: 'var(--line)' }}>
+      <p className="text-[13px]" style={{ color: 'var(--ink)' }}>
+        Cleaning Services
+      </p>
+      <p className="text-[12px] mt-0.5" style={{ color: 'var(--ink-muted)' }}>
+        What each clean includes. Choose one per card below.
+      </p>
+      <div className="grid sm:grid-cols-3 gap-4 mt-4">
+        {CLEANING_TIER_OPTIONS.map((option) => (
+          <div key={option.value} className="min-w-0">
+            <p className="flex items-baseline justify-between gap-2">
+              <span className="text-[13.5px]" style={{ color: 'var(--ink)' }}>
+                {option.label}
+              </span>
+              <span className="text-[12.5px] shrink-0" style={{ fontVariantNumeric: 'tabular-nums', color: 'var(--seal)' }}>
+                {formatZAR(option.feeZAR)}
+              </span>
+            </p>
+            <p className="text-[12px] leading-relaxed mt-1" style={{ color: 'var(--ink-muted)' }}>
+              {option.description}
+            </p>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 interface OptionTileProps {
   label: string
   priceLabel: string
@@ -227,6 +263,8 @@ export function StepAddOns({
 
       {showLabelOptions && <LabelLegend />}
 
+      <CleaningLegend />
+
       <div className="space-y-4">
         {cards.map((card, i) => (
           <div key={card.id} className="border rounded-[3px] p-4 sm:p-5" style={{ borderColor: 'var(--card-border)' }}>
@@ -239,9 +277,31 @@ export function StepAddOns({
             </p>
 
             <div className="mt-4 space-y-4">
+              {showLabelOptions && (
+                <>
+                  <OptionGroup
+                    heading="Label"
+                    subtext="The ACE label printed on this card's slab — see Label options above."
+                    columnsClassName="sm:grid-cols-3"
+                  >
+                    {ACE_LABEL_OPTIONS.map((option) => (
+                      <OptionTile
+                        key={option.value}
+                        label={option.label}
+                        priceLabel={labelPriceText(option.feeZAR)}
+                        selected={card.labelOption === option.value}
+                        onSelect={() => onUpdateCard(card.id, { labelOption: option.value })}
+                      />
+                    ))}
+                  </OptionGroup>
+
+                  <div className="border-t" style={{ borderColor: 'var(--line)' }} />
+                </>
+              )}
+
               <OptionGroup
                 heading="Cleaning"
-                subtext="Surface debris removed by our team before grading."
+                subtext="How our team prepares this card before grading — see Cleaning Services above."
                 columnsClassName="sm:grid-cols-3"
               >
                 {CLEANING_TIER_OPTIONS.map((option) => (
@@ -275,28 +335,6 @@ export function StepAddOns({
                   onSelect={() => onUpdateCard(card.id, { requiresSlabGuard: false })}
                 />
               </OptionGroup>
-
-              {showLabelOptions && (
-                <>
-                  <div className="border-t" style={{ borderColor: 'var(--line)' }} />
-
-                  <OptionGroup
-                    heading="Label"
-                    subtext="The ACE label printed on this card's slab — see the key above."
-                    columnsClassName="sm:grid-cols-3"
-                  >
-                    {ACE_LABEL_OPTIONS.map((option) => (
-                      <OptionTile
-                        key={option.value}
-                        label={option.label}
-                        priceLabel={labelPriceText(option.feeZAR)}
-                        selected={card.labelOption === option.value}
-                        onSelect={() => onUpdateCard(card.id, { labelOption: option.value })}
-                      />
-                    ))}
-                  </OptionGroup>
-                </>
-              )}
             </div>
           </div>
         ))}

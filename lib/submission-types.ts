@@ -481,12 +481,31 @@ export interface CleaningTierOption {
   value: CleaningTier
   label: string
   feeZAR: number
+  /** Customer-facing copy shown under the option in the Add-ons step. */
+  description: string
 }
 
 export const CLEANING_TIER_OPTIONS: CleaningTierOption[] = [
-  { value: 'none', label: 'No clean', feeZAR: 0 },
-  { value: 'half', label: 'Half Clean', feeZAR: 200 },
-  { value: 'full', label: 'Full clean', feeZAR: 500 },
+  {
+    value: 'none',
+    label: 'No clean',
+    feeZAR: 0,
+    description: 'Card is placed in a fresh sleeve and semi-rigid, then submitted exactly as received.',
+  },
+  {
+    value: 'half',
+    label: 'Half Clean',
+    feeZAR: 200,
+    description:
+      'A meticulous surface prep using a specialized, non-abrasive card solution and optical-grade microfiber to safely remove fingerprints, light smudges, and surface dust.',
+  },
+  {
+    value: 'full',
+    label: 'Full clean',
+    feeZAR: 500,
+    description:
+      'A comprehensive detailing pass. Includes the standard surface prep, plus careful edge and corner detailing, gentle removal of stubborn wax or mild print residue, and a high-gloss polish designed to maximize surface sub-grades.',
+  },
 ]
 
 export function isCleaningTier(value: unknown): value is CleaningTier {
