@@ -1402,6 +1402,32 @@ field that drives routing/matching logic, never the name.
 
 ## Uncommitted work in the tree right now
 
+**Uncommitted (2026-09-24) — Order Summary consolidated + confirmation emails itemised correctly**.
+- `components/submit/step-review-pay.tsx` (presentation only): the two local courier legs, two
+  international legs, and two Secursus legs each render as one line — "Local Courier (Round Trip)"
+  (suffixed "· In-person" at R 0,00 for in-person drop-off), "International Courier (Round Trip)",
+  "Insurance" — using `computeSubmissionPricing()`'s existing `localCourierTotal` /
+  `internationalCourierTotal` / `secursusInsuranceTotal`. The pricing input, `/api/submissions`
+  payload, and stored columns are unchanged. Every amount in the component (summary lines, the
+  "each way" note, Pay button) now uses `formatZAR`; `formatByRegion` is no longer imported there.
+- `lib/email/send-order-confirmation.ts` (grading submission confirmation): previously itemised
+  only grading + prep/Clean & Polish + Slab Guard while showing `service_fee` as the total, so
+  label fees, courier legs and insurance were missing and the domestic legs weren't in the total.
+  Now prices the submission with `computeSubmissionPricing(pricingInputFromRows(...))` and lists:
+  per-card grading; ACE label × n; prep or Clean & Polish; Slab Guard; and a new "Courier &
+  insurance" section with **each leg on its own line** (the per-leg labels from
+  `lib/submission-types.ts`, kept for invoicing). Total = `pricing.total` (falls back to
+  `service_fee` only if pricing throws, which is logged).
+- `lib/email/templates/order-confirmation.ts`: new optional `feeLineItems` section; the muted tax
+  row is relabelled "Includes VAT (15%)" (it was "Tax", reading as an extra charge, though
+  `tax_collected` is bookkeeping on a VAT-inclusive total — this also affects the shop order email).
+- `lib/email/send-grading-update.ts`: the ORDER_CONFIRMED email's `totalPaid` is now the
+  recomputed `total` (was `service_fee`, missing the domestic courier legs).
+- Checked by rendering the template with a sample ACE order (Colour Match, 1 prep card, Slab
+  Guard): line items sum exactly to `pricing.total` (R 2 655,00) and every new section renders.
+  `tsc` clean, `npm run lint` at the 48-problem baseline, `npx next build` clean, simulation
+  1,383/1,383. No real email sent; not click-tested in the wizard.
+
 **Committed `0738787`, pushed, deployed as `dpl_9kiszpuXkX9fNd14jmrpBvaGukjU` (2026-09-24) —
 "Slab Guard" add-on (flat R95, ZAR)**. New Yes/No section below Full
 Clean & Polish in `components/submit/step-addons.tsx`, built from the same `YesNoQuestion`
