@@ -1402,8 +1402,8 @@ field that drives routing/matching logic, never the name.
 
 ## Uncommitted work in the tree right now
 
-**Uncommitted (2026-09-24) — Inbound local courier leg no longer charged (customers ship to HQ
-themselves)**. `lib/submission-pricing.ts`: `localCourierTotal` is now the single return leg
+**Committed `e14f85c`, pushed, deployed as `dpl_4Y2YKNSK1GQ6n5rQAYtqtvgsFaem` (2026-09-24) — Inbound
+local courier leg no longer charged (customers ship to HQ themselves)**. `lib/submission-pricing.ts`: `localCourierTotal` is now the single return leg
 (`domesticLegFee`, R110) instead of `domesticLegFee * 2`; still R0 for in-person drop-off. Since
 checkout and the Payfast webhook both recompute from this function, the charged total drops by
 R110 for every online submission (e.g. ACE Basic, 1 card, Ace Label, R1,000 declared: R1 240 →
@@ -1412,8 +1412,10 @@ In-person collection" at R 0,00), the Courier box is titled "Return courier" and
 (was "each way"), and the "Courier Delivery" option says customers ship to us with a tracked courier
 of their choice and we return via The Courier Guy — Pudo. `LOCAL_COURIER_LEG_LABELS.outbound` →
 "Drop-off to HQ (arranged by customer)"; the confirmation email lists only the return leg.
-Simulation labels updated (1,383/1,383). `tsc`/eslint clean, `npx next build` clean. Not yet
-committed, pushed, or deployed.
+Simulation labels updated (1,383/1,383). `tsc`/eslint clean, `npx next build` clean. Live-checked:
+`/terms` §5.2 serves the new return-leg wording and no "each way" text; checkout responds. The
+Order Summary total needs a logged-in session — next test submission should show "Local Courier
+(Return) R 110,00" and a total R110 lower than before.
 - Transition: a pending submission whose customer still has the old Review page open will get
   checkout's 409 "price has changed, refresh" (by design). A Payfast payment already in flight at
   the old amount when this deploys would hit the webhook's amount check and stay `pending` for an
@@ -1423,7 +1425,8 @@ committed, pushed, or deployed.
   R 110,00. Clients arrange and pay for their own shipping to our intake facility." (Last Updated
   was already 24/09/2026.)
 
-**Uncommitted (2026-09-24) — Shipping Policy and Refund & Return Policy added to `/terms`**. The
+**Committed `58b6b21`, pushed, deployed as `dpl_9w9wWUPU9XakE86B1iU5SzhENS8k` (2026-09-24) — Shipping
+Policy and Refund & Return Policy added to `/terms`**. The
 user-supplied text is added verbatim as `app/terms/page.tsx` §5 "Shipping Policy"
 (`id="shipping-policy"`: 5.1 Domestic Shop Orders — R110 flat; 5.2 Grading Submission Logistics;
 5.3 Insurance — Secursus 15% applied twice, liability limited to the Secursus payout; 5.4 Customs —
@@ -1435,14 +1438,15 @@ grade outcomes; 6.3 refunds in ZAR within 5–7 business days). Contact details 
 on `Section` (with `scroll-mt-24`) and a numbered `SubSection` heading. This restores an accessible
 refund policy (the footer's Refund/Shipping links were removed earlier), reachable as
 `/terms#refund-policy`. `tsc`/eslint clean, `npx next build` clean, prerendered `/terms` contains
-both anchors and every subsection. Not yet committed, pushed, or deployed.
+both anchors and every subsection; both anchors confirmed on production via curl.
 - Still outstanding: the old standalone `app/shipping-policy/` and `app/refund-policy/` pages still
   exist (unlinked, direct URL only) and now contradict the Terms — e.g. `/shipping-policy` says
   shipping is "calculated at checkout based on your location and the size of the order". Terms §3
   also still says "(e.g., PCG)" (the service is ACE-only) and has a broader "not liable" line than
   §5.3's Secursus-payout clause. Flagged to the user; not changed.
 
-**Uncommitted (2026-09-24) — `/prepare` guide aligned with the Submission Best Practices copy**.
+**Committed `504299a`, pushed, deployed as `dpl_9w9wWUPU9XakE86B1iU5SzhENS8k` (2026-09-24) — `/prepare`
+guide aligned with the Submission Best Practices copy**.
 - New `lib/packing-best-practices.ts` holds the 4 Do / 4 Don't items (`Practice = { lead, detail
   }`), moved verbatim out of `components/SubmissionBestPractices.tsx`, which now imports them.
   `components/PackagingGuidelines.tsx` (the `/prepare` Do/Don't cards) drops its own older lists
@@ -1457,7 +1461,7 @@ both anchors and every subsection. Not yet committed, pushed, or deployed.
   not the post office) and "Check Your Details" (return address on the dashboard). "Avoid
   Toploaders" is kept — toploaders only ever appear as a "don't" (semi-rigids-only rule).
 - `tsc`/eslint clean, `npx next build` clean; prerendered `/prepare` HTML contains every new
-  phrase and none of the removed ones. Not yet committed, pushed, or deployed.
+  phrase and none of the removed ones; production `/prepare` confirmed serving the new copy via curl.
 
 **Committed `29bcaea`, pushed, deployed as `dpl_G4MDSdKfmeQToqbnhaKQiZ3vK4uV` (2026-09-24) — Mobile
 horizontal scroll fixed (site-wide, via the footer)**. The
